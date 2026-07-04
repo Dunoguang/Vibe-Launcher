@@ -44,7 +44,7 @@ jobs:
           fi
 
       - name: Build release APK
-        run: ./gradlew --no-daemon :app:assembleRelease
+        run: gradle --no-daemon :app:assembleRelease
 
       - name: Show APK
         run: ls -lh app/build/outputs/apk/release/
