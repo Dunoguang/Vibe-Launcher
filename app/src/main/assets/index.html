@@ -70,6 +70,7 @@
     <div class="loading-indicator" id="loadingIndicator">正在加载应用…</div>
 
 <script>
+console.log("SCRIPT1: CJS shim starting");
 // CommonJS shim for three.cjs
 var module = { exports: {} };
 var exports = module.exports;
@@ -77,11 +78,13 @@ var exports = module.exports;
 <script src="three.cjs"></script>
 <script>
 window.THREE = module.exports;
+console.log("THREE ready, exports:", Object.keys(module.exports).length);
 delete window.module;
 delete window.exports;
 </script>
 
         (function() {
+console.log("IIFE starting, THREE:", typeof THREE);
             if (typeof THREE === 'undefined') {
                 document.getElementById('loadingIndicator').textContent = 'Three.js 未加载';
                 return;
