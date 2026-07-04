@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNG Launcher</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#121212;color:#e0e0e0;overflow:hidden}
+.header{position:sticky;top:0;z-index:10;background:#1e1e1e;padding:12px 16px;border-bottom:1px solid #333;display:flex;align-items:center;gap:10px}
+.header h1{font-size:18px;font-weight:600;white-space:nowrap}
+#searchInput{flex:1;padding:8px 14px;border:none;border-radius:20px;background:#333;color:#fff;font-size:14px;outline:none}
+#searchInput::placeholder{color:#888}
+#appCount{font-size:13px;color:#888;white-space:nowrap}
+#appList{height:calc(100vh - 56px);overflow-y:auto;padding:8px 0 80px;will-change:scroll-position}
+.app-item{display:flex;align-items:center;gap:14px;padding:10px 16px;cursor:pointer;transition:background .15s;border-bottom:1px solid #1a1a1a;height:64px}
+.app-item:active{background:#2a2a2a}
+.app-item .icon{width:42px;height:42px;border-radius:10px;flex-shrink:0;background:#2a2a2a;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.app-item .icon img{width:100%;height:100%;object-fit:contain}
+.app-item .info{flex:1;min-width:0}
+.app-item .name{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-item .pkg{font-size:12px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-item .badge{font-size:11px;padding:3px 8px;border-radius:10px;background:#333;color:#888;flex-shrink:0}
+.loading{text-align:center;padding:40px;color:#666}
+.hidden{display:none!important}
+#toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:100}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📱 DNG</h1>
+  <input id="searchInput" type="text" placeholder="搜索应用...">
+  <span id="appCount"></span>
+</div>
+<div id="appList"><div class="loading">正在加载...</div></div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  var appListEl = document.getElementById('appList');
+  var searchInput = document.getElementById('searchInput');
+  var appCountEl = document.getElementById('appCount');
+  var toastEl = document.getElementById('toast');
+
+  var allApps = [];
+  var filteredApps = [];
+  var iconUrlMap = {};
+  var visibleRange = { start: 0, end: 20 };
+  var itemHeight = 64;
+  var pendingIcons = {};
+  var throttleTimer = null;
+  var debounceTimer = null;
+  var SCROLL_THROTTLE_MS = 50;
+  var SEARCH_DEBOUNCE_MS = 300;
+
+  function calcVisibleRange() {
+    var scrollTop = appListEl.scrollTop;
+    var viewH = appListEl.clientHeight;
+    var buffer = viewH;
+    visibleRange.start = Math.max(0, Math.floor((scrollTop - buffer) / itemHeight));
+    visibleRange.end = Math.min(filteredApps.length, Math.ceil((scrollTop + viewH + buffer) / itemHeight));
+  }
+
+  function renderVisible() {
+    calcVisibleRange();
+    var start = visibleRange.start;
+    var end = visibleRange.end;
+    appListEl.innerHTML = '';
+
+    var spacer = document.createElement('div');
+    spacer.style.height = (start * itemHeight) + 'px';
+    appListEl.appendChild(spacer);
+
+    for (var i = start; i < end && i < filteredApps.length; i++) {
+      var app = filteredApps[i];
+      var item = document.createElement('div');
+      item.className = 'app-item';
+      var iconHtml = iconUrlMap[app.packageName]
+        ? '<img src="' + iconUrlMap[app.packageName] + '" alt="" loading="lazy">'
+        : '<span style="color:#666;font-size:12px">' + app.appName.charAt(0).toUpperCase() + '</span>';
+      item.innerHTML =
+        '<div class="icon" id="ic-' + encodePkg(app.packageName) + '">' + iconHtml + '</div>' +
+        '<div class="info">' +
+          '<div class="name">' + esc(app.appName) + '</div>' +
+          '<div class="pkg">' + esc(app.packageName) + '</div>' +
+        '</div>' +
+        (app.isSystem ? '<span class="badge">系统</span>' : '');
+      item.addEventListener('click', (function(pkg, name) {
+        return function() { launchApp(pkg, name); };
+      })(app.packageName, app.appName));
+      appListEl.appendChild(item);
+    }
+
+    var bottomSpacer = document.createElement('div');
+    bottomSpacer.style.height = Math.max(0, (filteredApps.length - end) * itemHeight) + 'px';
+    appListEl.appendChild(bottomSpacer);
+  }
+
+  function requestIconsForVisible() {
+    var batch = [];
+    for (var i = visibleRange.start; i < visibleRange.end && i < filteredApps.length; i++) {
+      var pkg = filteredApps[i].packageName;
+      if (!iconUrlMap[pkg] && !pendingIcons[pkg]) {
+        batch.push(pkg);
+        pendingIcons[pkg] = true;
+      }
+    }
+    if (batch.length > 0) {
+      NativeBridge.requestAppIcons(JSON.stringify(batch));
+    }
+  }
+
+  function onScroll() {
+    if (throttleTimer) return;
+    throttleTimer = setTimeout(function() {
+      throttleTimer = null;
+      renderVisible();
+      requestIconsForVisible();
+    }, SCROLL_THROTTLE_MS);
+  }
+
+  window._onAppsLoaded = function(result) {
+    if (!result.success) { appListEl.innerHTML = '<div class="loading">加载失败</div>'; return; }
+    allApps = result.apps;
+    filteredApps = allApps;
+    appCountEl.textContent = allApps.length + ' 个';
+    renderVisible();
+    requestIconsForVisible();
+  };
+
+  window._onAppsError = function(err) {
+    appListEl.innerHTML = '<div class="loading">错误: ' + err + '</div>';
+  };
+
+  window._onIconsLoaded = function(results) {
+    for (var i = 0; i < results.length; i++) {
+      var r = results[i];
+      iconUrlMap[r.packageName] = r.iconUrl;
+      var el = document.getElementById('ic-' + encodePkg(r.packageName));
+      if (el && r.iconUrl) {
+        el.innerHTML = '<img src="' + r.iconUrl + '" alt="" loading="lazy">';
+      }
+    }
+  };
+
+  window._onIconsError = function(err) {
+    console.log('Icon load error:', err);
+  };
+
+  function launchApp(pkg, name) {
+    showToast('正在启动 ' + name + '...');
+    try {
+      var r = JSON.parse(NativeBridge.launchApp(pkg));
+      if (!r.success) showToast('启动失败: ' + (r.error || '未知'));
+    } catch(e) { showToast('启动失败: ' + e.message); }
+  }
+
+  searchInput.addEventListener('input', function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function() {
+      var q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        filteredApps = allApps;
+      } else {
+        filteredApps = allApps.filter(function(a) {
+          return a.appName.toLowerCase().indexOf(q) !== -1 ||
+                 a.packageName.toLowerCase().indexOf(q) !== -1;
+        });
+      }
+      visibleRange.start = 0;
+      visibleRange.end = Math.min(30, filteredApps.length);
+      appListEl.scrollTop = 0;
+      appCountEl.textContent = filteredApps.length + ' / ' + allApps.length;
+      renderVisible();
+      requestIconsForVisible();
+    }, SEARCH_DEBOUNCE_MS);
+  });
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(function() { toastEl.classList.remove('show'); }, 2000);
+  }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function encodePkg(s) {
+    return s.replace(/[^a-zA-Z0-9]/g, '_');
+  }
+
+  appListEl.addEventListener('scroll', onScroll, {passive: true});
+  NativeBridge.requestInstalledApps();
+})();
+</script>
+</body>
+</html>
