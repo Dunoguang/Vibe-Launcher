@@ -55,8 +55,15 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             wv.addJavascriptInterface(JsBridge(this, wv), "NativeBridge")
-            Log.d(TAG, "loadingUrl...")
-            wv.loadUrl("file:///android_asset/index.html")
+            val externalHtml = java.io.File(filesDir, "index.html")
+            val loadPath = if (externalHtml.exists()) {
+                Log.d(TAG, "loading external index.html from $externalHtml")
+                "file://${externalHtml.absolutePath}"
+            } else {
+                Log.d(TAG, "loading bundled index.html")
+                "file:///android_asset/index.html"
+            }
+            wv.loadUrl(loadPath)
         }
 
         onBackPressedDispatcher.addCallback {
