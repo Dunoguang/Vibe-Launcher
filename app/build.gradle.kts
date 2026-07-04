@@ -19,9 +19,6 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
-        ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-        }
     }
 
     signingConfigs {
@@ -37,7 +34,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -55,6 +53,5 @@ android {
 
 dependencies {
     implementation("androidx.appcompat:appcompat:1.7.1")
-    implementation("com.google.android.material:material:1.14.0")
     implementation("com.google.code.gson:gson:2.11.0")
 }
