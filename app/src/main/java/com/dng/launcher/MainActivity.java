@@ -27,7 +27,8 @@ public class MainActivity extends AppCompatActivity {
 
         webView.setWebChromeClient(new WebChromeClient());
 
-        webView.addJavascriptInterface(new JsBridge(this), "NativeBridge");
+        // P2 #12: WeakReference - JsBridge stores context/webview as WeakRef
+        webView.addJavascriptInterface(new JsBridge(this, webView), "NativeBridge");
         webView.loadUrl("file:///android_asset/index.html");
     }
 
@@ -38,5 +39,14 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         super.onBackPressed();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (webView != null) {
+            webView.destroy();
+            webView = null;
+        }
+        super.onDestroy();
     }
 }
