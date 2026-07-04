@@ -69,9 +69,17 @@
     <div class="app-label" id="appLabel"></div>
     <div class="loading-indicator" id="loadingIndicator">正在加载应用…</div>
 
-<script type="module">
-import * as THREE from './three.module.js';
-window.THREE = THREE;
+<script>
+// CommonJS shim for three.cjs
+var module = { exports: {} };
+var exports = module.exports;
+</script>
+<script src="three.cjs"></script>
+<script>
+window.THREE = module.exports;
+delete window.module;
+delete window.exports;
+</script>
 
         (function() {
             if (typeof THREE === 'undefined') {
