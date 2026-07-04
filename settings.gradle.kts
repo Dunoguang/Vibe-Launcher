@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "KotlinMinimal"
+rootProject.name = "VibeLauncher"
 include(":app")
