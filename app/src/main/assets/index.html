@@ -268,7 +268,7 @@
                 var elapsed = now - rotationAnimData.startTime;
                 var t = Math.min(1, elapsed / rotationAnimData.duration);
                 var eased = easeOutCubic(t);
-                THREE.Quaternion.slerp(rotationAnimData.from, rotationAnimData.to, rotationQuat, eased);
+                rotationQuat.copy(rotationAnimData.from).slerp(rotationAnimData.to, eased);
                 sphereGroup.quaternion.copy(rotationQuat);
                 if (t >= 1) {
                     rotationQuat.copy(rotationAnimData.to);
