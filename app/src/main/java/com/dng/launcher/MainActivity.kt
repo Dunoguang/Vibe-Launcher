@@ -1,13 +1,19 @@
 package com.dng.launcher
 
 import android.os.Bundle
+import android.util.Log
 import android.view.View
+import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "VibeLauncher"
+    }
 
     private var webView: WebView? = null
 
@@ -26,7 +32,12 @@ class MainActivity : AppCompatActivity() {
                 allowUniversalAccessFromFileURLs = true
             }
             wv.overScrollMode = View.OVER_SCROLL_NEVER
-            wv.webChromeClient = WebChromeClient()
+            wv.webChromeClient = object : WebChromeClient() {
+                override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
+                    Log.d(TAG, "[${msg.messageLevel()}] ${msg.sourceId()}:${msg.lineNumber()} - ${msg.message()}")
+                    return true
+                }
+            }
             wv.addJavascriptInterface(JsBridge(this, wv), "NativeBridge")
             wv.loadUrl("file:///android_asset/index.html")
         }

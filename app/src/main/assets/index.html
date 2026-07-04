@@ -10,7 +10,6 @@
             padding: 0;
             box-sizing: border-box;
         }
-
         html,
         body {
             width: 100%;
@@ -24,17 +23,14 @@
             touch-action: none;
             font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
         }
-
         body:active {
             cursor: grabbing;
         }
-
         canvas {
             display: block;
             width: 100%;
             height: 100%;
         }
-
         .app-label {
             position: fixed;
             pointer-events: none;
@@ -52,11 +48,9 @@
             white-space: nowrap;
             text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
         }
-
         .app-label.visible {
             opacity: 1;
         }
-
         .loading-indicator {
             position: fixed;
             top: 50%;
@@ -72,16 +66,87 @@
     </style>
 </head>
 <body>
-
     <div class="app-label" id="appLabel"></div>
     <div class="loading-indicator" id="loadingIndicator">正在加载应用…</div>
 
-    <script src="three.min.js"></script>
+    <script src="three.min.js">
+    </script>
     <script>
         (function() {
             if (typeof THREE === 'undefined') {
                 document.getElementById('loadingIndicator').textContent = 'Three.js 未加载';
                 return;
+            }
+
+            // ========== 球面库仑斥力分布（Thomson 问题）==========
+            function sphereCoulomb(N, opts = {}) {
+                const { radius = 1, iter = 400, damp = 0.985, dt = 0.03, tol = 1e-6, soft = 0.01 } = opts;
+                if (N <= 0) return [];
+                if (N === 1) return [[0, 0, radius]];
+
+                const p = Array.from({ length: N }, () => {
+                    const u = Math.random() * 2 - 1,
+                        th = Math.random() * Math.PI * 2;
+                    const r = Math.sqrt(1 - u * u) * radius;
+                    return [r * Math.cos(th), u * radius, r * Math.sin(th)];
+                });
+                const v = Array.from({ length: N }, () => [0, 0, 0]);
+                const f = Array.from({ length: N }, () => [0, 0, 0]);
+
+                for (let t = 0; t < iter; t++) {
+                    for (let i = 0; i < N; i++) f[i][0] = f[i][1] = f[i][2] = 0;
+
+                    for (let i = 0; i < N; i++) {
+                        for (let j = i + 1; j < N; j++) {
+                            const dx = p[i][0] - p[j][0],
+                                dy = p[i][1] - p[j][1],
+                                dz = p[i][2] - p[j][2];
+                            const d2 = dx * dx + dy * dy + dz * dz + soft * soft;
+                            const k = 1 / (d2 * Math.sqrt(d2));
+                            const fx = k * dx,
+                                fy = k * dy,
+                                fz = k * dz;
+                            f[i][0] += fx;
+                            f[i][1] += fy;
+                            f[i][2] += fz;
+                            f[j][0] -= fx;
+                            f[j][1] -= fy;
+                            f[j][2] -= fz;
+                        }
+                    }
+
+                    let maxV = 0;
+                    for (let i = 0; i < N; i++) {
+                        const x = p[i][0],
+                            y = p[i][1],
+                            z = p[i][2];
+                        const len = Math.sqrt(x * x + y * y + z * z);
+                        const nx = x / len,
+                            ny = y / len,
+                            nz = z / len;
+                        const dot = f[i][0] * nx + f[i][1] * ny + f[i][2] * nz;
+                        const ftx = f[i][0] - dot * nx,
+                            fty = f[i][1] - dot * ny,
+                            ftz = f[i][2] - dot * nz;
+
+                        v[i][0] = (v[i][0] + ftx * dt) * damp;
+                        v[i][1] = (v[i][1] + fty * dt) * damp;
+                        v[i][2] = (v[i][2] + ftz * dt) * damp;
+
+                        const spd = Math.sqrt(v[i][0] ** 2 + v[i][1] ** 2 + v[i][2] ** 2);
+                        if (spd > maxV) maxV = spd;
+
+                        let px = x + v[i][0] * dt,
+                            py = y + v[i][1] * dt,
+                            pz = z + v[i][2] * dt;
+                        const plen = Math.sqrt(px * px + py * py + pz * pz);
+                        p[i][0] = px * radius / plen;
+                        p[i][1] = py * radius / plen;
+                        p[i][2] = pz * radius / plen;
+                    }
+                    if (maxV < tol) break;
+                }
+                return p;
             }
 
             var labelEl = document.getElementById('appLabel');
@@ -90,10 +155,8 @@
             // ========== 场景 ==========
             var scene = new THREE.Scene();
             scene.background = new THREE.Color(0x000000);
-
             var FAR_PLANE = 1e8;
             var camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, FAR_PLANE);
-
             var renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -103,7 +166,6 @@
             document.body.appendChild(renderer.domElement);
             var canvas = renderer.domElement;
 
-            // 光照
             scene.add(new THREE.AmbientLight(0x8899bb, 2.4));
             var dl = new THREE.DirectionalLight(0xffffff, 1.8);
             dl.position.set(2, 3, 5);
@@ -122,6 +184,8 @@
             var HOVER_SCALE = 0.72;
             var FOV_RAD = THREE.MathUtils.degToRad(50);
             var MIN_ZOOM = 0.1;
+            var TIME_VIEW_DISTANCE = 0.85;
+            var ROTATION_ANIM_DURATION = 800; // 旋转动画时长
 
             function computeInitDistance() {
                 var w = window.innerWidth;
@@ -137,21 +201,286 @@
 
             function applyZoom() { camera.position.z = zoomLevel; }
 
-            // ========== Fibonacci ==========
-            function fibonacciSphere(n, radius) {
-                var pts = [];
-                var phi = Math.PI * (3 - Math.sqrt(5));
-                var count = Math.max(n, 1);
-                for (var i = 0; i < n; i++) {
-                    var y = 1 - (i / (count - 1 || 1)) * 2;
-                    var rY = Math.sqrt(Math.max(0, 1 - y * y));
-                    var th = phi * i;
-                    pts.push({ x: Math.cos(th) * rY * radius, y: y * radius, z: Math.sin(th) * rY * radius });
-                }
-                return pts;
+            function computeTimeViewZoom() {
+                return SPHERE_RADIUS + TIME_VIEW_DISTANCE;
             }
 
-            // ========== 纹理 ==========
+            var timeViewZoom = computeTimeViewZoom();
+            var isInTimeView = false;
+            var timeSprite = null;
+            var timeTextureUpdateInterval = null;
+            var exitThresholdRatio = 0.35;
+
+            var bottomSwipeData = null;
+            var BOTTOM_ZONE_RATIO = 0.22;
+
+            // 缩放动画
+            var zoomTarget = null;
+            var zoomAnimStart = null;
+            var zoomAnimDuration = 0;
+            var zoomAnimElapsed = 0;
+            var zoomAnimStartVal = 0;
+            var zoomAnimEndVal = 0;
+            var zoomAnimCallback = null;
+
+            // 旋转动画（用于点击时间图标返回时间视图）
+            var rotationAnimData = null;
+
+            function startZoomAnimation(targetVal, duration, callback) {
+                zoomAnimStart = performance.now();
+                zoomAnimDuration = duration || 500;
+                zoomAnimStartVal = zoomLevel;
+                zoomAnimEndVal = targetVal;
+                zoomAnimElapsed = 0;
+                zoomTarget = targetVal;
+                zoomAnimCallback = callback || null;
+            }
+
+            function cancelZoomAnimation() {
+                zoomTarget = null;
+                zoomAnimStart = null;
+                zoomAnimDuration = 0;
+                zoomAnimCallback = null;
+            }
+
+            function easeOutCubic(t) {
+                return 1 - Math.pow(1 - t, 3);
+            }
+
+            function updateZoomAnimation(now) {
+                if (zoomTarget === null) return;
+                zoomAnimElapsed = now - zoomAnimStart;
+                var t = Math.min(1, zoomAnimElapsed / zoomAnimDuration);
+                var eased = easeOutCubic(t);
+                zoomLevel = zoomAnimStartVal + (zoomAnimEndVal - zoomAnimStartVal) * eased;
+                applyZoom();
+                if (t >= 1) {
+                    zoomLevel = zoomAnimEndVal;
+                    applyZoom();
+                    var cb = zoomAnimCallback;
+                    cancelZoomAnimation();
+                    if (cb) cb();
+                }
+            }
+
+            function updateRotationAnimation(now) {
+                if (!rotationAnimData) return;
+                var elapsed = now - rotationAnimData.startTime;
+                var t = Math.min(1, elapsed / rotationAnimData.duration);
+                var eased = easeOutCubic(t);
+                THREE.Quaternion.slerp(rotationAnimData.from, rotationAnimData.to, rotationQuat, eased);
+                sphereGroup.quaternion.copy(rotationQuat);
+                if (t >= 1) {
+                    rotationQuat.copy(rotationAnimData.to);
+                    sphereGroup.quaternion.copy(rotationQuat);
+                    rotationAnimData = null;
+                }
+            }
+
+            function startRotationAnimation(targetQuat, duration, callback) {
+                rotationAnimData = {
+                    from: rotationQuat.clone(),
+                    to: targetQuat.clone(),
+                    startTime: performance.now(),
+                    duration: duration || ROTATION_ANIM_DURATION,
+                    callback: callback || null
+                };
+                if (callback && duration <= 0) {
+                    rotationQuat.copy(targetQuat);
+                    sphereGroup.quaternion.copy(rotationQuat);
+                    rotationAnimData = null;
+                    callback();
+                }
+            }
+
+            // ========== 时间纹理 ==========
+            function createTimeTexture() {
+                var s = 1024;
+                var c = document.createElement('canvas');
+                c.width = s;
+                c.height = s;
+                var ctx = c.getContext('2d');
+                var cx = s / 2;
+                var cy = s / 2;
+                var r = s * 0.44;
+
+                ctx.fillStyle = '#0a0e18';
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+                ctx.lineWidth = s * 0.012;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                ctx.lineWidth = s * 0.004;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r * 0.82, 0, Math.PI * 2);
+                ctx.stroke();
+
+                var now = new Date();
+                var hours = String(now.getHours()).padStart(2, '0');
+                var minutes = String(now.getMinutes()).padStart(2, '0');
+                var timeStr = hours + ':' + minutes;
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold ' + (s * 0.22) + 'px "SF Pro Display", "Segoe UI", "PingFang SC", "Helvetica Neue", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(255,255,255,0.4)';
+                ctx.shadowBlur = s * 0.04;
+                ctx.fillText(timeStr, cx, cy - s * 0.06);
+                ctx.shadowBlur = 0;
+
+                var month = now.getMonth() + 1;
+                var day = now.getDate();
+                var weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+                var weekday = weekdays[now.getDay()];
+                var dateStr = month + '月' + day + '日 ' + weekday;
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.font = (s * 0.055) + 'px "SF Pro Display", "Segoe UI", "PingFang SC", "Helvetica Neue", sans-serif';
+                ctx.fillText(dateStr, cx, cy + s * 0.18);
+
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.font = (s * 0.035) + 'px "SF Pro Display", "Segoe UI", "PingFang SC", "Helvetica Neue", sans-serif';
+                ctx.fillText('↑ 上滑解锁桌面', cx, cy + s * 0.32);
+
+                var tex = new THREE.CanvasTexture(c);
+                tex.minFilter = THREE.LinearFilter;
+                tex.magFilter = THREE.LinearFilter;
+                if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
+                return tex;
+            }
+
+            function updateTimeSpriteTexture() {
+                if (!timeSprite || !timeSprite.material) return;
+                var newTex = createTimeTexture();
+                if (timeSprite.material.map) {
+                    timeSprite.material.map.dispose();
+                }
+                timeSprite.material.map = newTex;
+                timeSprite.material.needsUpdate = true;
+            }
+
+            function startTimeTextureUpdates() {
+                stopTimeTextureUpdates();
+                updateTimeSpriteTexture();
+                timeTextureUpdateInterval = setInterval(function() {
+                    if (timeSprite && timeSprite.material) {
+                        updateTimeSpriteTexture();
+                    }
+                }, 30000);
+            }
+
+            function stopTimeTextureUpdates() {
+                if (timeTextureUpdateInterval) {
+                    clearInterval(timeTextureUpdateInterval);
+                    timeTextureUpdateInterval = null;
+                }
+            }
+
+            // ========== 进入/退出时间视图 ==========
+            function enterTimeView(animate, onComplete) {
+                if (isInTimeView || !timeSprite) return;
+                isInTimeView = true;
+                cancelZoomAnimation();
+                rotationAnimData = null;
+                inertiaQ.identity();
+                inertiaStrength = 0;
+                recentSpeeds = [];
+                clearHover();
+                document.body.style.cursor = 'default';
+                updateTimeSpriteTexture();
+                startTimeTextureUpdates();
+                var targetZoom = computeTimeViewZoom();
+                timeViewZoom = targetZoom;
+                if (animate) {
+                    startZoomAnimation(targetZoom, 600, function() {
+                        zoomLevel = targetZoom;
+                        applyZoom();
+                        if (onComplete) onComplete();
+                    });
+                } else {
+                    zoomLevel = targetZoom;
+                    applyZoom();
+                    if (onComplete) onComplete();
+                }
+            }
+
+            function exitTimeView(animate, callback) {
+                if (!isInTimeView) return;
+                isInTimeView = false;
+                cancelZoomAnimation();
+                rotationAnimData = null;
+                stopTimeTextureUpdates();
+                bottomSwipeData = null;
+                document.body.style.cursor = 'grab';
+                if (timeSprite) {
+                    timeSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
+                }
+                var targetZoom = defaultZoom;
+                if (animate) {
+                    startZoomAnimation(targetZoom, 500, function() {
+                        zoomLevel = targetZoom;
+                        applyZoom();
+                        if (callback) callback();
+                    });
+                } else {
+                    zoomLevel = targetZoom;
+                    applyZoom();
+                    if (callback) callback();
+                }
+            }
+
+            // 点击时间图标返回时间视图
+            function returnToTimeView() {
+                if (isInTimeView || !timeSprite) return;
+                // 取消当前所有动画
+                cancelZoomAnimation();
+                rotationAnimData = null;
+                inertiaQ.identity();
+                inertiaStrength = 0;
+                recentSpeeds = [];
+                clearHover();
+                document.body.style.cursor = 'default';
+
+                // 计算需要旋转的目标四元数：使时间图标正对摄像机
+                var timePos = timeSprite.position.clone();
+                var targetDir = timePos.clone().normalize();
+                var cameraDir = new THREE.Vector3(0, 0, 1);
+                var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
+
+                // 同时执行旋转和缩放动画
+                var zoomComplete = false;
+                var rotationComplete = false;
+                var targetZoom = computeTimeViewZoom();
+                timeViewZoom = targetZoom;
+
+                function checkBothComplete() {
+                    if (zoomComplete && rotationComplete) {
+                        isInTimeView = true;
+                        updateTimeSpriteTexture();
+                        startTimeTextureUpdates();
+                    }
+                }
+
+                startRotationAnimation(targetQuat, ROTATION_ANIM_DURATION, function() {
+                    rotationComplete = true;
+                    checkBothComplete();
+                });
+
+                startZoomAnimation(targetZoom, ROTATION_ANIM_DURATION, function() {
+                    zoomLevel = targetZoom;
+                    applyZoom();
+                    zoomComplete = true;
+                    checkBothComplete();
+                });
+            }
+
+            // ========== 纹理生成 ==========
             var placeholderColors = [
                 '#ff6b6b', '#ff8e72', '#ffa94d', '#ffd43b', '#a9e34b',
                 '#69db7c', '#38d9a9', '#3bc9db', '#4dabf7', '#5c7cfa',
@@ -223,11 +552,12 @@
                 return tex;
             }
 
-            // ========== Sprites ==========
+            // ========== 精灵管理 ==========
             var apps = [];
             var sprites = [];
 
             function clearAllSprites() {
+                stopTimeTextureUpdates();
                 for (var i = 0; i < sprites.length; i++) {
                     var s = sprites[i];
                     if (s.material) {
@@ -237,32 +567,103 @@
                     sphereGroup.remove(s);
                 }
                 sprites = [];
+                timeSprite = null;
             }
 
             function createSprites(appList, iconMap) {
                 clearAllSprites();
-                var n = appList.length;
-                if (n === 0) { loadingEl.textContent = '没有找到应用'; return; }
-                var pts = fibonacciSphere(n, SPHERE_RADIUS);
-                for (var i = 0; i < n; i++) {
-                    var app = appList[i];
-                    var p = pts[i];
-                    var color = placeholderColors[i % placeholderColors.length];
-                    var placeholderTex = createPlaceholderTexture(app.appName, color);
-                    var mat = new THREE.SpriteMaterial({ map: placeholderTex, transparent: true, depthTest: true,
-                        depthWrite: true });
-                    var sprite = new THREE.Sprite(mat);
-                    sprite.position.set(p.x, p.y, p.z);
-                    sprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
-                    sprite.userData = { app: app, color: color, hasRealIcon: false };
-                    sphereGroup.add(sprite);
-                    sprites.push(sprite);
-                    if (iconMap && iconMap[app.packageName]) {
-                        loadRealIcon(sprite, iconMap[app.packageName]);
+
+                var totalItems = [];
+                for (var i = 0; i < appList.length; i++) {
+                    totalItems.push({
+                        type: 'app',
+                        data: appList[i],
+                        colorIndex: i
+                    });
+                }
+                totalItems.push({
+                    type: 'time',
+                    data: { packageName: '__time__', appName: '时钟', isSystem: true },
+                    colorIndex: appList.length
+                });
+
+                var N = totalItems.length;
+                var rawPoints = sphereCoulomb(N, { radius: SPHERE_RADIUS, iter: 500 });
+
+                var timeItemIndex = totalItems.findIndex(function(item) { return item.type === 'time'; });
+                var timeRaw = rawPoints[timeItemIndex];
+                var timePos = new THREE.Vector3(timeRaw[0], timeRaw[1], timeRaw[2]);
+                var targetDir = timePos.clone().normalize();
+                var cameraDir = new THREE.Vector3(0, 0, 1);
+                var alignQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
+
+                var rotatedPoints = rawPoints.map(function(p) {
+                    var v = new THREE.Vector3(p[0], p[1], p[2]);
+                    v.applyQuaternion(alignQuat);
+                    return v;
+                });
+
+                for (var j = 0; j < N; j++) {
+                    var item = totalItems[j];
+                    var p = rotatedPoints[j];
+
+                    if (item.type === 'time') {
+                        var timeTex = createTimeTexture();
+                        var timeMat = new THREE.SpriteMaterial({
+                            map: timeTex,
+                            transparent: true,
+                            depthTest: true,
+                            depthWrite: true
+                        });
+                        var sprite = new THREE.Sprite(timeMat);
+                        sprite.position.copy(p);
+                        sprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
+                        sprite.userData = {
+                            isTimeSprite: true,
+                            app: item.data,
+                            baseScale: BASE_SCALE
+                        };
+                        sphereGroup.add(sprite);
+                        sprites.push(sprite);
+                        timeSprite = sprite;
+                    } else {
+                        var app = item.data;
+                        var color = placeholderColors[item.colorIndex % placeholderColors.length];
+                        var placeholderTex = createPlaceholderTexture(app.appName, color);
+                        var mat = new THREE.SpriteMaterial({
+                            map: placeholderTex,
+                            transparent: true,
+                            depthTest: true,
+                            depthWrite: true
+                        });
+                        var appSprite = new THREE.Sprite(mat);
+                        appSprite.position.copy(p);
+                        appSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
+                        appSprite.userData = {
+                            isTimeSprite: false,
+                            app: app,
+                            color: color,
+                            hasRealIcon: false,
+                            baseScale: BASE_SCALE
+                        };
+                        sphereGroup.add(appSprite);
+                        sprites.push(appSprite);
+
+                        if (iconMap && iconMap[app.packageName]) {
+                            loadRealIcon(appSprite, iconMap[app.packageName]);
+                        }
                     }
                 }
-                loadingEl.style.opacity = '0';
-                setTimeout(function() { loadingEl.textContent = ''; }, 500);
+
+                rotationQuat.identity();
+                sphereGroup.quaternion.identity();
+
+                timeViewZoom = computeTimeViewZoom();
+
+                enterTimeView(true, function() {
+                    loadingEl.style.opacity = '0';
+                    setTimeout(function() { loadingEl.textContent = ''; }, 500);
+                });
             }
 
             function loadRealIcon(sprite, iconUrl) {
@@ -310,8 +711,11 @@
                 ];
                 var demoApps = [];
                 for (var i = 0; i < demoNames.length; i++) {
-                    demoApps.push({ packageName: 'com.demo.' + demoNames[i].toLowerCase(), appName: demoNames[i],
-                        isSystem: false });
+                    demoApps.push({
+                        packageName: 'com.demo.' + demoNames[i].toLowerCase(),
+                        appName: demoNames[i],
+                        isSystem: false
+                    });
                 }
                 apps = demoApps;
                 createSprites(demoApps, null);
@@ -327,9 +731,14 @@
                         var pkgs = [];
                         for (var i = 0; i < apps.length; i++) pkgs.push(apps[i].packageName);
                         if (nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(pkgs));
-                    } else { loadingEl.textContent = '没有找到应用'; }
-                } catch (e) { console.error('解析应用列表失败:', e);
-                    loadingEl.textContent = '加载失败'; }
+                    } else {
+                        loadingEl.textContent = '没有找到应用';
+                        createSprites([], null);
+                    }
+                } catch (e) {
+                    console.error('解析应用列表失败:', e);
+                    loadingEl.textContent = '加载失败';
+                }
             };
 
             window._onIconsLoaded = function(json) {
@@ -344,6 +753,7 @@
                     }
                     for (var j = 0; j < sprites.length; j++) {
                         var sprite = sprites[j];
+                        if (sprite.userData.isTimeSprite) continue;
                         var app = sprite.userData.app;
                         if (app && iconMap[app.packageName] && !sprite.userData.hasRealIcon) {
                             loadRealIcon(sprite, iconMap[app.packageName]);
@@ -352,7 +762,7 @@
                 } catch (e) { console.error('解析图标数据失败:', e); }
             };
 
-            // ========== 旋转 ==========
+            // ========== 旋转控制 ==========
             var rotationQuat = new THREE.Quaternion();
             var isDragging = false;
             var hasMoved = false;
@@ -365,7 +775,7 @@
             var INERTIA_MIN = 0.0005;
             var recentSpeeds = [];
             var SPEED_SAMPLES = 5;
-            var activePointerIds = new Set(); // 用 Set 追踪活跃指针
+            var activePointerIds = new Set();
 
             var raycaster = new THREE.Raycaster();
             raycaster.params.Sprite = { threshold: 0.8 };
@@ -383,10 +793,12 @@
                 v.x *= a;
                 var magSq = v.x * v.x + v.y * v.y;
                 if (magSq <= 1.0) v.z = Math.sqrt(1.0 - magSq);
-                else { var inv = 1.0 / Math.sqrt(magSq);
+                else {
+                    var inv = 1.0 / Math.sqrt(magSq);
                     v.x *= inv;
                     v.y *= inv;
-                    v.z = 0; }
+                    v.z = 0;
+                }
                 return v.normalize();
             }
 
@@ -399,11 +811,14 @@
             function getAppBySprite(s) { return s && s.userData ? s.userData.app : null; }
 
             function checkHover(e) {
+                if (isInTimeView) return;
                 raycaster.setFromCamera(mouse, camera);
                 var intersects = raycaster.intersectObjects(sprites);
                 var newHovered = intersects.length > 0 ? intersects[0].object : null;
                 if (hoveredSprite !== newHovered) {
-                    if (hoveredSprite) hoveredSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
+                    if (hoveredSprite && hoveredSprite.userData.baseScale) {
+                        hoveredSprite.scale.set(hoveredSprite.userData.baseScale, hoveredSprite.userData.baseScale, 1);
+                    }
                     if (newHovered) {
                         newHovered.scale.set(HOVER_SCALE, HOVER_SCALE, 1);
                         document.body.style.cursor = 'pointer';
@@ -411,8 +826,10 @@
                         if (app) {
                             labelEl.textContent = app.appName;
                             labelEl.classList.add('visible');
-                            if (e) { labelEl.style.left = e.clientX + 'px';
-                                labelEl.style.top = e.clientY + 'px'; }
+                            if (e) {
+                                labelEl.style.left = e.clientX + 'px';
+                                labelEl.style.top = e.clientY + 'px';
+                            }
                         }
                     } else {
                         document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
@@ -426,8 +843,10 @@
             }
 
             function clearHover() {
-                if (hoveredSprite) { hoveredSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
-                    hoveredSprite = null; }
+                if (hoveredSprite && hoveredSprite.userData.baseScale) {
+                    hoveredSprite.scale.set(hoveredSprite.userData.baseScale, hoveredSprite.userData.baseScale, 1);
+                    hoveredSprite = null;
+                }
                 labelEl.classList.remove('visible');
             }
 
@@ -443,14 +862,38 @@
             }
 
             function resetAllPointers() {
-                // 强制清理所有指针状态
                 activePointerIds.clear();
                 isDragging = false;
                 hasMoved = false;
-                document.body.style.cursor = hoveredSprite ? 'pointer' : 'grab';
+                bottomSwipeData = null;
+                document.body.style.cursor = isInTimeView ? 'default' : (hoveredSprite ? 'pointer' : 'grab');
+            }
+
+            function isInBottomZone(clientY) {
+                return clientY > window.innerHeight * (1 - BOTTOM_ZONE_RATIO);
             }
 
             function onPointerDown(e) {
+                if (isInTimeView && activePointerIds.size === 0) {
+                    if (isInBottomZone(e.clientY)) {
+                        bottomSwipeData = {
+                            pointerId: e.pointerId,
+                            startY: e.clientY,
+                            startZoom: zoomLevel,
+                            active: true,
+                            confirmed: false,
+                            minY: e.clientY,
+                        };
+                        activePointerIds.add(e.pointerId);
+                        document.body.style.cursor = 'grabbing';
+                        cancelZoomAnimation();
+                        return;
+                    } else {
+                        return;
+                    }
+                }
+                if (isInTimeView) return;
+
                 activePointerIds.add(e.pointerId);
                 if (activePointerIds.size === 1) {
                     isDragging = true;
@@ -469,8 +912,35 @@
 
             function onPointerMove(e) {
                 updateMouse(e.clientX, e.clientY);
-                if (!hasMoved || activePointerIds.size !== 1) checkHover(e);
-                if (!isDragging || activePointerIds.size !== 1) return;
+                if (isInTimeView && bottomSwipeData && bottomSwipeData.active &&
+                    bottomSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
+                    var deltaY = bottomSwipeData.startY - e.clientY;
+                    if (deltaY < -5 && e.clientY < bottomSwipeData.minY) {
+                        bottomSwipeData.minY = e.clientY;
+                    }
+                    if (deltaY > 3 && !bottomSwipeData.confirmed) {
+                        bottomSwipeData.confirmed = true;
+                    }
+                    if (bottomSwipeData.confirmed || deltaY > 8) {
+                        bottomSwipeData.confirmed = true;
+                        var screenH = window.innerHeight;
+                        var maxDelta = screenH * 0.7;
+                        var clampedDelta = Math.max(0, Math.min(maxDelta, deltaY));
+                        var zoomRange = defaultZoom - timeViewZoom;
+                        var targetZ = bottomSwipeData.startZoom + (clampedDelta / maxDelta) * zoomRange * 1.3;
+                        targetZ = Math.max(timeViewZoom, Math.min(defaultZoom * 1.3, targetZ));
+                        zoomLevel = targetZ;
+                        applyZoom();
+                    }
+                    if (e.clientY < bottomSwipeData.minY) {
+                        bottomSwipeData.minY = e.clientY;
+                    }
+                    return;
+                }
+
+                if (!isInTimeView && (!hasMoved || activePointerIds.size !== 1)) checkHover(e);
+                if (!isDragging || activePointerIds.size !== 1 || isInTimeView) return;
+
                 var curr = new THREE.Vector2(e.clientX, e.clientY);
                 var dist = Math.sqrt(prevScreen.distanceToSquared(curr));
                 if (!hasMoved && dist > DRAG_THRESHOLD) {
@@ -494,23 +964,64 @@
             }
 
             function onPointerUp(e) {
+                if (isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId && bottomSwipeData.active) {
+                    activePointerIds.delete(e.pointerId);
+                    var swipeData = bottomSwipeData;
+                    bottomSwipeData = null;
+                    document.body.style.cursor = 'default';
+                    if (swipeData.confirmed) {
+                        var currentZoom = zoomLevel;
+                        var zoomRange = defaultZoom - timeViewZoom;
+                        var thresholdZoom = timeViewZoom + zoomRange * exitThresholdRatio;
+                        if (currentZoom >= thresholdZoom) {
+                            exitTimeView(true, function() {
+                                inertiaStrength = 0.4;
+                                var upVec = new THREE.Vector3(0, 1, 0);
+                                var smallQ = new THREE.Quaternion().setFromAxisAngle(upVec, 0.06);
+                                inertiaQ.copy(smallQ);
+                            });
+                        } else {
+                            startZoomAnimation(timeViewZoom, 350, function() {
+                                zoomLevel = timeViewZoom;
+                                applyZoom();
+                            });
+                        }
+                    } else {
+                        if (Math.abs(zoomLevel - timeViewZoom) > 0.02) {
+                            startZoomAnimation(timeViewZoom, 300, function() {
+                                zoomLevel = timeViewZoom;
+                                applyZoom();
+                            });
+                        }
+                    }
+                    if (activePointerIds.size === 0) {
+                        document.body.style.cursor = 'default';
+                    }
+                    return;
+                }
+
                 activePointerIds.delete(e.pointerId);
                 if (activePointerIds.size === 0) {
-                    // 点击启动应用
-                    if (isDragging && !hasMoved && hoveredSprite) {
+                    if (isDragging && !hasMoved && hoveredSprite && !isInTimeView) {
                         var app = getAppBySprite(hoveredSprite);
-                        if (app && nativeBridgeReady) {
-                            try { var result = NativeBridge.launchApp(app.packageName); if (result && !result.success)
-                                    console.warn('启动失败:', result.error); } catch (err) { console.error(
-                                    '启动应用异常:', err); }
+                        if (app && app.packageName === '__time__') {
+                            // 点击时间图标返回时间视图
+                            returnToTimeView();
+                        } else if (app && nativeBridgeReady) {
+                            try {
+                                var result = NativeBridge.launchApp(app.packageName);
+                                if (result && !result.success) console.warn('启动失败:', result.error);
+                            } catch (err) { console.error('启动应用异常:', err); }
                         }
-                        // 点击脉冲反馈
                         var hs = hoveredSprite;
                         hs.scale.set(HOVER_SCALE * 1.15, HOVER_SCALE * 1.15, 1);
-                        setTimeout(function() { if (hs === hoveredSprite) hs.scale.set(HOVER_SCALE, HOVER_SCALE, 1); },
-                            150);
+                        setTimeout(function() {
+                            if (hs === hoveredSprite && hs.userData.baseScale) {
+                                hs.scale.set(hs.userData.baseScale, hs.userData.baseScale, 1);
+                            }
+                        }, 150);
                     }
-                    if (isDragging && hasMoved) startInertiaFromSpeeds();
+                    if (isDragging && hasMoved && !isInTimeView) startInertiaFromSpeeds();
                     isDragging = false;
                     hasMoved = false;
                     document.body.style.cursor = hoveredSprite ? 'pointer' : 'grab';
@@ -518,27 +1029,58 @@
             }
 
             function onPointerLeave(e) {
-                // 只清理悬停，不改变指针计数（pointerup 会单独处理）
-                if (activePointerIds.has(e.pointerId) && activePointerIds.size === 1 && isDragging && !hasMoved) {
-                    // 指针离开但还没真正拖拽，取消拖拽状态
+                if (activePointerIds.has(e.pointerId) && activePointerIds.size === 1 && isDragging && !hasMoved && !isInTimeView) {
                     clearHover();
                 }
-                // 不删除指针！让 pointerup 来处理
+                if (isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId && bottomSwipeData.active) {
+                    activePointerIds.delete(e.pointerId);
+                    var bsd = bottomSwipeData;
+                    bottomSwipeData = null;
+                    if (bsd.confirmed && zoomLevel > timeViewZoom + 0.1) {
+                        var currentZoom = zoomLevel;
+                        var zoomRange = defaultZoom - timeViewZoom;
+                        var thresholdZoom = timeViewZoom + zoomRange * exitThresholdRatio;
+                        if (currentZoom >= thresholdZoom) {
+                            exitTimeView(true);
+                        } else {
+                            startZoomAnimation(timeViewZoom, 350);
+                        }
+                    } else {
+                        startZoomAnimation(timeViewZoom, 300);
+                    }
+                    document.body.style.cursor = 'default';
+                }
             }
 
             function onPointerCancel(e) {
-                // 指针被取消（例如被系统手势接管），彻底清理
                 activePointerIds.delete(e.pointerId);
+                if (isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId) {
+                    var bsd = bottomSwipeData;
+                    bottomSwipeData = null;
+                    if (bsd.confirmed && zoomLevel > timeViewZoom + 0.1) {
+                        var currentZoom = zoomLevel;
+                        var zoomRange = defaultZoom - timeViewZoom;
+                        var thresholdZoom = timeViewZoom + zoomRange * exitThresholdRatio;
+                        if (currentZoom >= thresholdZoom) {
+                            exitTimeView(true);
+                        } else {
+                            startZoomAnimation(timeViewZoom, 350);
+                        }
+                    } else {
+                        startZoomAnimation(timeViewZoom, 300);
+                    }
+                }
                 if (activePointerIds.size === 0) {
                     isDragging = false;
                     hasMoved = false;
                     clearHover();
-                    document.body.style.cursor = 'grab';
+                    document.body.style.cursor = isInTimeView ? 'default' : 'grab';
                 }
             }
 
             // ========== 缩放 ==========
             function onWheel(e) {
+                if (isInTimeView) return;
                 try { e.preventDefault(); } catch (ex) {}
                 zoomLevel += e.deltaY * 0.01;
                 zoomLevel = Math.max(MIN_ZOOM, zoomLevel);
@@ -563,6 +1105,9 @@
                     hasMoved = false;
                     clearHover();
                     wasPinching = true;
+                    cancelZoomAnimation();
+                    bottomSwipeData = null;
+                    activePointerIds.clear();
                 }
             }
 
@@ -574,6 +1119,9 @@
                         var ratio = pinchStartDist / dist;
                         zoomLevel = pinchStartZoom * ratio;
                         zoomLevel = Math.max(MIN_ZOOM, zoomLevel);
+                        if (isInTimeView) {
+                            zoomLevel = Math.max(timeViewZoom, zoomLevel);
+                        }
                         applyZoom();
                     }
                 }
@@ -581,6 +1129,15 @@
 
             function onTouchEnd(e) {
                 if (e.touches.length < 2) {
+                    if (wasPinching && isInTimeView && zoomLevel > timeViewZoom + 0.15) {
+                        var zoomRange = defaultZoom - timeViewZoom;
+                        var thresholdZoom = timeViewZoom + zoomRange * exitThresholdRatio;
+                        if (zoomLevel >= thresholdZoom) {
+                            exitTimeView(true);
+                        } else {
+                            startZoomAnimation(timeViewZoom, 350);
+                        }
+                    }
                     pinchStartDist = 0;
                     if (wasPinching) setTimeout(function() { wasPinching = false; }, 400);
                 }
@@ -593,7 +1150,6 @@
             canvas.addEventListener('pointerleave', onPointerLeave);
             window.addEventListener('pointercancel', onPointerCancel);
             canvas.addEventListener('wheel', onWheel, { passive: false });
-
             canvas.addEventListener('touchstart', onTouchStart, { passive: false });
             canvas.addEventListener('touchmove', onTouchMove, { passive: false });
             canvas.addEventListener('touchend', onTouchEnd);
@@ -602,9 +1158,9 @@
                 resetAllPointers();
             });
 
-            // 双击重置
             var lastTap = 0;
             window.addEventListener('touchend', function(e) {
+                if (isInTimeView) return;
                 if (wasPinching || e.touches.length > 0) return;
                 var now = Date.now();
                 if (now - lastTap < 300 && !isDragging) {
@@ -620,7 +1176,6 @@
                 lastTap = now;
             });
 
-            // 响应式
             window.addEventListener('resize', function() {
                 var w = window.innerWidth,
                     h = window.innerHeight;
@@ -628,12 +1183,20 @@
                 camera.aspect = w / h;
                 camera.updateProjectionMatrix();
                 defaultZoom = computeInitDistance();
+                timeViewZoom = computeTimeViewZoom();
+                if (!isInTimeView && zoomTarget === null) {
+                    zoomLevel = defaultZoom;
+                    applyZoom();
+                }
             });
 
             // ========== 动画循环 ==========
-            function animate() {
+            function animate(timestamp) {
                 requestAnimationFrame(animate);
-                if (inertiaStrength > INERTIA_MIN) {
+                var now = timestamp || performance.now();
+                updateZoomAnimation(now);
+                updateRotationAnimation(now);
+                if (inertiaStrength > INERTIA_MIN && !isInTimeView && !rotationAnimData) {
                     var decay = (isDragging && hasMoved) ? INERTIA_FAST_DECAY : INERTIA_DECAY;
                     var factor = Math.min(inertiaStrength, 1.0);
                     var applyQ = new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(), inertiaQ, factor);
@@ -641,8 +1204,10 @@
                     rotationQuat.normalize();
                     sphereGroup.quaternion.copy(rotationQuat);
                     inertiaStrength *= decay;
-                    if (inertiaStrength < INERTIA_MIN) { inertiaStrength = 0;
-                        inertiaQ.identity(); }
+                    if (inertiaStrength < INERTIA_MIN) {
+                        inertiaStrength = 0;
+                        inertiaQ.identity();
+                    }
                 }
                 renderer.render(scene, camera);
             }
@@ -650,8 +1215,11 @@
             function init() {
                 zoomLevel = computeInitDistance();
                 defaultZoom = zoomLevel;
+                timeViewZoom = computeTimeViewZoom();
                 camera.position.set(0, 0, zoomLevel);
-                animate();
+                applyZoom();
+                isInTimeView = false;
+                requestAnimationFrame(animate);
                 tryLoadApps();
                 console.log('🚀 3D 桌面已就绪');
             }
