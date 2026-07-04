@@ -1,12 +1,11 @@
-name: Android PR Build (Release)
+name: Android Release Build
 
 on:
   push:
-    branches:
-      - '**'
+    branches: ['**']
+    tags: ['v*']
   pull_request:
-    branches:
-      - '**'
+    branches: ['**']
   workflow_dispatch:
 
 jobs:
@@ -34,36 +33,41 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
-            echo "ANDROID_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/vibe-launcher.p12"
+            echo "ANDROID_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/vibe-launcher.p12" >> "$GITHUB_ENV"
             echo "ANDROID_SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
             echo "ANDROID_SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
             echo "ANDROID_SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "✅ Release signing configured"
           else
-            echo "Signing secrets not fully configured, building debug-signed release APK."
+            echo "⚠️ Signing secrets not configured, using debug signing"
           fi
 
       - name: Build release APK
-        run: gradle --no-daemon :app:assembleRelease
+        run: ./gradlew --no-daemon :app:assembleRelease
 
-      - name: Show release APK directory
-        run: ls -lah app/build/outputs/apk/release || true
+      - name: Show APK
+        run: ls -lh app/build/outputs/apk/release/
 
-      - name: Resolve signed release APK
+      - name: Resolve signed APK
         run: |
           SIGNED_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" ! -name "*-unsigned.apk" | head -n 1)
-          if [ -z "$SIGNED_APK" ]; then
-            echo "No signed release APK found."
-            ls -lah app/build/outputs/apk/release || true
-            exit 1
-          fi
           echo "SIGNED_APK_PATH=$SIGNED_APK" >> "$GITHUB_ENV"
-          echo "Using signed APK: $SIGNED_APK"
+          echo "APK: $SIGNED_APK"
 
-      - name: Upload release APK artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v7.0.1
         with:
           name: app-release-apk
           path: ${{ env.SIGNED_APK_PATH }}
           if-no-files-found: error
           retention-days: 7
+
+      - name: Upload to Release (tag only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          echo "Uploading APK to release $TAG_NAME"
+          gh release upload "$TAG_NAME" "${{ env.SIGNED_APK_PATH }}" --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
