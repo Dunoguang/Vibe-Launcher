@@ -43,6 +43,8 @@ class MainActivity : AppCompatActivity() {
                 javaScriptEnabled = true
                 allowFileAccess = true
                 domStorageEnabled = true
+                allowUniversalAccessFromFileURLs = true
+                allowFileAccessFromFileURLs = true
             }
             wv.overScrollMode = View.OVER_SCROLL_NEVER
 
