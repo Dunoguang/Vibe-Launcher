@@ -144,12 +144,15 @@ function onPointerMove(e){
 }
 function onPointerUp(e){
     activePointers=Math.max(0,activePointers-1);
-    if(activePointers===0&&isDragging&&hasMoved){
+    if(isDragging&&hasMoved){
         if(recentSpeeds.length>0){inertiaStrength=Math.min(1.5,Math.max(0.3,recentSpeeds.reduce(function(a,b){return a+b;},0)/recentSpeeds.length*80));}
         recentSpeeds=[];
     }
     isDragging=false; hasMoved=false;
+    appNameEl.classList.remove('show');
 }
+window.addEventListener('pagehide',function(){isDragging=false;hasMoved=false;activePointers=0;});
+window.addEventListener('pageshow',function(){isDragging=false;hasMoved=false;activePointers=0;});
 function onWheel(e){
     e.preventDefault(); zoomLevel+=e.deltaY*0.01; zoomLevel=Math.max(MIN_ZOOM,zoomLevel); camera.position.z=zoomLevel;
 }
