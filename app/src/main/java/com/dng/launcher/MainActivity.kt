@@ -9,7 +9,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(
             TextView(this).apply {
-                text = "Hello Kotlin!\nAGP 9.2.1 + Kotlin 2.1.20"
+                text = "Hello Kotlin!\nAGP 9.2.1 + Kotlin (AGP built-in KGP 2.2.10)"
                 textSize = 20f
                 setPadding(48, 48, 48, 48)
             }
