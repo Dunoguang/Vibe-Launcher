@@ -42,6 +42,11 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "[${msg.messageLevel()}] ${msg.sourceId()}:${msg.lineNumber()} - ${msg.message()}")
                     return true
                 }
+                override fun onJsAlert(view: WebView, url: String, message: String, result: android.webkit.JsResult): Boolean {
+                    Log.d(TAG, "[ALERT] $message")
+                    result.confirm()
+                    return true
+                }
             }
             wv.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) {

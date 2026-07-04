@@ -177,3 +177,8 @@ class JsBridge(context: Context, webView: WebView) {
     data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
     data class IconResult(val packageName: String, val iconUrl: String)
 }
+
+    @JavascriptInterface
+    fun log(msg: String) {
+        Log.d("VibeLauncher", "[JS] $msg")
+    }
