@@ -25,116 +25,93 @@
 <div id="appName"></div>
 <div id="toast"></div>
 <div id="loadingHint">正在加载...</div>
-
-<script type="importmap">
-{"imports":{"three":"./three.module.js"}}
-</script>
-
+<script src="three.min.js"></script>
 <script>
+console.log("Three.js loaded, THREE:", typeof THREE);
 window.onerror = function(m,s,l,c,e){
-  console.error('JS_ERROR: '+m+' at '+s+':'+l+String.fromCharCode(10)+(e&&e.stack||''));
+  console.error("JS_ERROR: "+m+" at "+s+":"+l+"\\n"+(e&&e.stack||""));
 };
-</script>
+(function(){
+var THREE = window.THREE;
+if(!THREE){ console.error("THREE not found!"); return; }
+console.log("THREE version:", THREE.REVISION);
 
-<script type="module">
-import * as THREE from 'three';
-
-const scene = new THREE.Scene();
+var scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
-
-const FAR_PLANE = 1e8;
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, FAR_PLANE);
-
-const renderer = new THREE.WebGLRenderer({antialias:true});
+var FAR_PLANE = 1e8;
+var camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, FAR_PLANE);
+var renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 document.body.appendChild(renderer.domElement);
 
 scene.add(new THREE.AmbientLight(0x8899bb, 2.2));
-const d1 = new THREE.DirectionalLight(0xffffff, 1.6); d1.position.set(2,3,5); scene.add(d1);
-const d2 = new THREE.DirectionalLight(0x8899cc, 0.8); d2.position.set(-3,-1,-2); scene.add(d2);
+var d1 = new THREE.DirectionalLight(0xffffff, 1.6); d1.position.set(2,3,5); scene.add(d1);
+var d2 = new THREE.DirectionalLight(0x8899cc, 0.8); d2.position.set(-3,-1,-2); scene.add(d2);
 
-const sphereGroup = new THREE.Group(); scene.add(sphereGroup);
+var sphereGroup = new THREE.Group(); scene.add(sphereGroup);
 
-let apps = [];
-let filteredApps = [];
-let iconUrlMap = {};
-let sprites = [];
-let spriteDataMap = new Map();
-const MAX_ICONS = 100;
-const SPHERE_RADIUS = 2.5;
-const BASE_SCALE = 0.55;
-const FOV_RAD = THREE.MathUtils.degToRad(50);
-const MIN_ZOOM = 0.1;
+var apps = [], filteredApps = [], iconUrlMap = {}, sprites = [], spriteDataMap = new Map();
+var MAX_ICONS = 100, SPHERE_RADIUS = 2.5, BASE_SCALE = 0.55;
+var FOV_RAD = THREE.MathUtils.degToRad(50), MIN_ZOOM = 0.1;
 
 function computeInitDistance() {
-    const w = window.innerWidth, h = window.innerHeight;
-    const aspect = w/h;
-    const minVisible = (SPHERE_RADIUS*2)/(2*Math.tan(FOV_RAD/2)*Math.min(1,aspect));
-    return minVisible*1.15;
+    var w = window.innerWidth, h = window.innerHeight, aspect = w/h;
+    return (SPHERE_RADIUS*2)/(2*Math.tan(FOV_RAD/2)*Math.min(1,aspect))*1.15;
 }
-
-let zoomLevel = computeInitDistance();
+var zoomLevel = computeInitDistance();
 camera.position.set(0,0,zoomLevel);
 
-window.addEventListener('resize',()=>{
+window.addEventListener('resize',function(){
     renderer.setSize(window.innerWidth,window.innerHeight);
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
 });
 
-const rotationQuat = new THREE.Quaternion();
-let isDragging = false, hasMoved = false;
-const DRAG_THRESHOLD = 3;
-let prevScreen = new THREE.Vector2();
-let inertiaQ = new THREE.Quaternion(), inertiaStrength = 0;
-const INERTIA_DECAY = 0.975, INERTIA_FAST_DECAY = 0.85, INERTIA_MIN = 0.0005;
-let recentSpeeds = [];
+var rotationQuat = new THREE.Quaternion();
+var isDragging = false, hasMoved = false, DRAG_THRESHOLD = 3;
+var prevScreen = new THREE.Vector2();
+var inertiaQ = new THREE.Quaternion(), inertiaStrength = 0;
+var INERTIA_DECAY = 0.975, INERTIA_FAST_DECAY = 0.85, INERTIA_MIN = 0.0005;
+var recentSpeeds = [];
 
-const raycaster = new THREE.Raycaster();
+var raycaster = new THREE.Raycaster();
 raycaster.params.Sprite = {threshold:0.8};
-const mouse = new THREE.Vector2();
-let hoveredSprite = null;
-let hoveredIndex = -1;
+var mouse = new THREE.Vector2();
+var hoveredSprite = null, hoveredIndex = -1;
 
-const appNameEl = document.getElementById('appName');
-const toastEl = document.getElementById('toast');
-const loadingHint = document.getElementById('loadingHint');
+var appNameEl = document.getElementById('appName');
+var toastEl = document.getElementById('toast');
+var loadingHint = document.getElementById('loadingHint');
 
 function screenToSphere(sx,sy){
-    const rect = renderer.domElement.getBoundingClientRect();
-    const nx = (sx-rect.left)/rect.width, ny = (sy-rect.top)/rect.height;
-    const v = new THREE.Vector3(nx*2-1, -(ny*2-1), 0);
-    const aspect = rect.width/rect.height; v.x *= aspect;
-    const magSq = v.x*v.x+v.y*v.y;
-    v.z = magSq<=1.0 ? Math.sqrt(1.0-magSq) : 0;
-    v.x *= magSq<=1.0 ? 1 : 1/Math.sqrt(magSq);
-    v.y *= magSq<=1.0 ? 1 : 1/Math.sqrt(magSq);
+    var rect = renderer.domElement.getBoundingClientRect();
+    var nx = (sx-rect.left)/rect.width, ny = (sy-rect.top)/rect.height;
+    var v = new THREE.Vector3(nx*2-1, -(ny*2-1), 0);
+    var aspect = rect.width/rect.height; v.x *= aspect;
+    var magSq = v.x*v.x+v.y*v.y;
+    if(magSq<=1.0) v.z = Math.sqrt(1.0-magSq);
+    else { var inv = 1.0/Math.sqrt(magSq); v.x*=inv; v.y*=inv; v.z=0; }
     return v.normalize();
 }
 
 function checkHover(){
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(sprites);
-    const newHovered = intersects.length>0 ? intersects[0].object : null;
-    const newIdx = newHovered ? spriteDataMap.get(newHovered)?.index ?? -1 : -1;
+    var intersects = raycaster.intersectObjects(sprites);
+    var newHovered = intersects.length>0 ? intersects[0].object : null;
+    var newIdx = newHovered ? (spriteDataMap.get(newHovered)||{}).index : -1;
     if(hoveredIndex !== newIdx){
-        if(hoveredIndex>=0 && sprites[hoveredIndex]){
-            sprites[hoveredIndex].material.opacity = 0.85;
-        }
+        if(hoveredIndex>=0 && sprites[hoveredIndex]) sprites[hoveredIndex].material.opacity = 0.85;
         if(newIdx>=0 && sprites[newIdx]){
             sprites[newIdx].material.opacity = 1.0;
-            appNameEl.textContent = filteredApps[newIdx]?.appName || '';
+            appNameEl.textContent = (filteredApps[newIdx]||{}).appName || '';
             appNameEl.classList.add('show');
-        } else {
-            appNameEl.classList.remove('show');
-        }
-        hoveredSprite = newHovered;
-        hoveredIndex = newIdx;
+        } else appNameEl.classList.remove('show');
+        hoveredSprite = newHovered; hoveredIndex = newIdx;
     }
 }
 
-let activePointers = 0;
+var activePointers = 0;
 function onPointerDown(e){
     activePointers++;
     if(activePointers===1){
@@ -145,7 +122,7 @@ function onPointerDown(e){
     } else { isDragging=false; hasMoved=false; appNameEl.classList.remove('show'); }
 }
 function updateMouse(x,y){
-    const rect = renderer.domElement.getBoundingClientRect();
+    var rect = renderer.domElement.getBoundingClientRect();
     mouse.x=((x-rect.left)/rect.width)*2-1;
     mouse.y=-((y-rect.top)/rect.height)*2+1;
 }
@@ -153,22 +130,22 @@ function onPointerMove(e){
     updateMouse(e.clientX,e.clientY);
     if(!hasMoved||activePointers!==1) checkHover();
     if(!isDragging||activePointers!==1) return;
-    const curr = new THREE.Vector2(e.clientX,e.clientY);
-    const dist = Math.sqrt(prevScreen.distanceToSquared(curr));
+    var curr = new THREE.Vector2(e.clientX,e.clientY);
+    var dist = Math.sqrt(prevScreen.distanceToSquared(curr));
     if(!hasMoved&&dist>DRAG_THRESHOLD){hasMoved=true;appNameEl.classList.remove('show');recentSpeeds=[];}
     if(!hasMoved||dist<0.5) return;
-    const p0=screenToSphere(prevScreen.x,prevScreen.y), p1=screenToSphere(curr.x,curr.y);
-    const deltaQ=new THREE.Quaternion().setFromUnitVectors(p0,p1);
+    var p0=screenToSphere(prevScreen.x,prevScreen.y), p1=screenToSphere(curr.x,curr.y);
+    var deltaQ=new THREE.Quaternion().setFromUnitVectors(p0,p1);
     rotationQuat.premultiply(deltaQ); rotationQuat.normalize();
     sphereGroup.quaternion.copy(rotationQuat);
-    const speed=2*Math.acos(Math.min(1,Math.abs(deltaQ.w)));
+    var speed=2*Math.acos(Math.min(1,Math.abs(deltaQ.w)));
     recentSpeeds.push(speed); if(recentSpeeds.length>5) recentSpeeds.shift();
     inertiaQ.copy(deltaQ); prevScreen.copy(curr);
 }
 function onPointerUp(e){
     activePointers=Math.max(0,activePointers-1);
     if(activePointers===0&&isDragging&&hasMoved){
-        if(recentSpeeds.length>0){inertiaStrength=Math.min(1.5,Math.max(0.3,recentSpeeds.reduce((a,b)=>a+b,0)/recentSpeeds.length*80));}
+        if(recentSpeeds.length>0){inertiaStrength=Math.min(1.5,Math.max(0.3,recentSpeeds.reduce(function(a,b){return a+b;},0)/recentSpeeds.length*80));}
         recentSpeeds=[];
     }
     isDragging=false; hasMoved=false;
@@ -179,22 +156,22 @@ function onWheel(e){
 function onClick(e){
     if(hasMoved) return;
     if(hoveredIndex>=0 && hoveredIndex<filteredApps.length){
-        const app = filteredApps[hoveredIndex];
-        showToast('正在启动 '+app.appName+'...');
+        var app = filteredApps[hoveredIndex];
+        showToast('启动 '+app.appName+'...');
         try{JSON.parse(NativeBridge.launchApp(app.packageName));}catch(e){}
     }
 }
-function showToast(msg){toastEl.textContent=msg;toastEl.classList.add('show');clearTimeout(toastEl._t);toastEl._t=setTimeout(()=>toastEl.classList.remove('show'),2000);}
+function showToast(msg){toastEl.textContent=msg;toastEl.classList.add('show');clearTimeout(toastEl._t);toastEl._t=setTimeout(function(){toastEl.classList.remove('show');},2000);}
 
-let pinchStartDist=0,pinchStartZoom=7;
+var pinchStartDist=0,pinchStartZoom=7;
 function onTouchStart(e){
     if(e.touches.length===2){pinchStartDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pinchStartZoom=zoomLevel;isDragging=false;hasMoved=false;}
 }
 function onTouchMove(e){
-    if(e.touches.length===2){e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinchStartDist>0){zoomLevel=pinchStartZoom*(pinchStartDist/d);zoomLevel=Math.max(MIN_ZOOM,zoomLevel);camera.position.z=zoomLevel;}}
+    if(e.touches.length===2){e.preventDefault();var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinchStartDist>0){zoomLevel=pinchStartZoom*(pinchStartDist/d);zoomLevel=Math.max(MIN_ZOOM,zoomLevel);camera.position.z=zoomLevel;}}
 }
 
-const canvas = renderer.domElement;
+var canvas = renderer.domElement;
 canvas.addEventListener('pointerdown',onPointerDown);
 canvas.addEventListener('pointermove',onPointerMove);
 canvas.addEventListener('pointerup',onPointerUp);
@@ -205,108 +182,109 @@ canvas.addEventListener('touchstart',onTouchStart,{passive:false});
 canvas.addEventListener('touchmove',onTouchMove,{passive:false});
 
 window._onAppsLoaded = function(result){
+    console.log("_onAppsLoaded count:", result.apps?result.apps.length:0);
     if(!result.success) return;
     apps = result.apps.slice(0, MAX_ICONS);
     filteredApps = apps;
     buildSphere();
     loadingHint.style.opacity = '0';
-    setTimeout(()=>loadingHint.remove(), 500);
+    setTimeout(function(){loadingHint.remove();}, 500);
     requestVisibleIcons();
 };
 
 window._onIconsLoaded = function(results){
-    for(let r of results){
-        iconUrlMap[r.packageName] = r.iconUrl;
-        for(let i=0;i<filteredApps.length;i++){
-            if(filteredApps[i].packageName===r.packageName && sprites[i]){
-                loadSpriteTexture(sprites[i], r.iconUrl, i);
-            }
+    console.log("_onIconsLoaded count:", results.length);
+    for(var i=0;i<results.length;i++){
+        var r = results[i]; iconUrlMap[r.packageName] = r.iconUrl;
+        for(var j=0;j<filteredApps.length;j++){
+            if(filteredApps[j].packageName===r.packageName && sprites[j])
+                loadSpriteTexture(sprites[j], r.iconUrl, j);
         }
     }
 };
 
 function requestVisibleIcons(){
-    const batch = filteredApps.filter(a=>!iconUrlMap[a.packageName]).map(a=>a.packageName);
+    var batch = [];
+    for(var i=0;i<filteredApps.length;i++){
+        if(!iconUrlMap[filteredApps[i].packageName]) batch.push(filteredApps[i].packageName);
+    }
+    console.log("requestIcons batch:", batch.length);
     if(batch.length>0) NativeBridge.requestAppIcons(JSON.stringify(batch));
 }
 
 function fibonacciSphere(n, radius){
-    const pts=[], phi=Math.PI*(3-Math.sqrt(5));
-    for(let i=0;i<n;i++){
-        const y=1-(i/(n-1))*2, rY=Math.sqrt(1-y*y), th=phi*i;
+    var pts=[], phi=Math.PI*(3-Math.sqrt(5));
+    for(var i=0;i<n;i++){
+        var y=1-(i/(n-1))*2, rY=Math.sqrt(1-y*y), th=phi*i;
         pts.push({x:Math.cos(th)*rY*radius, y:y*radius, z:Math.sin(th)*rY*radius});
     }
     return pts;
 }
 
 function createPlaceholderTexture(letter, colorHex){
-    const s=128, c=document.createElement('canvas'); c.width=s; c.height=s;
-    const ctx=c.getContext('2d'), cx=s/2, cy=s/2, r=s*0.42;
+    var s=128, c=document.createElement('canvas'); c.width=s; c.height=s;
+    var ctx=c.getContext('2d'), cx=s/2, cy=s/2, r=s*0.42;
     ctx.fillStyle=colorHex+'22'; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle=colorHex+'99'; ctx.lineWidth=s*0.028; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
-    ctx.fillStyle='#fff'; ctx.font=`bold ${s*0.46}px "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif`;
+    ctx.fillStyle='#fff'; ctx.font='bold '+Math.round(s*0.46)+'px "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.shadowColor=colorHex; ctx.shadowBlur=s*0.08; ctx.fillText(letter,cx,cy);
-    const tex=new THREE.CanvasTexture(c); tex.minFilter=THREE.LinearFilter; tex.magFilter=THREE.LinearFilter; tex.colorSpace=THREE.SRGBColorSpace;
+    var tex=new THREE.CanvasTexture(c); tex.minFilter=THREE.LinearFilter; tex.magFilter=THREE.LinearFilter;
     return tex;
 }
 
 function loadSpriteTexture(sprite, iconUrl, index){
-    const img = new Image();
+    var img = new Image();
     img.onload = function(){
-        const s=128, c=document.createElement('canvas'); c.width=s; c.height=s;
-        const ctx=c.getContext('2d');
-        const cx=s/2, cy=s/2, r=s*0.42;
+        var s=128, c=document.createElement('canvas'); c.width=s; c.height=s;
+        var ctx=c.getContext('2d'), cx=s/2, cy=s/2, r=s*0.42;
         ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip();
-        ctx.drawImage(img,0,0,s,s);
-        ctx.restore();
-        ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=s*0.025; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
-        const tex=new THREE.CanvasTexture(c); tex.minFilter=THREE.LinearFilter; tex.magFilter=THREE.LinearFilter; tex.colorSpace=THREE.SRGBColorSpace;
-        sprite.material.map = tex;
-        sprite.material.needsUpdate = true;
+        ctx.drawImage(img,0,0,s,s); ctx.restore();
+        ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=s*0.025;
+        ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+        var tex=new THREE.CanvasTexture(c); tex.minFilter=THREE.LinearFilter; tex.magFilter=THREE.LinearFilter;
+        sprite.material.map = tex; sprite.material.needsUpdate = true;
     };
     img.src = iconUrl;
 }
 
-const palette = ['#ff6b6b','#ff8e72','#ffa94d','#ffd43b','#a9e34b','#69db7c','#38d9a9','#3bc9db','#4dabf7','#5c7cfa','#748ffc','#9775fa','#da77f2','#f783ac','#ff8787'];
+var palette = ['#ff6b6b','#ff8e72','#ffa94d','#ffd43b','#a9e34b','#69db7c','#38d9a9','#3bc9db','#4dabf7','#5c7cfa','#748ffc','#9775fa','#da77f2','#f783ac','#ff8787'];
 
 function buildSphere(){
-    sprites.forEach(s=>sphereGroup.remove(s));
-    sprites = [];
-    spriteDataMap.clear();
-    const points = fibonacciSphere(filteredApps.length, SPHERE_RADIUS);
-    for(let i=0;i<filteredApps.length;i++){
-        const p=points[i], app=filteredApps[i], color=palette[i%palette.length];
-        const letter=app.appName.charAt(0).toUpperCase();
-        const tex=createPlaceholderTexture(letter, color);
-        const mat=new THREE.SpriteMaterial({map:tex,transparent:true,opacity:0.85,depthTest:true,depthWrite:true});
-        const sprite=new THREE.Sprite(mat);
+    for(var i=0;i<sprites.length;i++) sphereGroup.remove(sprites[i]);
+    sprites = []; spriteDataMap = new Map();
+    var points = fibonacciSphere(filteredApps.length, SPHERE_RADIUS);
+    for(var i=0;i<filteredApps.length;i++){
+        var p=points[i], app=filteredApps[i], color=palette[i%palette.length];
+        var tex=createPlaceholderTexture(app.appName.charAt(0).toUpperCase(), color);
+        var mat=new THREE.SpriteMaterial({map:tex,transparent:true,opacity:0.85,depthTest:true,depthWrite:true});
+        var sprite=new THREE.Sprite(mat);
         sprite.position.set(p.x,p.y,p.z);
         sprite.scale.set(BASE_SCALE,BASE_SCALE,1);
         spriteDataMap.set(sprite, {index:i});
         sphereGroup.add(sprite);
         sprites.push(sprite);
     }
+    console.log("buildSphere done, sprites:", sprites.length);
 }
 
-let searchTimer;
+var searchTimer;
 document.getElementById('searchInput').addEventListener('input', function(){
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(()=>{
-        const q = this.value.trim().toLowerCase();
-        if(!q){ filteredApps=apps; }
-        else { filteredApps=apps.filter(a=>a.appName.toLowerCase().includes(q)||a.packageName.toLowerCase().includes(q)); }
-        iconUrlMap = {};
-        buildSphere();
-        requestVisibleIcons();
+    var self = this;
+    searchTimer = setTimeout(function(){
+        var q = self.value.trim().toLowerCase();
+        if(!q) filteredApps = apps;
+        else filteredApps = apps.filter(function(a){return a.appName.toLowerCase().indexOf(q)!==-1||a.packageName.toLowerCase().indexOf(q)!==-1;});
+        iconUrlMap = {}; buildSphere(); requestVisibleIcons();
     }, 300);
 });
 
 function animate(){
     requestAnimationFrame(animate);
     if(inertiaStrength>INERTIA_MIN){
-        const factor=Math.min(inertiaStrength,1.0);
-        const applyQ=new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(),inertiaQ,factor);
+        var factor=Math.min(inertiaStrength,1.0);
+        var applyQ=new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(),inertiaQ,factor);
         rotationQuat.premultiply(applyQ); rotationQuat.normalize();
         sphereGroup.quaternion.copy(rotationQuat);
         inertiaStrength*=(isDragging&&hasMoved)?INERTIA_FAST_DECAY:INERTIA_DECAY;
@@ -316,7 +294,9 @@ function animate(){
 }
 animate();
 
+console.log("Calling NativeBridge.requestInstalledApps...");
 NativeBridge.requestInstalledApps();
+})();
 </script>
 </body>
 </html>
