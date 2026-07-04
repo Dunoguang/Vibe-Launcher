@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
             }
             wv.addJavascriptInterface(JsBridge(this, wv), "NativeBridge")
             Log.d(TAG, "loadingUrl...")
-            wv.loadUrl("file:///android_asset/test.html")
+            wv.loadUrl("file:///android_asset/index.html")
         }
 
         onBackPressedDispatcher.addCallback {
