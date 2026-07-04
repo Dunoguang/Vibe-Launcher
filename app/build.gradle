@@ -10,19 +10,19 @@ def hasReleaseSigning = signingKeystorePath && signingStorePassword && signingKe
 
 android {
     namespace 'com.example.rootwebviewdemo'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.example.rootwebviewdemo"
         minSdk 27
-        targetSdk 34
+        targetSdk 35
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            abiFilters 'armeabi-v7a'
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
         }
     }
 
@@ -56,6 +56,6 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.14.0'
 }
