@@ -6,7 +6,7 @@ val signingKeystorePath = System.getenv("ANDROID_SIGNING_KEYSTORE_PATH") ?: "vib
 val signingStorePassword = System.getenv("ANDROID_SIGNING_STORE_PASSWORD")
 val signingKeyAlias = System.getenv("ANDROID_SIGNING_KEY_ALIAS")
 val signingKeyPassword = System.getenv("ANDROID_SIGNING_KEY_PASSWORD")
-val hasReleaseSigning = (signingKeystorePath != null && java.io.File(signingKeystorePath).exists() && signingStorePassword != null)
+val hasReleaseSigning = (signingKeystorePath != null && file(signingKeystorePath).exists() && signingStorePassword != null)
 
 android {
     namespace = "com.dng.launcher"
@@ -17,7 +17,7 @@ android {
         minSdk = 27
         targetSdk = 37
         versionCode = (System.currentTimeMillis() / 1000).toInt()
-        versionName = java.text.SimpleDateFormat("yyyy.MMdd.HHmm", java.util.Locale.getDefault()).format(java.util.Date())
+        versionName = (System.currentTimeMillis() / 1000).toString()
     }
 
     signingConfigs {
