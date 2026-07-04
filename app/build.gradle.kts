@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    kotlin("android")
 }
 
 android {
@@ -34,4 +33,5 @@ android {
 
 dependencies {
     implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.1.20")
 }
