@@ -50,9 +50,9 @@ class MainActivity : AppCompatActivity() {
                 override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
                     val level = when (msg.messageLevel()) {
                         ConsoleMessage.MessageLevel.ERROR -> "E"
-                        ConsoleMessage.MessageLevel.WARN -> "W"
+                        ConsoleMessage.MessageLevel.WARNING -> "W"
                         ConsoleMessage.MessageLevel.LOG -> "L"
-                        ConsoleMessage.MessageLevel.INFO -> "I"
+                        ConsoleMessage.MessageLevel.TIP -> "I"
                         ConsoleMessage.MessageLevel.DEBUG -> "D"
                         else -> "?"
                     }
