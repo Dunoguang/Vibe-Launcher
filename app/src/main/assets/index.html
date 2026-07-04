@@ -1065,12 +1065,11 @@ await renderer.init();
                             returnToTimeView();
                         } else if (app && !isInTimeView) {
                             // 旋转+拉近 → 启动应用
-                            var spritePos = hoveredSprite.position.clone();
-                            var targetQuat = new THREE.Quaternion();
-                            var alignQ = new THREE.Quaternion();
-                            spritePos.normalize();
-                            alignQ.setFromUnitVectors(spritePos, new THREE.Vector3(0, 0, 1));
-                            targetQuat.copy(alignQ).premultiply(rotationQuat);
+                            var targetDir = hoveredSprite.position.clone().normalize();
+                            var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
+                            inertiaQ.identity();
+                            inertiaStrength = 0;
+                            infiniteInertia = false;
                             
                             var bothDone = false;
                             function tryLaunch() {
@@ -1084,19 +1083,14 @@ await renderer.init();
                                 }
                             }
                             startRotationAnimation(targetQuat, 350, function() { tryLaunch(); });
-                            startZoomAnimation(computeTimeViewZoom(), 350, function() {
-                                zoomLevel = computeTimeViewZoom();
+                            var appZoom = computeTimeViewZoom();
+                            startZoomAnimation(appZoom, 350, function() {
+                                zoomLevel = appZoom;
                                 applyZoom();
                                 tryLaunch();
                             });
+                            // scale feedback only for non-launch clicks
                         }
-                        var hs = hoveredSprite;
-                        hs.scale.set(HOVER_SCALE * 1.15, HOVER_SCALE * 1.15, 1);
-                        setTimeout(async function() {
-                            if (hs === hoveredSprite && hs.userData.baseScale) {
-                                hs.scale.set(hs.userData.baseScale, hs.userData.baseScale, 1);
-                            }
-                        }, 150);
                     }
                     if (isDragging && hasMoved && !isInTimeView) startInertiaFromSpeeds();
                     isDragging = false;
@@ -1356,6 +1350,15 @@ await renderer.init();
             }
             startTimePageClock();
             setTimeout(function() { renderTimePageToTexture(); }, 100);
+
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden && zoomLevel < defaultZoom - 0.1 && !isInTimeView && zoomTarget === null) {
+                    startZoomAnimation(defaultZoom, 600, function() {
+                        zoomLevel = defaultZoom;
+                        applyZoom();
+                    });
+                }
+            });
 
             function init() {
                 zoomLevel = computeInitDistance();
