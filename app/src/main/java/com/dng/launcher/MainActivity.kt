@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
@@ -28,15 +29,16 @@ class MainActivity : AppCompatActivity() {
             wv.addJavascriptInterface(JsBridge(this, wv), "NativeBridge")
             wv.loadUrl("file:///android_asset/index.html")
         }
-    }
 
-    @Deprecated("Use OnBackPressedDispatcher")
-    override fun onBackPressed() {
-        if (webView?.canGoBack() == true) {
-            webView?.goBack()
-            return
+        onBackPressedDispatcher.addCallback {
+            if (webView?.canGoBack() == true) {
+                webView?.goBack()
+            } else {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
+            }
         }
-        super.onBackPressed()
     }
 
     @Suppress("deprecation")
