@@ -1062,13 +1062,33 @@ await renderer.init();
                     if (isDragging && !hasMoved && hoveredSprite && !isInTimeView) {
                         var app = getAppBySprite(hoveredSprite);
                         if (app && app.packageName === '__time__') {
-                            // 点击时间图标返回时间视图
                             returnToTimeView();
-                        } else if (app && nativeBridgeReady) {
-                            try {
-                                var result = NativeBridge.launchApp(app.packageName);
-                                if (result && !result.success) console.warn('启动失败:', result.error);
-                            } catch (err) { console.error('启动应用异常:', err); }
+                        } else if (app && !isInTimeView) {
+                            // 旋转+拉近 → 启动应用
+                            var spritePos = hoveredSprite.position.clone();
+                            var targetQuat = new THREE.Quaternion();
+                            var alignQ = new THREE.Quaternion();
+                            spritePos.normalize();
+                            alignQ.setFromUnitVectors(spritePos, new THREE.Vector3(0, 0, 1));
+                            targetQuat.copy(alignQ).premultiply(rotationQuat);
+                            
+                            var bothDone = false;
+                            function tryLaunch() {
+                                if (bothDone) return;
+                                bothDone = true;
+                                if (app && nativeBridgeReady) {
+                                    try {
+                                        var result = NativeBridge.launchApp(app.packageName);
+                                        if (result && !result.success) console.warn('启动失败:', result.error);
+                                    } catch (err) { console.error('启动应用异常:', err); }
+                                }
+                            }
+                            startRotationAnimation(targetQuat, 350, function() { tryLaunch(); });
+                            startZoomAnimation(computeTimeViewZoom(), 350, function() {
+                                zoomLevel = computeTimeViewZoom();
+                                applyZoom();
+                                tryLaunch();
+                            });
                         }
                         var hs = hoveredSprite;
                         hs.scale.set(HOVER_SCALE * 1.15, HOVER_SCALE * 1.15, 1);
