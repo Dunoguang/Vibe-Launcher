@@ -79,18 +79,19 @@ class JsBridge(context: Context, webView: WebView) {
         if (file.exists()) return "file://${file.absolutePath}"
         return try {
             val drawable = pm.getApplicationIcon(pkg)
-            val bitmap = if (drawable is BitmapDrawable) drawable.bitmap
-            else {
-                val bmp = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
+            val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: run {
+                val bmp = Bitmap.createBitmap(
+                    drawable.intrinsicWidth.coerceAtLeast(1),
+                    drawable.intrinsicHeight.coerceAtLeast(1),
+                    Bitmap.Config.ARGB_8888
+                )
                 Canvas(bmp).apply {
-                    drawable.setBounds(0, 0, 96, 96)
+                    drawable.setBounds(0, 0, bmp.width, bmp.height)
                     drawable.draw(this)
                 }
                 bmp
             }
-            val scaled = Bitmap.createScaledBitmap(bitmap, 96, 96, true)
-            FileOutputStream(file).use { scaled.compress(Bitmap.CompressFormat.PNG, 80, it) }
-            if (scaled != bitmap) bitmap.recycle()
+            FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 80, it) }
             "file://${file.absolutePath}"
         } catch (e: Exception) { "" }
     }
