@@ -1,11 +1,15 @@
 package com.dng.launcher
 
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 
@@ -30,6 +34,7 @@ class MainActivity : AppCompatActivity() {
                 allowFileAccess = true
                 domStorageEnabled = true
                 allowUniversalAccessFromFileURLs = true
+                allowFileAccessFromFileURLs = true
             }
             wv.overScrollMode = View.OVER_SCROLL_NEVER
             wv.webChromeClient = object : WebChromeClient() {
@@ -38,7 +43,19 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
             }
+            wv.webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView, url: String) {
+                    Log.d(TAG, "onPageFinished: $url")
+                }
+                override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                    Log.e(TAG, "onReceivedError: ${request.url} code=${error.errorCode} ${error.description}")
+                }
+                override fun onReceivedError(view: WebView, errorCode: Int, description: String, failingUrl: String) {
+                    Log.e(TAG, "onReceivedError(deprecated): $failingUrl code=$errorCode $description")
+                }
+            }
             wv.addJavascriptInterface(JsBridge(this, wv), "NativeBridge")
+            Log.d(TAG, "loadingUrl...")
             wv.loadUrl("file:///android_asset/index.html")
         }
 
