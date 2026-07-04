@@ -167,8 +167,8 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     private fun callback(funcName: String, jsonArg: String) {
-        webViewRef.get()?.post {
-            evaluateJavascript("window.$funcName($jsonArg);", null)
+        webViewRef.get()?.let { wv ->
+            wv.post { wv.evaluateJavascript("window.$funcName($jsonArg);", null) }
         }
     }
 
