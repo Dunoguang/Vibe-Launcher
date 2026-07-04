@@ -90,7 +90,7 @@ class JsBridge(context: Context, webView: WebView) {
             }
             val scaled = Bitmap.createScaledBitmap(bitmap, 96, 96, true)
             FileOutputStream(file).use { scaled.compress(Bitmap.CompressFormat.PNG, 80, it) }
-            if (scaled !== bitmap && bitmap !== drawable) bitmap.recycle()
+            if (scaled != bitmap) bitmap.recycle()
             "file://${file.absolutePath}"
         } catch (e: Exception) { "" }
     }
@@ -110,8 +110,8 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     private fun callback(funcName: String, jsonArg: String) {
-        webViewRef.get()?.post {
-            it.evaluateJavascript("window.$funcName($jsonArg);", null)
+        webViewRef.get()?.let { wv ->
+            wv.post { wv.evaluateJavascript("window.$funcName($jsonArg);", null) }
         }
     }
 
