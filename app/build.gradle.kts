@@ -16,8 +16,8 @@ android {
         applicationId = "com.dng.launcher"
         minSdk = 27
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = (System.currentTimeMillis() / 1000).toInt()
+        versionName = java.text.SimpleDateFormat("yyyy.MMdd.HHmm", java.util.Locale.getDefault()).format(java.util.Date())
     }
 
     signingConfigs {
