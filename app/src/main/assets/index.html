@@ -450,6 +450,7 @@ await renderer.init();
             // 点击时间图标返回时间视图
             function returnToTimeView() {
                 if (isInTimeView || !timeSprite) return;
+                isInTimeView = true;
                 // 取消当前所有动画
                 cancelZoomAnimation();
                 rotationAnimData = null;
@@ -473,7 +474,6 @@ await renderer.init();
 
                 function checkBothComplete() {
                     if (zoomComplete && rotationComplete) {
-                        isInTimeView = true;
                         updateTimeSpriteTexture();
                         startTimeTextureUpdates();
                     }
