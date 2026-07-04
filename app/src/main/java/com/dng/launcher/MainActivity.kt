@@ -67,8 +67,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         onBackPressedDispatcher.addCallback {
-            if (webView?.canGoBack() == true) webView?.goBack()
-            else { isEnabled = false; onBackPressedDispatcher.onBackPressed(); isEnabled = true }
+            // 禁用返回键，防止退出桌面或WebView回退
         }
     }
 
