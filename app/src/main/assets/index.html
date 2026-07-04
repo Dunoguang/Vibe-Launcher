@@ -46,22 +46,86 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   var allApps = [];
   var filteredApps = [];
   var iconUrlMap = {};
-  var visibleRange = { start: 0, end: 0 };
+  var visibleRange = { start: 0, end: 20 };
   var itemHeight = 64;
   var pendingIcons = {};
   var throttleTimer = null;
   var debounceTimer = null;
   var SCROLL_THROTTLE_MS = 50;
   var SEARCH_DEBOUNCE_MS = 300;
-  var BATCH_SIZE = 30;
 
-  // ── P0 #1: Callback from native ──
+  function calcVisibleRange() {
+    var scrollTop = appListEl.scrollTop;
+    var viewH = appListEl.clientHeight;
+    var buffer = viewH;
+    visibleRange.start = Math.max(0, Math.floor((scrollTop - buffer) / itemHeight));
+    visibleRange.end = Math.min(filteredApps.length, Math.ceil((scrollTop + viewH + buffer) / itemHeight));
+  }
+
+  function renderVisible() {
+    calcVisibleRange();
+    var start = visibleRange.start;
+    var end = visibleRange.end;
+    appListEl.innerHTML = '';
+
+    var spacer = document.createElement('div');
+    spacer.style.height = (start * itemHeight) + 'px';
+    appListEl.appendChild(spacer);
+
+    for (var i = start; i < end && i < filteredApps.length; i++) {
+      var app = filteredApps[i];
+      var item = document.createElement('div');
+      item.className = 'app-item';
+      var iconHtml = iconUrlMap[app.packageName]
+        ? '<img src="' + iconUrlMap[app.packageName] + '" alt="" loading="lazy">'
+        : '<span style="color:#666;font-size:12px">' + app.appName.charAt(0).toUpperCase() + '</span>';
+      item.innerHTML =
+        '<div class="icon" id="ic-' + encodePkg(app.packageName) + '">' + iconHtml + '</div>' +
+        '<div class="info">' +
+          '<div class="name">' + esc(app.appName) + '</div>' +
+          '<div class="pkg">' + esc(app.packageName) + '</div>' +
+        '</div>' +
+        (app.isSystem ? '<span class="badge">系统</span>' : '');
+      item.addEventListener('click', (function(pkg, name) {
+        return function() { launchApp(pkg, name); };
+      })(app.packageName, app.appName));
+      appListEl.appendChild(item);
+    }
+
+    var bottomSpacer = document.createElement('div');
+    bottomSpacer.style.height = Math.max(0, (filteredApps.length - end) * itemHeight) + 'px';
+    appListEl.appendChild(bottomSpacer);
+  }
+
+  function requestIconsForVisible() {
+    var batch = [];
+    for (var i = visibleRange.start; i < visibleRange.end && i < filteredApps.length; i++) {
+      var pkg = filteredApps[i].packageName;
+      if (!iconUrlMap[pkg] && !pendingIcons[pkg]) {
+        batch.push(pkg);
+        pendingIcons[pkg] = true;
+      }
+    }
+    if (batch.length > 0) {
+      NativeBridge.requestAppIcons(JSON.stringify(batch));
+    }
+  }
+
+  function onScroll() {
+    if (throttleTimer) return;
+    throttleTimer = setTimeout(function() {
+      throttleTimer = null;
+      renderVisible();
+      requestIconsForVisible();
+    }, SCROLL_THROTTLE_MS);
+  }
+
   window._onAppsLoaded = function(result) {
     if (!result.success) { appListEl.innerHTML = '<div class="loading">加载失败</div>'; return; }
     allApps = result.apps;
     filteredApps = allApps;
-    renderVisible();
     appCountEl.textContent = allApps.length + ' 个';
+    renderVisible();
     requestIconsForVisible();
   };
 
@@ -69,7 +133,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     appListEl.innerHTML = '<div class="loading">错误: ' + err + '</div>';
   };
 
-  // ── P0 #2: Batch icon callback ──
   window._onIconsLoaded = function(results) {
     for (var i = 0; i < results.length; i++) {
       var r = results[i];
@@ -85,78 +148,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     console.log('Icon load error:', err);
   };
 
-  // ── Request icons for visible range (P1 #4) ──
-  function requestIconsForVisible() {
-    var start = visibleRange.start;
-    var end = Math.min(visibleRange.end, filteredApps.length);
-    var batch = [];
-    for (var i = start; i < end; i++) {
-      var pkg = filteredApps[i].packageName;
-      if (!iconUrlMap[pkg] && !pendingIcons[pkg]) {
-        batch.push(pkg);
-        pendingIcons[pkg] = true;
-      }
-    }
-    if (batch.length > 0) {
-      NativeBridge.requestAppIcons(JSON.stringify(batch));
-    }
-  }
-
-  // ── P1 #5: Scroll throttle ──
-  function onScroll() {
-    if (throttleTimer) return;
-    throttleTimer = setTimeout(function() {
-      throttleTimer = null;
-      calcVisibleRange();
-      renderVisible();
-      requestIconsForVisible();
-    }, SCROLL_THROTTLE_MS);
-  }
-
-  function calcVisibleRange() {
-    var scrollTop = appListEl.scrollTop;
-    var viewH = appListEl.clientHeight;
-    // Add buffer above/below
-    var buffer = viewH;
-    visibleRange.start = Math.max(0, Math.floor((scrollTop - buffer) / itemHeight));
-    visibleRange.end = Math.min(filteredApps.length, Math.ceil((scrollTop + viewH + buffer) / itemHeight));
-  }
-
-  // ── P1 #4: Virtual rendering ──
-  function renderVisible() {
-    appListEl.innerHTML = '';
-    var totalH = filteredApps.length * itemHeight;
-    var spacer = document.createElement('div');
-    spacer.style.height = (visibleRange.start * itemHeight) + 'px';
-    appListEl.appendChild(spacer);
-
-    for (var i = visibleRange.start; i < visibleRange.end && i < filteredApps.length; i++) {
-      var app = filteredApps[i];
-      var item = document.createElement('div');
-      item.className = 'app-item';
-      var pkgEnc = encodePkg(app.packageName);
-      var iconHtml = iconUrlMap[app.packageName]
-        ? '<img src="' + iconUrlMap[app.packageName] + '" alt="" loading="lazy">'
-        : '<span style="color:#666;font-size:12px">' + app.appName.charAt(0).toUpperCase() + '</span>';
-      item.innerHTML =
-        '<div class="icon" id="ic-' + pkgEnc + '">' + iconHtml + '</div>' +
-        '<div class="info">' +
-          '<div class="name">' + esc(app.appName) + '</div>' +
-          '<div class="pkg">' + esc(app.packageName) + '</div>' +
-        '</div>' +
-        (app.isSystem ? '<span class="badge">系统</span>' : '');
-      item.addEventListener('click', (function(pkg, name) {
-        return function() { launchApp(pkg, name); };
-      })(app.packageName, app.appName));
-      appListEl.appendChild(item);
-    }
-
-    var bottomSpacer = document.createElement('div');
-    bottomSpacer.style.height = Math.max(0, (filteredApps.length - visibleRange.end) * itemHeight) + 'px';
-    appListEl.appendChild(bottomSpacer);
-  }
-
-  // ── launchApp ──
   function launchApp(pkg, name) {
     showToast('正在启动 ' + name + '...');
     try {
@@ -165,7 +156,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     } catch(e) { showToast('启动失败: ' + e.message); }
   }
 
-  // ── P2 #10: Search debounce 300ms ──
   searchInput.addEventListener('input', function() {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(function() {
@@ -179,14 +169,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
         });
       }
       visibleRange.start = 0;
-      visibleRange.end = Math.min(BATCH_SIZE, filteredApps.length);
-      renderVisible();
+      visibleRange.end = Math.min(30, filteredApps.length);
+      appListEl.scrollTop = 0;
       appCountEl.textContent = filteredApps.length + ' / ' + allApps.length;
+      renderVisible();
       requestIconsForVisible();
     }, SEARCH_DEBOUNCE_MS);
   });
 
-  // ── Toast ──
   function showToast(msg) {
     toastEl.textContent = msg;
     toastEl.classList.add('show');
@@ -202,7 +192,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     return s.replace(/[^a-zA-Z0-9]/g, '_');
   }
 
-  // ── Init ──
   appListEl.addEventListener('scroll', onScroll, {passive: true});
   NativeBridge.requestInstalledApps();
 })();
