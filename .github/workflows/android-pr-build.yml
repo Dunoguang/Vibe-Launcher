@@ -46,28 +46,28 @@ jobs:
       - name: Build release APK
         run: gradle --no-daemon :app:assembleRelease
 
-      - name: Show APK
-        run: ls -lh app/build/outputs/apk/release/
-
       - name: Resolve signed APK
         run: |
           SIGNED_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" ! -name "*-unsigned.apk" | head -n 1)
-          echo "SIGNED_APK_PATH=$SIGNED_APK" >> "$GITHUB_ENV"
-          echo "APK: $SIGNED_APK"
+          echo "APK=$SIGNED_APK" >> "$GITHUB_ENV"
+          ls -lh "$SIGNED_APK"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7.0.1
         with:
           name: app-release-apk
-          path: ${{ env.SIGNED_APK_PATH }}
+          path: ${{ env.APK }}
           if-no-files-found: error
           retention-days: 7
 
-      - name: Upload to Release (tag only)
+      - name: Upload to Release
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          TAG_NAME="${GITHUB_REF#refs/tags/}"
-          echo "Uploading APK to release $TAG_NAME"
-          gh release upload "$TAG_NAME" "${{ env.SIGNED_APK_PATH }}" --clobber
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "Uploading to release $TAG"
+          curl -sL \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"$APK" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/$(curl -s -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' 'https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG' | jq -r .id)/assets?name=Vibe-Launcher-${TAG}.apk"
+          echo "✅ APK uploaded to release"
