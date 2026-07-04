@@ -30,6 +30,12 @@
 {"imports":{"three":"./three.module.js"}}
 </script>
 
+<script>
+window.onerror = function(m,s,l,c,e){
+  console.error('JS_ERROR: '+m+' at '+s+':'+l+String.fromCharCode(10)+(e&&e.stack||''));
+};
+</script>
+
 <script type="module">
 import * as THREE from 'three';
 
