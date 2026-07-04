@@ -583,6 +583,7 @@ await renderer.init();
             }
 
             var pendingIconLoads = 0;
+            var enterAnimationComplete = false;
 
             function createSprites(appList, iconMap) {
                 clearAllSprites();
@@ -675,6 +676,7 @@ await renderer.init();
                 timeViewZoom = computeTimeViewZoom();
 
                 enterTimeView(true, function() {
+                    enterAnimationComplete = true;
                     checkAllIconsLoaded();
                 });
             }
@@ -700,7 +702,7 @@ await renderer.init();
             }
 
             function checkAllIconsLoaded() {
-                if (pendingIconLoads <= 0) {
+                if (pendingIconLoads <= 0 && enterAnimationComplete) {
                     loadingEl.style.opacity = '0';
                     setTimeout(function() { loadingEl.textContent = ''; }, 500);
                 }
