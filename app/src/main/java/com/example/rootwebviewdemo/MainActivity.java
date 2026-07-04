@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        webView.addJavascriptInterface(new JsBridge(), "NativeBridge");
+        webView.addJavascriptInterface(new JsBridge(this), "NativeBridge");
         webView.loadUrl("file:///android_asset/index.html");
 
         tryGrantCameraPermission();

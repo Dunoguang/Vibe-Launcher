@@ -3,259 +3,280 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>简易相机</title>
+    <title>应用启动器</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-            background-color: #f0f0f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #121212;
+            color: #e0e0e0;
         }
-        video {
-            width: 100%;
-            max-width: 400px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background: #000;
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #1e1e1e;
+            padding: 12px 16px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .video-container {
-            position: relative;
-            display: inline-block;
-            width: 100%;
-            max-width: 400px;
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            white-space: nowrap;
         }
-        video {
-            display: block;
-            width: 100%;
-        }
-        .camera-label {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        button {
-            margin: 10px;
-            padding: 10px 20px;
-            font-size: 16px;
+        #searchInput {
+            flex: 1;
+            padding: 8px 14px;
             border: none;
-            border-radius: 6px;
-            background-color: #3b82f6;
+            border-radius: 20px;
+            background: #333;
             color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+        #searchInput::placeholder { color: #888; }
+        #appCount {
+            font-size: 13px;
+            color: #888;
+            white-space: nowrap;
+        }
+        #appList {
+            padding: 8px 0 80px;
+        }
+        .app-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 16px;
             cursor: pointer;
+            transition: background 0.15s;
+            border-bottom: 1px solid #1a1a1a;
         }
-        button:hover {
-            background-color: #2563eb;
+        .app-item:active { background: #2a2a2a; }
+        .app-item .icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            flex-shrink: 0;
+            background: #2a2a2a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-size: 10px;
+            color: #666;
         }
-        button.secondary {
-            background-color: #10b981;
+        .app-item .icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
-        button.secondary:hover {
-            background-color: #059669;
+        .app-item .info {
+            flex: 1;
+            min-width: 0;
         }
-        button.danger {
-            background-color: #ef4444;
+        .app-item .name {
+            font-size: 15px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        button.danger:hover {
-            background-color: #dc2626;
-        }
-        #capturedImage {
-            max-width: 100%;
-            margin-top: 20px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-        }
-        #base64Display {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #fff;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-family: monospace;
+        .app-item .pkg {
             font-size: 12px;
-            word-break: break-all;
-            display: none;
+            color: #777;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .button-group {
-            margin: 15px 0;
+        .app-item .badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background: #333;
+            color: #888;
+            flex-shrink: 0;
         }
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        .hidden { display: none !important; }
+        .no-result {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #toast.show { opacity: 1; }
     </style>
 </head>
 <body>
-    <h1>简易相机</h1>
-    <p id="whoamiResult">正在获取 whoami 结果...</p>
-    <div class="video-container">
-        <video id="video" autoplay playsinline></video>
-        <div class="camera-label" id="cameraLabel">后置摄像头</div>
+    <div class="header">
+        <h1>📱 应用列表</h1>
+        <input id="searchInput" type="text" placeholder="搜索应用...">
+        <span id="appCount"></span>
     </div>
-    <div class="button-group">
-        <button id="captureBtn">拍照</button>
-        <button id="switchCameraBtn" class="secondary">切换摄像头</button>
+    <div id="appList">
+        <div class="loading">正在加载应用列表...</div>
     </div>
-    <div class="button-group">
-        <button id="retakeBtn" style="display: none;">重拍</button>
-        <button id="saveBtn" style="display: none;" class="secondary">保存照片</button>
-    </div>
-    <img id="capturedImage" style="display: none;" alt="Captured Image">
-    <div id="base64Display"></div>
+    <div id="noResult" class="no-result hidden">没有匹配的应用</div>
+    <div id="toast"></div>
 
     <script>
-        const video = document.getElementById('video');
-        const captureBtn = document.getElementById('captureBtn');
-        const retakeBtn = document.getElementById('retakeBtn');
-        const switchCameraBtn = document.getElementById('switchCameraBtn');
-        const saveBtn = document.getElementById('saveBtn');
-        const capturedImage = document.getElementById('capturedImage');
-        const whoamiResult = document.getElementById('whoamiResult');
-        const cameraLabel = document.getElementById('cameraLabel');
-        const base64Display = document.getElementById('base64Display');
+        const appList = document.getElementById('appList');
+        const searchInput = document.getElementById('searchInput');
+        const appCount = document.getElementById('appCount');
+        const noResult = document.getElementById('noResult');
+        const toast = document.getElementById('toast');
 
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        let allApps = [];
+        let iconCache = {};
 
-        let stream = null;
-        let currentFacingMode = 'environment'; // 'environment' for back, 'user' for front
-        let currentImageData = null; // Store the captured image data
-
-        function updateWhoami() {
+        // Load apps on startup
+        (function init() {
             try {
-                const result = JSON.parse(NativeBridge.root_cmd('whoami'));
-                whoamiResult.textContent = 'whoami: ' + (result[0] || '[empty]') +
-                    '，stderr: ' + (result[1] || '[none]') +
-                    '，status: ' + result[2];
-            } catch (err) {
-                whoamiResult.textContent = 'whoami 调用失败: ' + err.message;
-            }
-        }
-
-        function updateCameraLabel() {
-            cameraLabel.textContent = currentFacingMode === 'user' ? '前置摄像头' : '后置摄像头';
-        }
-
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-        }
-
-        function startCamera() {
-            stopCamera();
-            const constraints = {
-                video: {
-                    facingMode: currentFacingMode,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                const result = JSON.parse(NativeBridge.getInstalledApps());
+                if (result.success) {
+                    allApps = result.apps;
+                    renderApps(allApps);
+                    appCount.textContent = allApps.length + ' 个';
+                    // Lazy load icons
+                    loadIconsInBatches(allApps, 0);
+                } else {
+                    appList.innerHTML = '<div class="loading">加载失败: ' + (result.error || '未知错误') + '</div>';
                 }
-            };
+            } catch (e) {
+                appList.innerHTML = '<div class="loading">加载失败: ' + e.message + '</div>';
+            }
+        })();
 
-            navigator.mediaDevices.getUserMedia(constraints)
-                .then(mediaStream => {
-                    stream = mediaStream;
-                    video.srcObject = stream;
-                    updateCameraLabel();
-                })
-                .catch(err => {
-                    console.error('无法访问相机:', err);
-                    // Try without specific facingMode if the above fails
-                    navigator.mediaDevices.getUserMedia({ video: true })
-                        .then(mediaStream => {
-                            stream = mediaStream;
-                            video.srcObject = stream;
-                            updateCameraLabel();
-                        })
-                        .catch(fallbackErr => {
-                            console.error('无法访问相机（备用）:', fallbackErr);
-                            alert('无法访问相机: ' + fallbackErr.message);
-                        });
-                });
-        }
-
-        switchCameraBtn.addEventListener('click', () => {
-            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            startCamera();
-        });
-
-        captureBtn.addEventListener('click', () => {
-            if (!video.videoWidth || !video.videoHeight) {
-                alert('视频尚未准备好，请稍后重试。');
+        function renderApps(apps) {
+            appList.innerHTML = '';
+            if (apps.length === 0) {
+                noResult.classList.remove('hidden');
                 return;
             }
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            noResult.classList.add('hidden');
 
-            // If using front camera, flip the image horizontally
-            if (currentFacingMode === 'user') {
-                const flippedCanvas = flipCanvasHorizontally(canvas);
-                capturedImage.src = flippedCanvas.toDataURL('image/png');
-                currentImageData = flippedCanvas.toDataURL('image/png');
-            } else {
-                capturedImage.src = canvas.toDataURL('image/png');
-                currentImageData = canvas.toDataURL('image/png');
-            }
+            apps.forEach(function(app) {
+                var item = document.createElement('div');
+                item.className = 'app-item';
+                item.dataset.pkg = app.packageName;
+                item.innerHTML =
+                    '<div class="icon" id="icon-' + encode(app.packageName) + '">' +
+                        '<span>' + app.appName.charAt(0).toUpperCase() + '</span>' +
+                    '</div>' +
+                    '<div class="info">' +
+                        '<div class="name">' + esc(app.appName) + '</div>' +
+                        '<div class="pkg">' + esc(app.packageName) + '</div>' +
+                    '</div>' +
+                    (app.isSystem ? '<span class="badge">系统</span>' : '');
 
-            capturedImage.style.display = 'block';
-            video.style.display = 'none';
-            captureBtn.style.display = 'none';
-            switchCameraBtn.style.display = 'none';
-            retakeBtn.style.display = 'inline-block';
-            saveBtn.style.display = 'inline-block';
-            base64Display.style.display = 'block';
-            base64Display.textContent = currentImageData;
-        });
+                item.addEventListener('click', function() {
+                    launch(app.packageName, app.appName);
+                });
 
-        function flipCanvasHorizontally(sourceCanvas) {
-            const flippedCanvas = document.createElement('canvas');
-            const flippedCtx = flippedCanvas.getContext('2d');
-            flippedCanvas.width = sourceCanvas.width;
-            flippedCanvas.height = sourceCanvas.height;
-
-            // Flip horizontally
-            flippedCtx.translate(flippedCanvas.width, 0);
-            flippedCtx.scale(-1, 1);
-            flippedCtx.drawImage(sourceCanvas, 0, 0);
-
-            return flippedCanvas;
+                appList.appendChild(item);
+            });
         }
 
-        retakeBtn.addEventListener('click', () => {
-            capturedImage.style.display = 'none';
-            video.style.display = 'block';
-            captureBtn.style.display = 'inline-block';
-            switchCameraBtn.style.display = 'inline-block';
-            retakeBtn.style.display = 'none';
-            saveBtn.style.display = 'none';
-            base64Display.style.display = 'none';
-            currentImageData = null;
-        });
+        function loadIconsInBatches(apps, startIndex) {
+            var batchSize = 20;
+            var end = Math.min(startIndex + batchSize, apps.length);
 
-        saveBtn.addEventListener('click', () => {
-            if (currentImageData) {
-                // Convert data URL to blob and save
-                const base64 = currentImageData.split(',')[1];
-                try {
-                    const result = JSON.parse(
-                        NativeBridge.saveImage(base64, currentFacingMode === 'user')
-                    );
-                    if (result.success) {
-                        alert('照片已保存到: ' + result.path);
-                    } else {
-                        alert('保存失败: ' + result.error);
-                    }
-                } catch (err) {
-                    alert('保存失败: ' + err.message);
-                }
+            for (var i = startIndex; i < end; i++) {
+                loadIcon(apps[i].packageName);
             }
+
+            if (end < apps.length) {
+                setTimeout(function() {
+                    loadIconsInBatches(apps, end);
+                }, 100);
+            }
+        }
+
+        function loadIcon(packageName) {
+            if (iconCache[packageName]) return;
+            iconCache[packageName] = true;
+
+            try {
+                var result = JSON.parse(NativeBridge.getAppIcon(packageName));
+                if (result.success && result.icon) {
+                    var el = document.getElementById('icon-' + encode(packageName));
+                    if (el) {
+                        el.innerHTML = '<img src="' + result.icon + '" alt="">';
+                    }
+                }
+            } catch (e) {
+                // ignore individual icon load failures
+            }
+        }
+
+        function launch(packageName, appName) {
+            showToast('正在启动 ' + appName + '...');
+            try {
+                var result = JSON.parse(NativeBridge.launchApp(packageName));
+                if (!result.success) {
+                    showToast('启动失败: ' + (result.error || '未知错误'));
+                }
+            } catch (e) {
+                showToast('启动失败: ' + e.message);
+            }
+        }
+
+        // Search
+        searchInput.addEventListener('input', function() {
+            var query = this.value.trim().toLowerCase();
+            if (!query) {
+                renderApps(allApps);
+                appCount.textContent = allApps.length + ' 个';
+                loadIconsInBatches(allApps, 0);
+                return;
+            }
+            var filtered = allApps.filter(function(app) {
+                return app.appName.toLowerCase().indexOf(query) !== -1 ||
+                       app.packageName.toLowerCase().indexOf(query) !== -1;
+            });
+            renderApps(filtered);
+            appCount.textContent = filtered.length + ' / ' + allApps.length;
+            loadIconsInBatches(filtered, 0);
         });
 
-        startCamera();
-        updateWhoami();
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(function() {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        function esc(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function encode(s) {
+            return s.replace(/[^a-zA-Z0-9]/g, '_');
+        }
     </script>
 </body>
 </html>

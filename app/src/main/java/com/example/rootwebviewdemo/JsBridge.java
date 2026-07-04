@@ -1,86 +1,123 @@
 package com.example.rootwebviewdemo;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
+import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.util.Base64;
 import android.webkit.JavascriptInterface;
-import android.os.Environment;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.Base64;
+import java.io.ByteArrayOutputStream;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 public class JsBridge {
 
-    @JavascriptInterface
-    public String root_cmd(String mycmd) {
-        RootShellExecutor.CommandResult result = RootShellExecutor.execute(mycmd);
-        JSONArray data = new JSONArray();
-        data.put(result.stdout);
-        data.put(result.stderr);
-        data.put(result.statusCode);
-        return data.toString();
+    private final Context context;
+
+    public JsBridge(Context context) {
+        this.context = context;
     }
 
     @JavascriptInterface
-    public String saveImage(String base64Data, boolean isFrontCamera) {
+    public String getInstalledApps() {
         JSONObject response = new JSONObject();
         try {
-            // Decode base64 to bitmap
-            byte[] decodedBytes = Base64.getDecoder().decode(base64Data);
-            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+            PackageManager pm = context.getPackageManager();
+            List<ApplicationInfo> apps = pm.getInstalledApplications(PackageManager.GET_META_DATA);
 
-            if (bitmap == null) {
-                response.put("success", false);
-                response.put("error", "Failed to decode image");
-                return response.toString();
-            }
+            // Sort by app name
+            Collections.sort(apps, (a, b) -> {
+                String labelA = pm.getApplicationLabel(a).toString();
+                String labelB = pm.getApplicationLabel(b).toString();
+                return labelA.compareToIgnoreCase(labelB);
+            });
 
-            // If front camera and we haven't already flipped in JS, flip here
-            // Actually, the flip is already done in JavaScript for display,
-            // but we apply it again here to ensure the saved image is also flipped
-            if (isFrontCamera) {
-                bitmap = flipBitmapHorizontally(bitmap);
-            }
-
-            // Save to Pictures directory
-            File picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-            if (!picturesDir.exists()) {
-                picturesDir.mkdirs();
-            }
-
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-            String fileName = "IMG_" + timeStamp + ".png";
-            File imageFile = new File(picturesDir, fileName);
-
-            try (FileOutputStream fos = new FileOutputStream(imageFile)) {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+            JSONArray appList = new JSONArray();
+            for (ApplicationInfo app : apps) {
+                JSONObject appObj = new JSONObject();
+                appObj.put("packageName", app.packageName);
+                appObj.put("appName", pm.getApplicationLabel(app).toString());
+                appObj.put("isSystem", (app.flags & ApplicationInfo.FLAG_SYSTEM) != 0);
+                appList.put(appObj);
             }
 
             response.put("success", true);
-            response.put("path", imageFile.getAbsolutePath());
-            return response.toString();
-
+            response.put("apps", appList);
         } catch (Exception e) {
             try {
                 response.put("success", false);
                 response.put("error", e.getMessage());
-            } catch (Exception ignored) {
-            }
-            return response.toString();
+            } catch (Exception ignored) {}
         }
+        return response.toString();
     }
 
-    private Bitmap flipBitmapHorizontally(Bitmap bitmap) {
-        Matrix matrix = new Matrix();
-        matrix.preScale(-1, 1);
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+    @JavascriptInterface
+    public String getAppIcon(String packageName) {
+        JSONObject response = new JSONObject();
+        try {
+            PackageManager pm = context.getPackageManager();
+            Drawable icon = pm.getApplicationIcon(packageName);
+            Bitmap bitmap = drawableToBitmap(icon);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+            String base64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP);
+
+            response.put("success", true);
+            response.put("icon", "data:image/png;base64," + base64);
+        } catch (Exception e) {
+            try {
+                response.put("success", false);
+                response.put("error", e.getMessage());
+            } catch (Exception ignored) {}
+        }
+        return response.toString();
+    }
+
+    @JavascriptInterface
+    public String launchApp(String packageName) {
+        JSONObject response = new JSONObject();
+        try {
+            Intent intent = context.getPackageManager().getLaunchIntentForPackage(packageName);
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                response.put("success", true);
+            } else {
+                response.put("success", false);
+                response.put("error", "App not found or has no launch activity");
+            }
+        } catch (Exception e) {
+            try {
+                response.put("success", false);
+                response.put("error", e.getMessage());
+            } catch (Exception ignored) {}
+        }
+        return response.toString();
+    }
+
+    private Bitmap drawableToBitmap(Drawable drawable) {
+        if (drawable instanceof BitmapDrawable) {
+            return ((BitmapDrawable) drawable).getBitmap();
+        }
+        int width = drawable.getIntrinsicWidth();
+        int height = drawable.getIntrinsicHeight();
+        if (width <= 0) width = 128;
+        if (height <= 0) height = 128;
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        drawable.draw(canvas);
+        return bitmap;
     }
 }
