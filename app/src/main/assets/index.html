@@ -1757,7 +1757,9 @@ function updateBatteryDisplay() {
                 saveBtn.addEventListener('click', function() {
                     var iconRes = document.getElementById('settings-icon-input');
                     var sphereSize = document.getElementById('settings-sphere-input').value;
-                    var layoutVal = (document.querySelector('#settings-layout .settings-radio[style*="4a90d9"]') || document.querySelector('#settings-layout .settings-radio:first-child')).getAttribute('data-val');
+                    var layoutVal = 'sphere';
+                    var lrs = document.querySelectorAll('#settings-layout .settings-radio');
+                    lrs.forEach(function(r) { if (r.classList.contains('active')) layoutVal = r.getAttribute('data-val'); });
                     var settings = {
                         iconRes: iconRes ? iconRes.value : '512',
                         sphereSize: sphereSize || '2.5',
