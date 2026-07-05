@@ -74,7 +74,7 @@ class JsBridge(context: Context, webView: WebView) {
                 }
                 callback("_onIconsLoaded", gson.toJson(results))
             } catch (e: Exception) {
-                callback("_onIconsError", ""${e.message}"")
+                callback("_onIconsError", "\"${e.message}\"")
             }
         }
     }
