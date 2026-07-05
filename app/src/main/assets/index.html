@@ -265,7 +265,7 @@ await renderer.init();
 
             // ========== 常量 ==========
             var SPHERE_RADIUS = 2.5;
-            var layoutMode = 'sphere'; // sphere | flat
+            var _saved = {}; try { _saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {} var layoutMode = (_saved.layoutMode || 'sphere');
             var SPHERE_DIAMETER = SPHERE_RADIUS * 2;
             var BASE_SCALE = 0.52;
             var ICON_RES = 512;
