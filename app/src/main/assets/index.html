@@ -465,17 +465,28 @@ await renderer.init();
                         zoomLevel = targetZoom;
                         applyZoom();
                         if (onComplete) onComplete();
+                        // 显示原生时间页面覆盖层（最高分辨率）
+                        var tp = document.getElementById('time-page');
+                        if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
+                        if (canvas) canvas.style.pointerEvents = 'none';
                     });
                 } else {
                     zoomLevel = targetZoom;
                     applyZoom();
                     if (onComplete) onComplete();
+                    var tp = document.getElementById('time-page');
+                    if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
+                    if (canvas) canvas.style.pointerEvents = 'none';
                 }
             }
 
             function exitTimeView(animate, callback) {
                 if (!isInTimeView) return;
                 isInTimeView = false;
+                // 隐藏原生时间页面
+                var tp = document.getElementById('time-page');
+                if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
+                if (canvas) canvas.style.pointerEvents = 'auto';
                 cancelZoomAnimation();
                 rotationAnimData = null;
                 stopTimeTextureUpdates();
@@ -526,6 +537,9 @@ await renderer.init();
 
                 function checkBothComplete() {
                     if (zoomComplete && rotationComplete) {
+                        var tp = document.getElementById('time-page');
+                        if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
+                        if (canvas) canvas.style.pointerEvents = 'none';
                         updateTimeSpriteTexture();
                         startTimeTextureUpdates();
                     }
@@ -1486,7 +1500,10 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
             setTimeout(function() { renderTimePageToTexture(); }, 100);
 
             document.addEventListener('visibilitychange', function() {
-                if (!document.hidden && zoomLevel < defaultZoom - 0.1 && !isInTimeView && zoomTarget === null) {
+                if (document.hidden) {
+                    var tp = document.getElementById('time-page');
+                    if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
+                } else if (!document.hidden && zoomLevel < defaultZoom - 0.1 && !isInTimeView && zoomTarget === null) {
                     startZoomAnimation(defaultZoom, 600, function() {
                         zoomLevel = defaultZoom;
                         applyZoom();
