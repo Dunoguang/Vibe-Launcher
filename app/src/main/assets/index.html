@@ -813,7 +813,8 @@ window._totalItems = totalItems;
                     if (saved.sphereSize && parseFloat(saved.sphereSize) > 0) {
                         SPHERE_RADIUS = parseFloat(saved.sphereSize);
                         // sphereGroup now uses Coulomb points directly, no need for scale
-                        // 重新分布
+                        // 重新分布（仅球体模式）
+                        if (layoutMode === 'sphere') {
                         var rawPts = sphereCoulomb(totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
                         var tIdx = totalItems.findIndex(function(it) { return it.type === 'time'; });
                         if (tIdx >= 0) {
@@ -830,6 +831,7 @@ window._totalItems = totalItems;
                         }
                         defaultZoom = computeInitDistance();
                         timeViewZoom = computeTimeViewZoom();
+                        } // end redistribution if
                     }
                 } catch(e) {}
 
@@ -848,6 +850,17 @@ window._totalItems = totalItems;
                     zoomLevel = defaultZoom;
                     applyZoom();
                     scene.background = new THREE.Color(0x1a1a2e);
+                        // 重置旋转，正面平铺
+                        rotationQuat.identity();
+                        sphereGroup.quaternion.identity();
+                        camera.position.set(0, 0, zoomLevel);
+                        camera.lookAt(0, 0, 0);
+                        var posLog = [];
+                        for (var pi = 0; pi < Math.min(5, sprites.length); pi++) {
+                            var p = sprites[pi].position;
+                            posLog.push('(' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1) + ')');
+                        }
+                        NativeBridge.log('SPR-POS: ' + posLog.join(' '));
                 } else {
                     scene.background = new THREE.Color(0x000000);
                 }
