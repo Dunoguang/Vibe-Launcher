@@ -853,7 +853,7 @@ window._totalItems = totalItems;
                         apps = data.apps;
                         loadingEl.textContent = '正在加载图标…';
                         createSprites(apps, null);
-                        var pkgs = [];
+                        var pkgs = []; window._allPkgs = pkgs;
                         for (var i = 0; i < apps.length; i++) pkgs.push(apps[i].packageName);
                         if (nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(pkgs), ICON_RES);
                     } else {
