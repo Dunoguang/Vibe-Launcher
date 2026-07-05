@@ -839,6 +839,18 @@ window._totalItems = totalItems;
                     enterAnimationComplete = true;
                     checkAllIconsLoaded();
                 });
+                // 平铺模式调整相机和背景
+                if (layoutMode === 'flat') {
+                    var flatPts = createFlatLayout(totalItems);
+                    var maxY = 0;
+                    for (var fi = 0; fi < flatPts.length; fi++) maxY = Math.max(maxY, Math.abs(flatPts[fi][1]));
+                    defaultZoom = Math.max((maxY * 2.2) / (2 * Math.tan(FOV_RAD / 2)), 8);
+                    zoomLevel = defaultZoom;
+                    applyZoom();
+                    scene.background = new THREE.Color(0x1a1a2e);
+                } else {
+                    scene.background = new THREE.Color(0x000000);
+                }
             }
 
             function loadRealIcon(sprite, iconUrl) {
