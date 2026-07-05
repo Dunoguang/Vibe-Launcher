@@ -1134,6 +1134,7 @@ updateMouse(e.clientX, e.clientY);
                 } else {
                     isDragging = false;
                     hasMoved = false;
+                    clearLongPressTimer();
                     clearHover();
                     document.body.style.cursor = 'grab';
                 }
@@ -1399,6 +1400,7 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
                 if (activePointerIds.size === 0) {
                     isDragging = false;
                     hasMoved = false;
+                    clearLongPressTimer();
                     clearHover();
                     document.body.style.cursor = isInTimeView ? 'default' : 'grab';
                 }
@@ -1429,6 +1431,7 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
                     pinchStartZoom = zoomLevel;
                     isDragging = false;
                     hasMoved = false;
+                    clearLongPressTimer();
                     clearHover();
                     wasPinching = true;
                     cancelZoomAnimation();
