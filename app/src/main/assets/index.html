@@ -725,18 +725,23 @@ window._totalItems = totalItems;
                     rawPoints = sphereCoulomb(N, { radius: SPHERE_RADIUS, iter: 500 });
                 }
 
+                // 时间对齐旋转（仅球体模式）
+                var rotatedPoints;
+                if (layoutMode === 'sphere') {
                 var timeItemIndex = totalItems.findIndex(function(item) { return item.type === 'time'; });
                 var timeRaw = rawPoints[timeItemIndex];
                 var timePos = new THREE.Vector3(timeRaw[0], timeRaw[1], timeRaw[2]);
                 var targetDir = timePos.clone().normalize();
                 var cameraDir = new THREE.Vector3(0, 0, 1);
                 var alignQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
-
-                var rotatedPoints = rawPoints.map(function(p) {
+                rotatedPoints = rawPoints.map(function(p) {
                     var v = new THREE.Vector3(p[0], p[1], p[2]);
                     v.applyQuaternion(alignQuat);
                     return v;
                 });
+                } else {
+                    rotatedPoints = rawPoints;
+                }
 
                 for (var j = 0; j < N; j++) {
                     var item = totalItems[j];
@@ -855,12 +860,7 @@ window._totalItems = totalItems;
                         sphereGroup.quaternion.identity();
                         camera.position.set(0, 0, zoomLevel);
                         camera.lookAt(0, 0, 0);
-                        var posLog = [];
-                        for (var pi = 0; pi < Math.min(5, sprites.length); pi++) {
-                            var p = sprites[pi].position;
-                            posLog.push('(' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1) + ')');
-                        }
-                        NativeBridge.log('SPR-POS: ' + posLog.join(' '));
+                        
                 } else {
                     scene.background = new THREE.Color(0x000000);
                 }
