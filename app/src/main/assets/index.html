@@ -127,11 +127,6 @@
                     <input id="settings-sphere-input" type="number" value="2.5" min="0" style="flex:1; padding:14px; font-size:16px; background:#1a1a2e; color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:8px; outline:none;">
                     <span id="sphere-min-hint" style="font-size:14px; color:rgba(255,255,255,0.4); white-space:nowrap;">最少 —</span>
                 </div>
-            <div style="margin:20px 0 16px 0; font-size:14px; color:rgba(255,255,255,0.6);">3D布局方式</div>
-            <div id="settings-layout" style="display:flex; gap:12px;">
-                <div class="settings-radio" onclick="setRadio('settings-layout',this)" data-val="sphere" style="flex:1; padding:14px; text-align:center; background:#1a1a2e; border:2px solid #4a90d9; border-radius:8px; cursor:pointer; color:#fff; font-size:15px;">🌐 3D球体</div>
-                <div class="settings-radio" onclick="setRadio('settings-layout',this)" data-val="flat" style="flex:1; padding:14px; text-align:center; background:#1a1a2e; border:2px solid rgba(255,255,255,0.2); border-radius:8px; cursor:pointer; color:#fff; font-size:15px;">📱 平铺</div>
-            </div>
         </div>
         <div id="settings-save" style="
             position:absolute; bottom:40px; left:20px; right:20px;
@@ -265,7 +260,6 @@ await renderer.init();
 
             // ========== 常量 ==========
             var SPHERE_RADIUS = 2.5;
-            var layoutMode = 'sphere'; // sphere | flat
             var SPHERE_DIAMETER = SPHERE_RADIUS * 2;
             var BASE_SCALE = 0.52;
             var ICON_RES = 512;
@@ -674,25 +668,6 @@ await renderer.init();
             var pendingIconLoads = 0;
             var enterAnimationComplete = false;
 
-            function createFlatLayout(items) {
-                var N = items.length;
-                if (N === 0) return [];
-                var cols = Math.ceil(Math.sqrt(N * (window.innerWidth / window.innerHeight)));
-                var rows = Math.ceil(N / cols);
-                var spacing = SPHERE_RADIUS * 1.5 / Math.max(cols, rows);
-                var points = [];
-                var cx = (cols - 1) * spacing * 0.5;
-                var cy = (rows - 1) * spacing * 0.5;
-                for (var i = 0; i < N; i++) {
-                    var row = Math.floor(i / cols);
-                    var col = i % cols;
-                    var x = col * spacing - cx;
-                    var y = -(row * spacing - cy);
-                    points.push([x, y, 0]);
-                }
-                return points;
-            }
-
             function createSprites(appList, iconMap) {
                 clearAllSprites();
 
@@ -717,12 +692,7 @@ window._totalItems = totalItems;
                 });
 
                 var N = totalItems.length;
-                var rawPoints;
-                if (layoutMode === 'flat') {
-                    rawPoints = createFlatLayout(totalItems);
-                } else {
-                    rawPoints = sphereCoulomb(N, { radius: SPHERE_RADIUS, iter: 500 });
-                }
+                var rawPoints = sphereCoulomb(N, { radius: SPHERE_RADIUS, iter: 500 });
 
                 var timeItemIndex = totalItems.findIndex(function(item) { return item.type === 'time'; });
                 var timeRaw = rawPoints[timeItemIndex];
@@ -1342,13 +1312,6 @@ updateMouse(e.clientX, e.clientY);
                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
                                     var sphereInput = document.getElementById('settings-sphere-input');
                 if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
-                var savedLayout = saved.layoutMode || 'sphere';
-                layoutMode = savedLayout;
-                { var lbtns = document.querySelectorAll('#settings-layout .settings-radio');
-                  lbtns.forEach(function(b) {
-                    if (b.getAttribute('data-val') === savedLayout) { b.style.borderColor = '#4a90d9'; }
-                    else { b.style.borderColor = 'rgba(255,255,255,0.2)'; }
-                  }); }
                                     document.getElementById('settings-overlay').style.display = 'block';
                                     console.log("canvas pointerEvents none, canvas:", typeof canvas); canvas.style.pointerEvents = "none";
                                 }
@@ -1737,13 +1700,6 @@ function updateBatteryDisplay() {
                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
                 var sphereInput = document.getElementById('settings-sphere-input');
                 if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
-                var savedLayout = saved.layoutMode || 'sphere';
-                layoutMode = savedLayout;
-                { var lbtns = document.querySelectorAll('#settings-layout .settings-radio');
-                  lbtns.forEach(function(b) {
-                    if (b.getAttribute('data-val') === savedLayout) { b.style.borderColor = '#4a90d9'; }
-                    else { b.style.borderColor = 'rgba(255,255,255,0.2)'; }
-                  }); }
 
                 backBtn.addEventListener('click', function() {
                     overlay.style.display = 'none';
@@ -1757,13 +1713,9 @@ function updateBatteryDisplay() {
                 saveBtn.addEventListener('click', function() {
                     var iconRes = document.getElementById('settings-icon-input');
                     var sphereSize = document.getElementById('settings-sphere-input').value;
-                    var layoutVal = 'sphere';
-                    var lrs = document.querySelectorAll('#settings-layout .settings-radio');
-                    lrs.forEach(function(r) { if (r.classList.contains('active')) layoutVal = r.getAttribute('data-val'); });
                     var settings = {
                         iconRes: iconRes ? iconRes.value : '512',
-                        sphereSize: sphereSize || '2.5',
-                        layoutMode: layoutVal || 'sphere'
+                        sphereSize: sphereSize || '2.5'
                     };
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
                     var prevIconRes = ICON_RES;
@@ -1827,12 +1779,6 @@ function updateBatteryDisplay() {
 
                     if (sphereGroup && inputR > 0) {
                         SPHERE_RADIUS = parseFloat(settings.sphereSize);
-                    var newLayout = settings.layoutMode || 'sphere';
-                    if (newLayout !== layoutMode) {
-                        layoutMode = newLayout;
-                        createSprites(apps, null);
-                        if (nativeBridgeReady && window._allPkgs) NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
-                    } else {
                         // 重新分布所有sprite位置
                         var rawPoints = sphereCoulomb(window._totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
                         var timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
@@ -1853,7 +1799,6 @@ function updateBatteryDisplay() {
                         sphereGroup.quaternion.copy(rotationQuat);
                         defaultZoom = computeInitDistance();
                         timeViewZoom = computeTimeViewZoom();
-                    }
                     }
                 });
             }
