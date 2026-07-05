@@ -91,6 +91,21 @@
             color:rgba(255,255,255,0.5);
         ">🔋 --%</div>
     </div>
+    <div id="context-menu" style="
+        position:fixed; z-index:90; display:none; pointer-events:auto;
+        background:#1a1a2e; border:1px solid rgba(255,255,255,0.2);
+        border-radius:12px; padding:6px 0; min-width:140px;
+        box-shadow:0 8px 24px rgba(0,0,0,0.5);
+    ">
+        <div id="ctx-app-info" style="
+            padding:12px 18px; font-size:16px; color:#fff;
+            cursor:pointer; white-space:nowrap;
+        ">📋 应用信息</div>
+        <div id="ctx-uninstall" style="
+            padding:12px 18px; font-size:16px; color:#ff6b6b;
+            cursor:pointer; white-space:nowrap;
+        ">🗑 卸载</div>
+    </div>
     <div id="settings-overlay" style="
         position:fixed; top:0; left:0; right:0; bottom:0;
         background:rgba(0,0,0,0.85); z-index:50; display:none; pointer-events:auto;
@@ -922,6 +937,9 @@ window._totalItems = totalItems;
             raycaster.params.Sprite = { threshold: 0.8 };
             var mouse = new THREE.Vector2();
             var hoveredSprite = null;
+            var longPressTimer = null;
+            var longPressSprite = null;
+            var LONG_PRESS_MS = 600;
 
             function screenToSphere(sx, sy) {
                 var rect = canvas.getBoundingClientRect();
@@ -977,6 +995,28 @@ window._totalItems = totalItems;
                     labelEl.style.left = e.clientX + 'px';
                     labelEl.style.top = e.clientY + 'px';
                 }
+            }
+
+            function clearLongPressTimer() {
+                if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+                longPressSprite = null;
+            }
+            function showContextMenu(sprite, x, y) {
+                longPressSprite = sprite;
+                var menu = document.getElementById('context-menu');
+                if (!menu) return;
+                // 定位菜单，保持在屏幕内
+                var mw = 160, mh = 100;
+                var left = Math.min(x, window.innerWidth - mw);
+                var top = Math.min(y, window.innerHeight - mh);
+                menu.style.left = Math.max(0, left) + 'px';
+                menu.style.top = Math.max(0, top) + 'px';
+                menu.style.display = 'block';
+            }
+            function hideContextMenu() {
+                var menu = document.getElementById('context-menu');
+                if (menu) menu.style.display = 'none';
+                longPressSprite = null;
             }
 
             function clearHover() {
@@ -1050,6 +1090,17 @@ window._totalItems = totalItems;
                     document.body.style.cursor = 'grabbing';
                     updateMouse(e.clientX, e.clientY);
                     checkHover(e);
+                    // 长按检测
+                    longPressSprite = hoveredSprite;
+                    clearLongPressTimer();
+                    if (longPressSprite && !isInTimeView) {
+                        var app = getAppBySprite(longPressSprite);
+                        if (app && app.packageName !== '__settings__' && app.packageName !== '__time__') {
+                            longPressTimer = setTimeout(function() {
+                                showContextMenu(longPressSprite, e.clientX, e.clientY);
+                            }, LONG_PRESS_MS);
+                        }
+                    }
                 } else {
                     isDragging = false;
                     hasMoved = false;
@@ -1103,7 +1154,10 @@ window._totalItems = totalItems;
                 }
 
                 if (!isInTimeView && (!hasMoved || activePointerIds.size !== 1)) checkHover(e);
-                if (!isDragging || activePointerIds.size !== 1 || isInTimeView) return;
+                if (!isDragging || activePointerIds.size !== 1 || isInTimeView) {
+                    if (hasMoved) clearLongPressTimer();
+                    return;
+                }
 
                 var curr = new THREE.Vector2(e.clientX, e.clientY);
                 var dist = Math.sqrt(prevScreen.distanceToSquared(curr));
@@ -1186,6 +1240,12 @@ window._totalItems = totalItems;
                 }
 
                 activePointerIds.delete(e.pointerId);
+                clearLongPressTimer();
+                // 点击菜单外部时关闭
+                var menu = document.getElementById('context-menu');
+                if (menu && menu.style.display === 'block' && e.target !== menu && !menu.contains(e.target)) {
+                    hideContextMenu();
+                }
                 if (activePointerIds.size === 0) {
                     if (isDragging && !hasMoved && hoveredSprite && !isInTimeView) {
                         try { NativeBridge.log('click-detect:' + (getAppBySprite(hoveredSprite)||{}).packageName); } catch(e) {}
@@ -1701,6 +1761,19 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
                 applyZoom();
                 isInTimeView = false;
                 initSettingsPanel();
+                // 上下文菜单事件
+                var ctxInfo = document.getElementById('ctx-app-info');
+                var ctxUninstall = document.getElementById('ctx-uninstall');
+                if (ctxInfo) ctxInfo.addEventListener('click', function() {
+                    var app = longPressSprite ? getAppBySprite(longPressSprite) : null;
+                    if (app && nativeBridgeReady) NativeBridge.openAppDetails(app.packageName);
+                    hideContextMenu();
+                });
+                if (ctxUninstall) ctxUninstall.addEventListener('click', function() {
+                    var app = longPressSprite ? getAppBySprite(longPressSprite) : null;
+                    if (app && nativeBridgeReady) NativeBridge.uninstallApp(app.packageName);
+                    hideContextMenu();
+                });
                 requestAnimationFrame(animate);
                 tryLoadApps();
                 setTimeout(function() { updateBatteryDisplay(); }, 3000);
