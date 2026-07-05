@@ -880,12 +880,20 @@ window._totalItems = totalItems;
                 try {
                     var data = typeof json === 'string' ? JSON.parse(json) : json;
                     if (data.success && data.apps && data.apps.length > 0) {
+                        var newPkgs = [];
+                        for (var i = 0; i < data.apps.length; i++) newPkgs.push(data.apps[i].packageName);
+                        var oldPkgs = window._allPkgs || [];
+                        var changed = newPkgs.length !== oldPkgs.length;
+                        if (!changed) {
+                            var oldSet = {}; for (var j = 0; j < oldPkgs.length; j++) oldSet[oldPkgs[j]] = true;
+                            for (var k = 0; k < newPkgs.length; k++) { if (!oldSet[newPkgs[k]]) { changed = true; break; } }
+                        }
+                        if (!changed && sprites.length > 0) return; // 没变化，不重建
                         apps = data.apps;
                         loadingEl.textContent = '正在加载图标…';
                         createSprites(apps, null);
-                        var pkgs = []; window._allPkgs = pkgs;
-                        for (var i = 0; i < apps.length; i++) pkgs.push(apps[i].packageName);
-                        if (nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(pkgs), ICON_RES);
+                        window._allPkgs = newPkgs;
+                        if (nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(newPkgs), ICON_RES);
                     } else {
                         loadingEl.textContent = '没有找到应用';
                         createSprites([], null);
@@ -1628,6 +1636,12 @@ function updateBatteryDisplay() {
                         zoomLevel = defaultZoom;
                         applyZoom();
                     });
+                }
+                // 返回前台时检测应用列表变动
+                if (!document.hidden && nativeBridgeReady) {
+                    setTimeout(function() {
+                        NativeBridge.requestInstalledApps();
+                    }, 500);
                 }
             });
 
