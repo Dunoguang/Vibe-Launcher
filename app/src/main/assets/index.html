@@ -718,8 +718,9 @@ window._totalItems = totalItems;
 
                 var N = totalItems.length;
                 var rawPoints;
-                NativeBridge.log('CREATE-FLAT mode=' + layoutMode + ' total=' + totalItems.length); if (layoutMode === 'flat') {
+                if (layoutMode === 'flat') {
                     rawPoints = createFlatLayout(totalItems);
+                    NativeBridge.log('FLAT-pos[0]=' + JSON.stringify(rawPoints[0]) + ' N=' + rawPoints.length);
                 } else {
                     rawPoints = sphereCoulomb(N, { radius: SPHERE_RADIUS, iter: 500 });
                 }
@@ -1700,6 +1701,18 @@ function updateBatteryDisplay() {
                         b.classList.remove('active');
                     }
                 });
+                // 布局选项立即生效
+                if (group === 'settings-layout' && val !== layoutMode) {
+                    layoutMode = val;
+                    NativeBridge.log('setRadio-layout switch to ' + val);
+                    try {
+                        createSprites(apps, null);
+                        if (nativeBridgeReady && window._allPkgs) NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
+                    } catch(e) { NativeBridge.log('layout-error: ' + e.message); }
+                    var s = {}; try { s = JSON.parse(localStorage.getItem('vibe-settings')||'{}'); } catch(e) {}
+                    s.layoutMode = val;
+                    localStorage.setItem('vibe-settings', JSON.stringify(s));
+                }
             }
 
             window.highlightRadio = function(group, val) {
