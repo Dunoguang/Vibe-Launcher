@@ -122,6 +122,26 @@
                     <input id="settings-icon-input" type="number" value="512" min="16" step="16" style="flex:1; padding:14px; font-size:16px; background:#1a1a2e; color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:8px; outline:none;">
                     <span style="font-size:14px; color:rgba(255,255,255,0.4); white-space:nowrap;">px（默认512）</span>
                 </div>
+            <div style="margin:20px 0 16px 0; font-size:14px; color:rgba(255,255,255,0.6);">布局模式</div>
+            <div id="settings-layout-mode" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:6px;">
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="radio" name="layoutMode" value="sphere" checked style="accent-color:#4a90d9;">
+                    <span style="font-size:14px;">球体</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="radio" name="layoutMode" value="hemisphere" style="accent-color:#4a90d9;">
+                    <span style="font-size:14px;">半球</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="radio" name="layoutMode" value="ring" style="accent-color:#4a90d9;">
+                    <span style="font-size:14px;">竖环</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="radio" name="layoutMode" value="hbar" style="accent-color:#4a90d9;">
+                    <span style="font-size:14px;">横环</span>
+                </label>
+
+            </div>
             <div style="margin:20px 0 16px 0; font-size:14px; color:rgba(255,255,255,0.6);">3D球体大小</div>
             <div id="settings-sphere-size" style="display:flex; align-items:center; gap:8px;">
                     <input id="settings-sphere-input" type="number" value="2.5" min="0" style="flex:1; padding:14px; font-size:16px; background:#1a1a2e; color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:8px; outline:none;">
@@ -260,6 +280,13 @@ await renderer.init();
 
             // ========== 常量 ==========
             var SPHERE_RADIUS = 2.5;
+            var layoutMode = 'sphere';
+            (function() {
+                try {
+                    var _s = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
+                    if (_s.layoutMode) layoutMode = _s.layoutMode;
+                } catch(e) {}
+            })();
             var SPHERE_DIAMETER = SPHERE_RADIUS * 2;
             var BASE_SCALE = 0.52;
             var ICON_RES = 512;
@@ -673,25 +700,52 @@ await renderer.init();
 
                 var totalItems = [];
 window._totalItems = totalItems;
-                for (var i = 0; i < appList.length; i++) {
-                    totalItems.push({
-                        type: 'app',
-                        data: appList[i],
-                        colorIndex: i
-                    });
-                }
                 totalItems.push({
                     type: 'time',
                     data: { packageName: '__time__', appName: '时钟', isSystem: true },
-                    colorIndex: appList.length
+                    colorIndex: 0
                 });
                 totalItems.push({
                     type: 'settings',
                     data: { packageName: '__settings__', appName: '设置', isSystem: true },
-                    colorIndex: appList.length + 1
+                    colorIndex: 1
                 });
+                for (var i = 0; i < appList.length; i++) {
+                    totalItems.push({
+                        type: 'app',
+                        data: appList[i],
+                        colorIndex: i + 2
+                    });
+                }
+
+                var isHemi = (layoutMode === 'hemisphere');
+                var isRing = (layoutMode === 'ring');
+                var isHbar = (layoutMode === 'hbar');
+                var isFlatring = (layoutMode === 'flatring');
+
+                if (isHemi) {
+                    var bc = totalItems.length;
+                    for (var ri = 0; ri < bc; ri++) {
+                        totalItems.push({
+                            type: 'redTest',
+                            data: { packageName: '__red__' + ri, appName: '红', isSystem: true },
+                            colorIndex: bc + ri
+                        });
+                    }
+                }
 
                 var N = totalItems.length;
+                var Nhalf = isHemi ? N / 2 : N;
+                var ringRadius = 0;
+                if (isRing || isHbar || isFlatring) {
+                    ringRadius = Math.max(SPHERE_RADIUS, (N * BASE_SCALE * 1.1) / (2 * Math.PI));
+                    SPHERE_RADIUS = ringRadius;
+                    SPHERE_DIAMETER = SPHERE_RADIUS * 2;
+                    defaultZoom = isFlatring ? ringRadius * 0.09 : ringRadius * 1.15;
+                    zoomLevel = defaultZoom;
+                    applyZoom();
+                }
+
                 var rawPoints = sphereCoulomb(N, { radius: SPHERE_RADIUS, iter: 500 });
 
                 var timeItemIndex = totalItems.findIndex(function(item) { return item.type === 'time'; });
@@ -701,11 +755,36 @@ window._totalItems = totalItems;
                 var cameraDir = new THREE.Vector3(0, 0, 1);
                 var alignQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
 
-                var rotatedPoints = rawPoints.map(function(p) {
-                    var v = new THREE.Vector3(p[0], p[1], p[2]);
-                    v.applyQuaternion(alignQuat);
-                    return v;
-                });
+                var allRotated;
+                if (isRing) {
+                    allRotated = [];
+                    for (var ri2 = 0; ri2 < N; ri2++) {
+                        var a = (ri2 / N) * Math.PI * 2;
+                        allRotated.push(new THREE.Vector3(0, Math.sin(a) * ringRadius, Math.cos(a) * ringRadius));
+                    }
+                } else if (isHbar) {
+                    allRotated = [];
+                    for (var ri2 = 0; ri2 < N; ri2++) {
+                        var a = (ri2 / N) * Math.PI * 2;
+                        allRotated.push(new THREE.Vector3(Math.sin(a) * ringRadius, 0, Math.cos(a) * ringRadius));
+                    }
+                } else if (isFlatring) {
+                    allRotated = [];
+                    for (var ri2 = 0; ri2 < N; ri2++) {
+                        var a = (ri2 / N) * Math.PI * 2 + Math.PI / 2;
+                        allRotated.push(new THREE.Vector3(Math.cos(a) * ringRadius, Math.sin(a) * ringRadius, 0));
+                    }
+                } else {
+                    allRotated = rawPoints.map(function(p) {
+                        var v = new THREE.Vector3(p[0], p[1], p[2]);
+                        v.applyQuaternion(alignQuat);
+                        return v;
+                    });
+                    if (isHemi) {
+                        allRotated.sort(function(a, b) { return b.z - a.z; });
+                    }
+                }
+                var rotatedPoints = allRotated;
 
                 for (var j = 0; j < N; j++) {
                     var item = totalItems[j];
@@ -720,6 +799,22 @@ window._totalItems = totalItems;
                         gearSprite.userData = { isTimeSprite: false, app: item.data, baseScale: BASE_SCALE };
                         sphereGroup.add(gearSprite);
                         sprites.push(gearSprite);
+                    } else if (item.type === 'redTest') {
+                        var redC = document.createElement('canvas');
+                        redC.width = ICON_RES; redC.height = ICON_RES;
+                        var rtx = redC.getContext('2d');
+                        rtx.fillStyle = '#ff0000';
+                        rtx.fillRect(0, 0, ICON_RES, ICON_RES);
+                        var redTex = new THREE.CanvasTexture(redC);
+                        redTex.minFilter = THREE.LinearFilter;
+                        redTex.magFilter = THREE.LinearFilter;
+                        var redMat = new THREE.SpriteMaterial({ map: redTex, transparent: true, depthTest: true, depthWrite: true, opacity: 0 });
+                        var redSprite = new THREE.Sprite(redMat);
+                        redSprite.position.copy(p);
+                        redSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
+                        redSprite.userData = { isTimeSprite: false, app: item.data, baseScale: BASE_SCALE, isDecor: true };
+                        sphereGroup.add(redSprite);
+                        sprites.push(redSprite);
                     } else if (item.type === 'time') {
                         var timeTex = createTimeTexture();
                         var timeMat = new THREE.SpriteMaterial({
@@ -770,6 +865,11 @@ window._totalItems = totalItems;
 
                 rotationQuat.identity();
                 sphereGroup.quaternion.identity();
+                if (layoutMode === 'flatring' && sprites.length > 0) {
+                    var tw = new THREE.Vector3();
+                    sprites[0].getWorldPosition(tw);
+                    camera.lookAt(tw);
+                }
 
                 // 更新最小球体半径提示
                 var minR = (BASE_SCALE * 0.44 * 1.1) / Math.sqrt(Math.PI / Math.max(1, sprites.length));
@@ -779,7 +879,7 @@ window._totalItems = totalItems;
                 // 启动时应用已保存的球体大小
                 try {
                     var saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
-                    if (saved.sphereSize && parseFloat(saved.sphereSize) > 0) {
+                    if (saved.sphereSize && parseFloat(saved.sphereSize) > 0 && layoutMode !== 'ring' && layoutMode !== 'hbar' && layoutMode !== 'flatring') {
                         SPHERE_RADIUS = parseFloat(saved.sphereSize);
                         // sphereGroup now uses Coulomb points directly, no need for scale
                         // 重新分布
@@ -793,6 +893,7 @@ window._totalItems = totalItems;
                                 v.applyQuaternion(aq);
                                 return v;
                             });
+                            if (layoutMode === 'hemisphere') rawPts.sort(function(a, b) { return b.z - a.z; });
                         }
                         for (var k = 0; k < sprites.length; k++) {
                             if (k < rawPts.length) sprites[k].position.copy(rawPts[k]);
@@ -804,10 +905,14 @@ window._totalItems = totalItems;
 
                 timeViewZoom = computeTimeViewZoom();
 
-                enterTimeView(true, function() {
-                    enterAnimationComplete = true;
-                    checkAllIconsLoaded();
-                });
+                if (layoutMode === 'flatring') {
+                    enterAnimationComplete = true; checkAllIconsLoaded();
+                } else {
+                    enterTimeView(true, function() {
+                        enterAnimationComplete = true;
+                        checkAllIconsLoaded();
+                    });
+                }
             }
 
             function loadRealIcon(sprite, iconUrl) {
@@ -982,7 +1087,12 @@ window._totalItems = totalItems;
                 if (isInTimeView) return;
                 raycaster.setFromCamera(mouse, camera);
                 var intersects = raycaster.intersectObjects(sprites);
-                var newHovered = intersects.length > 0 ? intersects[0].object : null;
+                var newHovered = null;
+                for (var hi = 0; hi < intersects.length; hi++) {
+                    if (intersects[hi].object.userData.isDecor) continue;
+                    newHovered = intersects[hi].object;
+                    break;
+                }
                 if (hoveredSprite !== newHovered) {
                     if (newHovered) {
                         document.body.style.cursor = 'pointer';
@@ -1126,6 +1236,7 @@ updateMouse(e.clientX, e.clientY);
                             updateMouse(_lpX2, _lpY2);
                             raycaster.setFromCamera(mouse, camera);
                             var hits = raycaster.intersectObjects(sprites);
+                            hits = hits.filter(function(h) { return !h.object.userData.isDecor; });
                             var spr = hits.length > 0 ? hits[0].object : null;
                             if (spr) {
                                 var app = getAppBySprite(spr);
@@ -1209,9 +1320,22 @@ updateMouse(e.clientX, e.clientY);
                     recentSpeeds = [];
                 }
                 if (!hasMoved || dist < 0.5) return;
-                var p0 = screenToSphere(prevScreen.x, prevScreen.y);
-                var p1 = screenToSphere(curr.x, curr.y);
-                var deltaQ = new THREE.Quaternion().setFromUnitVectors(p0, p1);
+                var deltaQ;
+                if (layoutMode === 'flatring') {
+                    var dx = curr.x - prevScreen.x;
+                    deltaQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -dx * 0.001);
+                } else {
+                    var p0 = screenToSphere(prevScreen.x, prevScreen.y);
+                    var p1 = screenToSphere(curr.x, curr.y);
+                    deltaQ = new THREE.Quaternion().setFromUnitVectors(p0, p1);
+                    if (layoutMode === 'ring') {
+                        var euler = new THREE.Euler().setFromQuaternion(deltaQ);
+                        deltaQ.setFromEuler(new THREE.Euler(euler.x * 0.25, 0, 0));
+                    } else if (layoutMode === 'hbar') {
+                        var euler = new THREE.Euler().setFromQuaternion(deltaQ);
+                        deltaQ.setFromEuler(new THREE.Euler(0, euler.y * 0.25, 0));
+                    }
+                }
                 rotationQuat.premultiply(deltaQ);
                 rotationQuat.normalize();
                 sphereGroup.quaternion.copy(rotationQuat);
@@ -1249,8 +1373,10 @@ updateMouse(e.clientX, e.clientY);
                             exitTimeView(true, function() {
                                 inertiaStrength = 0.4;
                                 infiniteInertia = true;
-                                var upVec = new THREE.Vector3(1, 0, 0);
-                                var smallQ = new THREE.Quaternion().setFromAxisAngle(upVec, -0.015);
+                                var spinAxis;
+                                if (layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
+                                else spinAxis = new THREE.Vector3(1, 0, 0);
+                                var smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                                 inertiaQ.copy(smallQ);
                             });
                         } else {
@@ -1312,6 +1438,12 @@ updateMouse(e.clientX, e.clientY);
                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
                                     var sphereInput = document.getElementById('settings-sphere-input');
                 if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
+                if (saved.layoutMode) {
+                    var radios = document.getElementsByName('layoutMode');
+                    for (var ri = 0; ri < radios.length; ri++) {
+                        if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
+                    }
+                }
                                     document.getElementById('settings-overlay').style.display = 'block';
                                     console.log("canvas pointerEvents none, canvas:", typeof canvas); canvas.style.pointerEvents = "none";
                                 }
@@ -1700,6 +1832,12 @@ function updateBatteryDisplay() {
                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
                 var sphereInput = document.getElementById('settings-sphere-input');
                 if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
+                if (saved.layoutMode) {
+                    var radios = document.getElementsByName('layoutMode');
+                    for (var ri = 0; ri < radios.length; ri++) {
+                        if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
+                    }
+                }
 
                 backBtn.addEventListener('click', function() {
                     overlay.style.display = 'none';
@@ -1713,11 +1851,18 @@ function updateBatteryDisplay() {
                 saveBtn.addEventListener('click', function() {
                     var iconRes = document.getElementById('settings-icon-input');
                     var sphereSize = document.getElementById('settings-sphere-input').value;
+                    var layoutRadios = document.getElementsByName('layoutMode');
+                    var layoutVal = 'sphere';
+                    for (var lr = 0; lr < layoutRadios.length; lr++) {
+                        if (layoutRadios[lr].checked) { layoutVal = layoutRadios[lr].value; break; }
+                    }
                     var settings = {
                         iconRes: iconRes ? iconRes.value : '512',
-                        sphereSize: sphereSize || '2.5'
+                        sphereSize: sphereSize || '2.5',
+                        layoutMode: layoutVal
                     };
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
+                    if (layoutMode !== layoutVal) { location.reload(); return; }
                     var prevIconRes = ICON_RES;
                     ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
 
@@ -1790,6 +1935,7 @@ function updateBatteryDisplay() {
                                 v.applyQuaternion(alignQ);
                                 return v;
                             });
+                            if (layoutMode === 'hemisphere') rawPoints.sort(function(a, b) { return b.z - a.z; });
                         }
                         for (var k = 0; k < sprites.length; k++) {
                             if (k < rawPoints.length) {
