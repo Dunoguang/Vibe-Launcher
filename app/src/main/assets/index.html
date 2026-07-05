@@ -1567,46 +1567,41 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
                         sphereSize: sphereSize || '2.5'
                     };
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
-                    ICON_RES = Math.max(64, parseInt(settings.iconRes) || 512);
-                    // 清除旧图标缓存，强制重新加载
-                    if (nativeBridgeReady) NativeBridge.clearIconCache();
-                    // 标记所有图标需要重新加载
-                    sprites.forEach(function(spr) {
-                        spr.userData.hasRealIcon = false;
-                    });
-                    // 立即触发重新加载图标
-                    if (window._allPkgs && nativeBridgeReady) {
-                        NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
-                    }
-                    // 重建所有图标纹理
-                    console.log('Rebuilding textures at ICON_RES:', ICON_RES);
-                    sprites.forEach(function(spr) {
-                        console.log('rebuild sprite:', spr.userData.app?spr.userData.app.packageName:'?', 'isTime:', spr.userData.isTimeSprite, 'hasReal:', spr.userData.hasRealIcon, 'color:', !!spr.userData.color, 'iconUrl:', !!spr.userData._iconUrl);
-                        if (spr.userData.isTimeSprite) {
-                            var t = createTimeTexture();
-                            spr.material.map = t;
-                        } else if (spr.userData.app && spr.userData.app.packageName === '__settings__') {
-                            var g = createGearTexture();
-                            spr.material.map = g;
-                        } else if (spr.userData.hasRealIcon && spr.userData.app && spr.userData.app.packageName !== "__settings__") {
-                            // 从缓存文件重新加载
-                            (function(s) {
-                                var url = s.userData._iconUrl;
-                                if (url) {
+                    var prevIconRes = ICON_RES;
+                    ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
+
+                    // 第一步：用现有缓存文件按新分辨率重建纹理
+                    if (ICON_RES !== prevIconRes) {
+                        console.log('Rebuilding textures at ICON_RES:', ICON_RES);
+                        sprites.forEach(function(spr) {
+                            if (spr.userData.isTimeSprite) {
+                                spr.material.map = createTimeTexture();
+                            } else if (spr.userData.app && spr.userData.app.packageName === '__settings__') {
+                                spr.material.map = createGearTexture();
+                            } else if (spr.userData._iconUrl) {
+                                // 从旧缓存文件重新加载（先用新分辨率canvas渲染）
+                                (function(s) {
                                     var img = new Image();
                                     img.onload = function() {
                                         s.material.map = createIconTextureFromImage(img);
                                         s.material.needsUpdate = true;
                                     };
-                                    img.src = url;
-                                }
-                            })(spr);
-                        } else if (spr.userData.color && !spr.userData.hasRealIcon) {
-                            var p = createPlaceholderTexture(spr.userData.app.appName, spr.userData.color);
-                            spr.material.map = p;
-                        }
-                        spr.material.needsUpdate = true;
-                    });
+                                    img.src = s.userData._iconUrl;
+                                })(spr);
+                            } else if (spr.userData.color) {
+                                spr.material.map = createPlaceholderTexture(spr.userData.app.appName, spr.userData.color);
+                            }
+                            spr.material.needsUpdate = true;
+                        });
+                    }
+
+                    // 第二步：清除旧缓存，强制重新加载
+                    if (nativeBridgeReady) NativeBridge.clearIconCache();
+                    sprites.forEach(function(spr) { spr.userData.hasRealIcon = false; });
+                    if (window._allPkgs && nativeBridgeReady) {
+                        NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
+                    }
+
                     saveBtn.textContent = '已保存 ✓';
                     saveBtn.style.background = '#2ecc71';
                     setTimeout(function() {
