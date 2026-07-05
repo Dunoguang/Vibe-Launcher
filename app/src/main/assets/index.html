@@ -1114,6 +1114,7 @@ updateMouse(e.clientX, e.clientY);
                     longPressFired = false;
                     if (!isInTimeView) {
                         longPressTimer = setTimeout(function() {
+                            NativeBridge.log("lp-timer-fired");
                             updateMouse(_lpX2, _lpY2);
                             raycaster.setFromCamera(mouse, camera);
                             var hits = raycaster.intersectObjects(sprites);
@@ -1139,7 +1140,7 @@ updateMouse(e.clientX, e.clientY);
             }
 
             function onPointerMove(e) {
-                if (contextMenuOpen) return;
+                if (contextMenuOpen) { activePointerIds.delete(e.pointerId); return; }
                 updateMouse(e.clientX, e.clientY);
                 if (!isInTimeView && topSwipeData && topSwipeData.active && topSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
                     var dY = e.clientY - topSwipeData.startY;
@@ -1213,7 +1214,7 @@ updateMouse(e.clientX, e.clientY);
             }
 
             function onPointerUp(e) {
-                if (contextMenuOpen) return;
+                if (contextMenuOpen) { activePointerIds.delete(e.pointerId); if (activePointerIds.size===0) document.body.style.cursor='default'; return; }
                 try{NativeBridge.log("PU drag:"+isDragging+" move:"+hasMoved+" hov:"+!!hoveredSprite+" tv:"+isInTimeView);}catch(e){}
                 if (!isInTimeView && topSwipeData && topSwipeData.pointerId === e.pointerId && topSwipeData.active) {
                     activePointerIds.delete(e.pointerId);
