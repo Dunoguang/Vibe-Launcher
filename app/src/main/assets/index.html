@@ -939,6 +939,7 @@ window._totalItems = totalItems;
             var hoveredSprite = null;
             var longPressTimer = null;
             var longPressFired = false;
+            var contextMenuOpen = false;
             var LONG_PRESS_MS = 600;
 
             function screenToSphere(sx, sy) {
@@ -1056,6 +1057,17 @@ window._totalItems = totalItems;
             }
 
             function onPointerDown(e) { try{NativeBridge.log('PDOWN');}catch(e){}
+                // 菜单打开时：点击画布关闭菜单，不触发拖动
+                if (contextMenuOpen) {
+                    var menu = document.getElementById('context-menu');
+                    if (menu && menu.style.display === 'block') {
+                        var rect = menu.getBoundingClientRect();
+                        if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+                            hideContextMenu();
+                        }
+                    }
+                    return;
+                }
                 infiniteInertia = false;
                 if (!isInTimeView && activePointerIds.size === 0 && isInTopZone(e.clientY)) {
                     topSwipeData = { pointerId: e.pointerId, startY: e.clientY, startZoom: zoomLevel, active: true, confirmed: false, startTimeViewZoom: computeTimeViewZoom() };
@@ -1105,6 +1117,7 @@ updateMouse(e.clientX, e.clientY);
                                 var app = getAppBySprite(spr);
                                 if (app && app.packageName !== '__settings__' && app.packageName !== '__time__') {
                                     longPressFired = true;
+                                    contextMenuOpen = true;
                                     showContextMenu(spr, _lpX2, _lpY2);
                                 }
                             }
@@ -1119,6 +1132,7 @@ updateMouse(e.clientX, e.clientY);
             }
 
             function onPointerMove(e) {
+                if (contextMenuOpen) return;
                 updateMouse(e.clientX, e.clientY);
                 if (!isInTimeView && topSwipeData && topSwipeData.active && topSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
                     var dY = e.clientY - topSwipeData.startY;
@@ -1192,6 +1206,7 @@ updateMouse(e.clientX, e.clientY);
             }
 
             function onPointerUp(e) {
+                if (contextMenuOpen) return;
                 try{NativeBridge.log("PU drag:"+isDragging+" move:"+hasMoved+" hov:"+!!hoveredSprite+" tv:"+isInTimeView);}catch(e){}
                 if (!isInTimeView && topSwipeData && topSwipeData.pointerId === e.pointerId && topSwipeData.active) {
                     activePointerIds.delete(e.pointerId);
