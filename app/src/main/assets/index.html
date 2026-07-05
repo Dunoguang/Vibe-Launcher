@@ -854,10 +854,11 @@ window._totalItems = totalItems;
                         sprites[fs].scale.set(BASE_SCALE * flatScale, BASE_SCALE * flatScale, 1);
                         sprites[fs].userData.baseScale = BASE_SCALE * flatScale;
                     }
-                    var flatPts = createFlatLayout(totalItems);
-                    var maxY = 0;
-                    for (var fi = 0; fi < flatPts.length; fi++) maxY = Math.max(maxY, Math.abs(flatPts[fi][1]));
-                    defaultZoom = maxY / Math.tan(FOV_RAD / 2);
+                    // 使用已计算的布局点（避免SPHERE_RADIUS变化导致不一致）
+                    var maxAbsY = 0;
+                    for (var fi = 0; fi < rawPoints.length; fi++) maxAbsY = Math.max(maxAbsY, Math.abs(rawPoints[fi][1]));
+                    defaultZoom = maxAbsY / Math.tan(FOV_RAD / 2);
+                    NativeBridge.log('FLAT-cam maxY=' + maxAbsY + ' zoom=' + defaultZoom);
                     zoomLevel = defaultZoom;
                     applyZoom();
                     scene.background = new THREE.Color(0x1a1a2e);
