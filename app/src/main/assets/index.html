@@ -1092,7 +1092,7 @@ window._totalItems = totalItems;
                     checkHover(e);
                     // 长按检测
                     longPressSprite = hoveredSprite;
-                    _lpStartX = e.clientX; _lpStartY = e.clientY;
+                    var _lpStartX = e.clientX, _lpStartY = e.clientY;
                     clearLongPressTimer();
                     if (longPressSprite && !isInTimeView) {
                         var app = getAppBySprite(longPressSprite);
