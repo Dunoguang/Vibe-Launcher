@@ -1120,6 +1120,8 @@ updateMouse(e.clientX, e.clientY);
                                 var app = getAppBySprite(spr);
                                 if (app && app.packageName !== '__settings__' && app.packageName !== '__time__') {
                                     longPressFired = true;
+                                    isDragging = false;
+                                    hasMoved = false;
                                     contextMenuOpen = true;
                                     showContextMenu(spr, _lpX2, _lpY2);
                                 }
