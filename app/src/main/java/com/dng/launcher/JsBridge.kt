@@ -62,7 +62,7 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun requestAppIcons(packageNamesJson: String, iconRes: Int = 512) {
+    fun requestAppIcons(packageNamesJson: String, iconRes: Int) {
         val targetSize = iconRes.coerceIn(16, 4096)
         executor.execute {
             try {
