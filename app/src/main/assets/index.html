@@ -1020,6 +1020,7 @@ window._totalItems = totalItems;
                 if (menu) menu.style.display = 'none';
                 NativeBridge.log("menu-closed");
                 contextMenuOpen = false;
+                longPressFired = false;
             }
 
             function clearHover() {
@@ -1069,6 +1070,7 @@ window._totalItems = totalItems;
                     }
                     isDragging = false;
                     hasMoved = false;
+                    longPressFired = false;
                     return;
                 }
                 infiniteInertia = false;
