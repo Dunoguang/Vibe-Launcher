@@ -1092,11 +1092,15 @@ window._totalItems = totalItems;
                     checkHover(e);
                     // 长按检测
                     longPressSprite = hoveredSprite;
+                    _lpStartX = e.clientX; _lpStartY = e.clientY;
                     clearLongPressTimer();
                     if (longPressSprite && !isInTimeView) {
                         var app = getAppBySprite(longPressSprite);
+                        NativeBridge.log('lp-check:' + , app?app.packageName:'null', 'setting:', app&&app.packageName==='__settings__', 'time:', app&&app.packageName==='__time__');
                         if (app && app.packageName !== '__settings__' && app.packageName !== '__time__') {
+                            NativeBridge.log('lp-start:' +  app.packageName);
                             longPressTimer = setTimeout(function() {
+                                NativeBridge.log('lp-fired');
                                 showContextMenu(longPressSprite, e.clientX, e.clientY);
                             }, LONG_PRESS_MS);
                         }
@@ -1155,7 +1159,6 @@ window._totalItems = totalItems;
 
                 if (!isInTimeView && (!hasMoved || activePointerIds.size !== 1)) checkHover(e);
                 if (!isDragging || activePointerIds.size !== 1 || isInTimeView) {
-                    if (hasMoved) clearLongPressTimer();
                     return;
                 }
 
@@ -1163,6 +1166,7 @@ window._totalItems = totalItems;
                 var dist = Math.sqrt(prevScreen.distanceToSquared(curr));
                 if (!hasMoved && dist > DRAG_THRESHOLD) {
                     hasMoved = true;
+                    clearLongPressTimer();
                     clearHover();
                     document.body.style.cursor = 'grabbing';
                     recentSpeeds = [];
