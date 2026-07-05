@@ -62,28 +62,29 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun requestAppIcons(packageNamesJson: String) {
+    fun requestAppIcons(packageNamesJson: String, iconRes: Int = 512) {
+        val targetSize = iconRes.coerceIn(16, 4096)
         executor.execute {
             try {
                 val ctx = contextRef.get() ?: return@execute
                 val pm = ctx.packageManager
                 val pkgs = gson.fromJson(packageNamesJson, Array<String>::class.java)
                 val results = pkgs.map { pkg ->
-                    IconResult(pkg, getOrCreateIcon(ctx, pm, pkg))
+                    IconResult(pkg, getOrCreateIcon(ctx, pm, pkg, targetSize))
                 }
                 callback("_onIconsLoaded", gson.toJson(results))
             } catch (e: Exception) {
-                callback("_onIconsError", "\"${e.message}\"")
+                callback("_onIconsError", ""${e.message}"")
             }
         }
     }
 
-    private fun getOrCreateIcon(ctx: Context, pm: PackageManager, pkg: String): String {
-        val file = File(iconCacheDir, "$pkg.png")
+    private fun getOrCreateIcon(ctx: Context, pm: PackageManager, pkg: String, size: Int = 512): String {
+        val file = File(iconCacheDir, "${pkg}_${size}.png")
         if (file.exists()) return "file://${file.absolutePath}"
         return try {
             val drawable = pm.getApplicationIcon(pkg)
-            val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: run {
+            val srcBitmap = (drawable as? BitmapDrawable)?.bitmap ?: run {
                 val bmp = Bitmap.createBitmap(
                     drawable.intrinsicWidth.coerceAtLeast(1),
                     drawable.intrinsicHeight.coerceAtLeast(1),
@@ -95,7 +96,8 @@ class JsBridge(context: Context, webView: WebView) {
                 }
                 bmp
             }
-            FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 80, it) }
+            val scaled = Bitmap.createScaledBitmap(srcBitmap, size, size, true)
+            FileOutputStream(file).use { scaled.compress(Bitmap.CompressFormat.PNG, 80, it) }
             "file://${file.absolutePath}"
         } catch (e: Exception) { "" }
     }
@@ -177,6 +179,16 @@ class JsBridge(context: Context, webView: WebView) {
     data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
     data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
     data class IconResult(val packageName: String, val iconUrl: String)
+
+    @JavascriptInterface
+    fun clearIconCache(): String {
+        return try {
+            iconCacheDir.listFiles()?.forEach { it.delete() }
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
 
     @JavascriptInterface
     fun log(msg: String) {

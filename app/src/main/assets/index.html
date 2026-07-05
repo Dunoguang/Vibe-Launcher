@@ -88,32 +88,25 @@
     </div>
     <div id="settings-overlay" style="
         position:fixed; top:0; left:0; right:0; bottom:0;
-        background:rgba(0,0,0,0.85); z-index:50; display:none; pointer-events:auto; pointer-events:auto;
+        background:rgba(0,0,0,0.85); z-index:50; display:none; pointer-events:auto;
         color:#fff; font-family:sans-serif;
     ">
         <div id="settings-back" style="
             position:absolute; top:16px; left:16px; font-size:18px;
-            cursor:pointer; color:rgba(255,255,255,0.7);
-            padding:8px 12px;
+            cursor:pointer; color:rgba(255,255,255,0.7); padding:8px 12px;
         ">← 返回</div>
         <div style="position:absolute; top:18px; left:0; right:0; text-align:center; font-size:20px; font-weight:bold;">Vibe Launcher设置</div>
-        <div style="position:absolute; top:80px; left:20px; right:20px;">
-            <div style="margin-bottom:24px;">
-                <div style="margin-bottom:8px; font-size:15px; color:rgba(255,255,255,0.8);">图标分辨率</div>
-                <div id="settings-icon-res" style="display:flex; gap:8px;">
-                    <button data-val="256" class="settings-radio" style="flex:1; padding:12px; font-size:14px; background:#1a1a2e; color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.2); border-radius:8px; cursor:pointer;">256px</button>
-                    <button data-val="512" class="settings-radio active" style="flex:1; padding:12px; font-size:14px; background:#4a90d9; color:#fff; border:1px solid #4a90d9; border-radius:8px; cursor:pointer;">512px</button>
-                    <button data-val="1024" class="settings-radio" style="flex:1; padding:12px; font-size:14px; background:#1a1a2e; color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.2); border-radius:8px; cursor:pointer;">1024px</button>
+        <div style="position:absolute; top:70px; left:20px; right:20px; bottom:80px; overflow-y:auto;">
+            <div style="margin-bottom:16px; font-size:14px; color:rgba(255,255,255,0.6);">图标分辨率</div>
+            <div id="settings-icon-res" style="display:flex; align-items:center; gap:8px;">
+                    <input id="settings-icon-input" type="number" value="512" min="16" step="16" style="flex:1; padding:14px; font-size:16px; background:#1a1a2e; color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:8px; outline:none;">
+                    <span style="font-size:14px; color:rgba(255,255,255,0.4); white-space:nowrap;">px（默认512）</span>
                 </div>
-            </div>
-            <div style="margin-bottom:24px;">
-                <div style="margin-bottom:8px; font-size:15px; color:rgba(255,255,255,0.8);">3D球体大小</div>
-                <div id="settings-sphere-size" style="display:flex; gap:8px;">
-                    <button data-val="2.0" class="settings-radio" style="flex:1; padding:12px; font-size:14px; background:#1a1a2e; color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.2); border-radius:8px; cursor:pointer;">小</button>
-                    <button data-val="2.5" class="settings-radio active" style="flex:1; padding:12px; font-size:14px; background:#4a90d9; color:#fff; border:1px solid #4a90d9; border-radius:8px; cursor:pointer;">中</button>
-                    <button data-val="3.0" class="settings-radio" style="flex:1; padding:12px; font-size:14px; background:#1a1a2e; color:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.2); border-radius:8px; cursor:pointer;">大</button>
+            <div style="margin:20px 0 16px 0; font-size:14px; color:rgba(255,255,255,0.6);">3D球体大小</div>
+            <div id="settings-sphere-size" style="display:flex; align-items:center; gap:8px;">
+                    <input id="settings-sphere-input" type="number" value="2.5" min="0" style="flex:1; padding:14px; font-size:16px; background:#1a1a2e; color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:8px; outline:none;">
+                    <span id="sphere-min-hint" style="font-size:14px; color:rgba(255,255,255,0.4); white-space:nowrap;">最少 —</span>
                 </div>
-            </div>
         </div>
         <div id="settings-save" style="
             position:absolute; bottom:40px; left:20px; right:20px;
@@ -249,6 +242,11 @@ await renderer.init();
             var SPHERE_RADIUS = 2.5;
             var SPHERE_DIAMETER = SPHERE_RADIUS * 2;
             var BASE_SCALE = 0.52;
+            var ICON_RES = 512;
+            try {
+                var _saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
+                if (_saved.iconRes && parseInt(_saved.iconRes) >= 16) ICON_RES = parseInt(_saved.iconRes);
+            } catch(e) {}
             var HOVER_SCALE = 0.72;
             var FOV_RAD = THREE.MathUtils.degToRad(50);
             var MIN_ZOOM = 0.1;
@@ -374,7 +372,8 @@ await renderer.init();
 
             // ========== 设置纹理 ==========
             function createGearTexture() {
-                var s = 512, ca = document.createElement('canvas');
+                console.log('createGearTexture size:', ICON_RES);
+                var s = Math.max(16, ICON_RES), ca = document.createElement('canvas');
                 ca.width = s; ca.height = s;
                 var ctx = ca.getContext('2d'), cx = s/2, cy = s/2, rr = s * 0.44;
                 ctx.fillStyle = '#000000';
@@ -555,7 +554,8 @@ await renderer.init();
             ];
 
             function createPlaceholderTexture(appName, colorHex) {
-                var s = 1024,
+                console.log('createPlaceholderTexture', appName, 'size:', ICON_RES);
+                var s = Math.max(16, ICON_RES),
                     c = document.createElement('canvas');
                 c.width = s;
                 c.height = s;
@@ -642,6 +642,7 @@ await renderer.init();
                 clearAllSprites();
 
                 var totalItems = [];
+window._totalItems = totalItems;
                 for (var i = 0; i < appList.length; i++) {
                     totalItems.push({
                         type: 'app',
@@ -740,6 +741,37 @@ await renderer.init();
                 rotationQuat.identity();
                 sphereGroup.quaternion.identity();
 
+                // 更新最小球体半径提示
+                var minR = (BASE_SCALE * 0.44 * 1.1) / Math.sqrt(Math.PI / Math.max(1, sprites.length));
+                var hint = document.getElementById('sphere-min-hint');
+                if (hint) hint.textContent = '最少 ' + minR.toFixed(2) + '（默认2.5）';
+
+                // 启动时应用已保存的球体大小
+                try {
+                    var saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
+                    if (saved.sphereSize && parseFloat(saved.sphereSize) > 0) {
+                        SPHERE_RADIUS = parseFloat(saved.sphereSize);
+                        // sphereGroup now uses Coulomb points directly, no need for scale
+                        // 重新分布
+                        var rawPts = sphereCoulomb(totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
+                        var tIdx = totalItems.findIndex(function(it) { return it.type === 'time'; });
+                        if (tIdx >= 0) {
+                            var tp = new THREE.Vector3(rawPts[tIdx][0], rawPts[tIdx][1], rawPts[tIdx][2]);
+                            var aq = new THREE.Quaternion().setFromUnitVectors(tp.clone().normalize(), new THREE.Vector3(0,0,1));
+                            rawPts = rawPts.map(function(pt) {
+                                var v = new THREE.Vector3(pt[0],pt[1],pt[2]);
+                                v.applyQuaternion(aq);
+                                return v;
+                            });
+                        }
+                        for (var k = 0; k < sprites.length; k++) {
+                            if (k < rawPts.length) sprites[k].position.copy(rawPts[k]);
+                        }
+                        defaultZoom = computeInitDistance();
+                        timeViewZoom = computeTimeViewZoom();
+                    }
+                } catch(e) {}
+
                 timeViewZoom = computeTimeViewZoom();
 
                 enterTimeView(true, function() {
@@ -760,6 +792,7 @@ await renderer.init();
                         sprite.material.map = tex;
                         sprite.material.needsUpdate = true;
                         sprite.userData.hasRealIcon = true;
+                        sprite.userData._iconUrl = iconUrl;
                     } catch (e) { console.warn('图标处理失败:', iconUrl, e); }
                     pendingIconLoads--;
                     checkAllIconsLoaded();
@@ -822,7 +855,7 @@ await renderer.init();
                         createSprites(apps, null);
                         var pkgs = [];
                         for (var i = 0; i < apps.length; i++) pkgs.push(apps[i].packageName);
-                        if (nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(pkgs));
+                        if (nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(pkgs), ICON_RES);
                     } else {
                         loadingEl.textContent = '没有找到应用';
                         createSprites([], null);
@@ -1147,8 +1180,10 @@ await renderer.init();
                                 if (rotDone && zoomDone) {
                                     var saved = {};
                                     try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
-                                    if (saved.iconRes) highlightRadio('settings-icon-res', saved.iconRes);
-                                    if (saved.sphereSize) highlightRadio('settings-sphere-size', saved.sphereSize);
+                                    var iconInput = document.getElementById('settings-icon-input');
+                if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
+                                    var sphereInput = document.getElementById('settings-sphere-input');
+                if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
                                     document.getElementById('settings-overlay').style.display = 'block';
                                     console.log("canvas pointerEvents none, canvas:", typeof canvas); canvas.style.pointerEvents = "none";
                                 }
@@ -1365,7 +1400,6 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
 
             // ========== 动画循环 ==========
             function animate(timestamp) {
-                initSettingsPanel();
                 requestAnimationFrame(animate);
                 var now = timestamp || performance.now();
                 updateZoomAnimation(now);
@@ -1460,7 +1494,28 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
                 }
             });
 
-            function highlightRadio(group, val) {
+            // 全局设置选项切换
+            window.setRadio = function(group, el) {
+                var val = el.getAttribute('data-val');
+                console.log('setRadio', group, val);
+                var btns = document.querySelectorAll('#' + group + ' .settings-radio');
+                btns.forEach(function(b) {
+                    if (b === el) {
+                        b.style.background = '#4a90d9';
+                        b.style.color = '#fff';
+                        b.style.borderColor = '#4a90d9';
+                        b.classList.add('active');
+                    } else {
+                        b.style.background = '#1a1a2e';
+                        b.style.color = 'rgba(255,255,255,0.6)';
+                        b.style.borderColor = 'rgba(255,255,255,0.2)';
+                        b.classList.remove('active');
+                    }
+                });
+            }
+
+            window.highlightRadio = function(group, val) {
+                console.log('highlightRadio', group, val);
                 var btns = document.querySelectorAll('#' + group + ' .settings-radio');
                 btns.forEach(function(b) {
                     if (b.getAttribute('data-val') === val) {
@@ -1487,22 +1542,13 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
 
                 // Setup radio button clicks
-                document.getElementById('settings-icon-res').addEventListener('click', function(e) {
-                    console.log('icon-res clicked', e.target.tagName, e.target.className);
-                    var btn = e.target.closest('.settings-radio');
-                    if (!btn) return;
-                    highlightRadio('settings-icon-res', btn.getAttribute('data-val'));
-                });
-                document.getElementById('settings-sphere-size').addEventListener('click', function(e) {
-                    console.log('sphere-size clicked', e.target.tagName, e.target.className);
-                    var btn = e.target.closest('.settings-radio');
-                    if (!btn) return;
-                    highlightRadio('settings-sphere-size', btn.getAttribute('data-val'));
-                });
+// Radio clicks now use inline onclick="setRadio(...)" — see HTML
 
                 // Apply saved values
-                if (saved.iconRes) highlightRadio('settings-icon-res', saved.iconRes);
-                if (saved.sphereSize) highlightRadio('settings-sphere-size', saved.sphereSize);
+                var iconInput = document.getElementById('settings-icon-input');
+                if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
+                var sphereInput = document.getElementById('settings-sphere-input');
+                if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
 
                 backBtn.addEventListener('click', function() {
                     overlay.style.display = 'none';
@@ -1514,22 +1560,89 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
                 });
 
                 saveBtn.addEventListener('click', function() {
-                    var iconRes = document.querySelector('#settings-icon-res .settings-radio.active');
-                    var sphereSize = document.querySelector('#settings-sphere-size .settings-radio.active');
+                    var iconRes = document.getElementById('settings-icon-input');
+                    var sphereSize = document.getElementById('settings-sphere-input').value;
                     var settings = {
-                        iconRes: iconRes ? iconRes.getAttribute('data-val') : '512',
-                        sphereSize: sphereSize ? sphereSize.getAttribute('data-val') : '2.5'
+                        iconRes: iconRes ? iconRes.value : '512',
+                        sphereSize: sphereSize || '2.5'
                     };
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
+                    ICON_RES = Math.max(64, parseInt(settings.iconRes) || 512);
+                    // 重建所有图标纹理
+                    console.log('Rebuilding textures at ICON_RES:', ICON_RES);
+                    sprites.forEach(function(spr) {
+                        console.log('rebuild sprite:', spr.userData.app?spr.userData.app.packageName:'?', 'isTime:', spr.userData.isTimeSprite, 'hasReal:', spr.userData.hasRealIcon, 'color:', !!spr.userData.color, 'iconUrl:', !!spr.userData._iconUrl);
+                        if (spr.userData.isTimeSprite) {
+                            var t = createTimeTexture();
+                            spr.material.map = t;
+                        } else if (spr.userData.app && spr.userData.app.packageName === '__settings__') {
+                            var g = createGearTexture();
+                            spr.material.map = g;
+                        } else if (spr.userData.hasRealIcon && spr.userData.app && spr.userData.app.packageName !== "__settings__") {
+                            // 从缓存文件重新加载
+                            (function(s) {
+                                var url = s.userData._iconUrl;
+                                if (url) {
+                                    var img = new Image();
+                                    img.onload = function() {
+                                        s.material.map = createIconTextureFromImage(img);
+                                        s.material.needsUpdate = true;
+                                    };
+                                    img.src = url;
+                                }
+                            })(spr);
+                        } else if (spr.userData.color && !spr.userData.hasRealIcon) {
+                            var p = createPlaceholderTexture(spr.userData.app.appName, spr.userData.color);
+                            spr.material.map = p;
+                        }
+                        spr.material.needsUpdate = true;
+                    });
                     saveBtn.textContent = '已保存 ✓';
                     saveBtn.style.background = '#2ecc71';
                     setTimeout(function() {
                         saveBtn.textContent = '保存';
                         saveBtn.style.background = '#4a90d9';
                     }, 1500);
-                    if (sphereGroup) {
+                    // 计算最小不碰撞半径
+                    var iconCount = window._totalItems ? window._totalItems.length : 100;
+                    var iconVisRadius = BASE_SCALE * 0.44 * 1.1; // 留10%余量
+                    var minRadius = iconVisRadius / Math.sqrt(Math.PI / iconCount);
+                    var inputR = parseFloat(settings.sphereSize);
+                    if (inputR < minRadius) {
+                        inputR = minRadius;
+                        document.getElementById("settings-sphere-input").value = Math.ceil(minRadius * 100) / 100;
+                        saveBtn.textContent = '已自动调整至最小 ✓';
+                        saveBtn.style.background = '#e67e22';
+                        setTimeout(function() {
+                            saveBtn.textContent = '保存';
+                            saveBtn.style.background = '#4a90d9';
+                        }, 2000);
+                    }
+                    settings.sphereSize = '' + inputR;
+                    localStorage.setItem('vibe-settings', JSON.stringify(settings));
+
+                    if (sphereGroup && inputR > 0) {
                         SPHERE_RADIUS = parseFloat(settings.sphereSize);
-                        sphereGroup.scale.setScalar(SPHERE_RADIUS / 2.5);
+                        // 重新分布所有sprite位置
+                        var rawPoints = sphereCoulomb(window._totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
+                        var timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
+                        if (timeIdx >= 0) {
+                            var timePos = new THREE.Vector3(rawPoints[timeIdx][0], rawPoints[timeIdx][1], rawPoints[timeIdx][2]);
+                            var alignQ = new THREE.Quaternion().setFromUnitVectors(timePos.clone().normalize(), new THREE.Vector3(0,0,1));
+                            rawPoints = rawPoints.map(function(p) {
+                                var v = new THREE.Vector3(p[0],p[1],p[2]);
+                                v.applyQuaternion(alignQ);
+                                return v;
+                            });
+                        }
+                        for (var k = 0; k < sprites.length; k++) {
+                            if (k < rawPoints.length) {
+                                sprites[k].position.copy(rawPoints[k]);
+                            }
+                        }
+                        sphereGroup.quaternion.copy(rotationQuat);
+                        defaultZoom = computeInitDistance();
+                        timeViewZoom = computeTimeViewZoom();
                     }
                 });
             }
