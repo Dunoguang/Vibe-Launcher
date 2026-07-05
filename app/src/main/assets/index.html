@@ -85,6 +85,11 @@
             text-align:center; font-size:5vw;
             color:rgba(255,255,255,0.7);
         ">1月1日 周一</div>
+        <div id="time-page-battery" style="
+            position:absolute; bottom:5vh; left:0; right:0;
+            text-align:center; font-size:4vw;
+            color:rgba(255,255,255,0.5);
+        ">🔋 --%</div>
     </div>
     <div id="settings-overlay" style="
         position:fixed; top:0; left:0; right:0; bottom:0;
@@ -1490,6 +1495,17 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
             function startTimePageClock() {
                 var el = document.getElementById('time-page-clock');
                 if (!el) return;
+                function updateBatteryDisplay() {
+                    try {
+                        var batteryEl = document.getElementById('time-page-battery');
+                        if (!batteryEl) return;
+                        var bl = JSON.parse(NativeBridge.getBatteryLevel());
+                        var ch = JSON.parse(NativeBridge.isCharging());
+                        if (bl.success) {
+                            batteryEl.textContent = (ch.charging ? '⚡' : '🔋') + ' ' + bl.level + '%';
+                        }
+                    } catch(e) {}
+                }
                 function tick() {
                     var now = new Date();
                     el.textContent = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
@@ -1502,7 +1518,7 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
                 }
                 tick();
                 if (_timePageTimer) clearInterval(_timePageTimer);
-                _timePageTimer = setInterval(tick, 1000);
+                _timePageTimer = setInterval(function() { tick(); updateBatteryDisplay(); }, 1000);
             }
             startTimePageClock();
             setTimeout(function() { renderTimePageToTexture(); }, 100);
@@ -1687,6 +1703,7 @@ startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); ro
                 initSettingsPanel();
                 requestAnimationFrame(animate);
                 tryLoadApps();
+                setTimeout(function() { updateBatteryDisplay(); }, 3000);
                 console.log('🚀 3D 桌面已就绪');
             }
 
