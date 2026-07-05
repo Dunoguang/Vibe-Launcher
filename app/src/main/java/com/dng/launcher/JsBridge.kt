@@ -114,7 +114,7 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-        @JavascriptInterface
+    @JavascriptInterface
     fun uninstallApp(packageName: String): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -177,7 +177,6 @@ class JsBridge(context: Context, webView: WebView) {
     data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
     data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
     data class IconResult(val packageName: String, val iconUrl: String)
-}
 
     @JavascriptInterface
     fun log(msg: String) {
@@ -188,3 +187,4 @@ class JsBridge(context: Context, webView: WebView) {
             logFile.appendText(java.time.Instant.now().toString() + " " + msg + "\n")
         } catch (_: Exception) {}
     }
+}
