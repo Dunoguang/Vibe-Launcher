@@ -468,7 +468,6 @@ await renderer.init();
                         // 显示原生时间页面覆盖层（最高分辨率）
                         var tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                        if (canvas) canvas.style.pointerEvents = 'none';
                     });
                 } else {
                     zoomLevel = targetZoom;
@@ -476,7 +475,6 @@ await renderer.init();
                     if (onComplete) onComplete();
                     var tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                    if (canvas) canvas.style.pointerEvents = 'none';
                 }
             }
 
@@ -486,7 +484,6 @@ await renderer.init();
                 // 隐藏原生时间页面
                 var tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
-                if (canvas) canvas.style.pointerEvents = 'auto';
                 cancelZoomAnimation();
                 rotationAnimData = null;
                 stopTimeTextureUpdates();
@@ -539,7 +536,6 @@ await renderer.init();
                     if (zoomComplete && rotationComplete) {
                         var tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                        if (canvas) canvas.style.pointerEvents = 'none';
                         updateTimeSpriteTexture();
                         startTimeTextureUpdates();
                     }
