@@ -679,7 +679,7 @@ await renderer.init();
                 if (N === 0) return [];
                 var cols = Math.ceil(Math.sqrt(N * (window.innerWidth / window.innerHeight)));
                 var rows = Math.ceil(N / cols);
-                var spacing = SPHERE_RADIUS * 1.5 / Math.max(cols, rows);
+                var spacing = SPHERE_RADIUS * 0.65; // 固定间距，每个图标足够分开
                 var points = [];
                 var cx = (cols - 1) * spacing * 0.5;
                 var cy = (rows - 1) * spacing * 0.5;
@@ -1828,12 +1828,8 @@ function updateBatteryDisplay() {
                     if (sphereGroup && inputR > 0) {
                         SPHERE_RADIUS = parseFloat(settings.sphereSize);
                     var newLayout = settings.layoutMode || 'sphere';
-                    if (newLayout !== layoutMode) {
-                        layoutMode = newLayout;
-                        createSprites(apps, null);
-                        if (nativeBridgeReady && window._allPkgs) NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
-                    } else {
-                        // 重新分布所有sprite位置
+                    // 重新分布所有sprite位置
+                    if (layoutMode === 'sphere') {
                         var rawPoints = sphereCoulomb(window._totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
                         var timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
                         if (timeIdx >= 0) {
