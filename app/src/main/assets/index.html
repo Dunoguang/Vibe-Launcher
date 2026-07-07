@@ -1358,7 +1358,7 @@ updateMouse(e.clientX, e.clientY);
                 if (contextMenuOpen) { activePointerIds.delete(e.pointerId); return; }
                 // 可取消动作进行中 + 拖动 = 取消
                 if (cancelableAction && cancelableAction.phase === 'animating' && isDragging && hasMoved) {
-                    cancelCurrentAction('drag'); return;
+                    cancelCurrentAction('drag'); recentSpeeds = []; hasMoved = false; return;
                 }
                 updateMouse(e.clientX, e.clientY);
                 if (!isInTimeView && topSwipeData && topSwipeData.active && topSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
