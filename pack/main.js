@@ -90,7 +90,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
             const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, FAR_PLANE);
 let renderer = null, rendererType = 'unknown';
 
-// 1. Try WebGPU
+// WebGPURenderer has built-in WebGL fallback (WebGLBackend)
 if (typeof THREE.WebGPURenderer !== 'undefined') {
     try {
         renderer = new THREE.WebGPURenderer({ antialias: true });
@@ -100,33 +100,6 @@ if (typeof THREE.WebGPURenderer !== 'undefined') {
     } catch(e) { console.warn('WebGPU failed:', e.message); renderer = null; }
 }
 
-// 2. Try WebGL2
-if (!renderer) {
-    try {
-        const c2 = document.createElement('canvas');
-        const gl2 = c2.getContext('webgl2');
-        if (gl2) {
-            renderer = new THREE.WebGLRenderer({ antialias: true, canvas: document.createElement('canvas') });
-            rendererType = 'WebGL2';
-            console.log('✅ WebGL2 renderer');
-        }
-    } catch(e) { console.warn('WebGL2 failed:', e.message); renderer = null; }
-}
-
-// 3. Try WebGL1
-if (!renderer) {
-    try {
-        const c1 = document.createElement('canvas');
-        const gl1 = c1.getContext('webgl') || c1.getContext('experimental-webgl');
-        if (gl1) {
-            renderer = new THREE.WebGLRenderer({ antialias: false, canvas: document.createElement('canvas') });
-            rendererType = 'WebGL1';
-            console.log('⚠️ WebGL1 renderer');
-        }
-    } catch(e) { console.warn('WebGL1 failed:', e.message); renderer = null; }
-}
-
-// 4. Error
 if (!renderer) {
     loadingEl.textContent = '不支持3D渲染，请使用支持的设备';
     loadingEl.style.display = 'flex';
