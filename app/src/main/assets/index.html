@@ -1103,6 +1103,23 @@ window._totalItems = totalItems;
                 createSprites(demoApps, null);
             }
 
+
+            window._onBackPressed = function() {
+                var overlay = document.getElementById("settings-overlay");
+                if (overlay && overlay.style.display === "flex") {
+                    overlay.style.display = "none";
+                    canvas.style.pointerEvents = "auto";
+                    startZoomAnimation(defaultZoom, 250, function() {
+                        zoomLevel = defaultZoom;
+                        applyZoom();
+                    });
+                    return;
+                }
+                if (isInTimeView) {
+                    exitTimeView(true);
+                }
+            };
+
             window._onAppsLoaded = function(json) {
                 try {
                     const data = typeof json === 'string' ? JSON.parse(json) : json;
