@@ -322,7 +322,7 @@ let renderer = null, rendererType = 'unknown';
             scene.add(sphereGroup);
 
             // ========== 常量 ==========
-let SPHERE_RADIUS = 2.5, layoutMode = 'sphere';
+            let SPHERE_RADIUS = 2.5, layoutMode = 'sphere';
             (function() {
                 try {
                     const _s = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
@@ -341,6 +341,43 @@ let SPHERE_RADIUS = 2.5, layoutMode = 'sphere';
             const MIN_ZOOM = 0.1;
             
             const ROTATION_ANIM_DURATION = 400; // 旋转动画时长
+            const exitThresholdRatio = 0.35;
+            let cancelableAction = null;
+            let bottomSwipeData = null, topSwipeData = null;
+            const TOP_ZONE_RATIO = 0.15, BOTTOM_ZONE_RATIO = 0.15;
+
+            // 缩放动画
+            let zoomTarget = null, zoomAnimStart = null, zoomAnimDuration = 0, zoomAnimElapsed = 0, zoomAnimStartVal = 0, zoomAnimEndVal = 0, zoomAnimCallback = null;
+
+            // 旋转动画（用于点击时间图标返回时间视图）
+            let rotationAnimData = null;
+            const placeholderColors = [
+                '#ff6b6b', '#ff8e72', '#ffa94d', '#ffd43b', '#a9e34b',
+                '#69db7c', '#38d9a9', '#3bc9db', '#4dabf7', '#5c7cfa',
+                '#748ffc', '#9775fa', '#da77f2', '#f783ac', '#ff8787',
+                '#ffb8a8', '#ffc078', '#ffe066', '#c0eb75', '#8ce99a',
+                '#63e6be', '#66d9e8', '#74c0fc', '#91a7ff', '#b197fc',
+            ];
+
+            let nativeBridgeReady = false;
+            const DRAG_THRESHOLD = 3;
+            const prevScreen = new THREE.Vector2();
+            const inertiaQ = new THREE.Quaternion();
+            let inertiaStrength = 0, infiniteInertia = false;
+            const INERTIA_DECAY = 0.975;
+            const INERTIA_FAST_DECAY = 0.85;
+            const INERTIA_MIN = 0.0005;
+            let recentSpeeds = [];
+            const SPEED_SAMPLES = 5;
+            const activePointerIds = new Set();
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.params.Sprite = { threshold: 0.8 };
+            const mouse = new THREE.Vector2();
+            let hoveredSprite = null, longPressTimer = null, longPressFired = false, contextMenuOpen = false;
+            const LONG_PRESS_MS = 600;
+            let lastTap = 0;
+            let _timePageTimer = null;
 
             const computeInitDistance = () => {
                 const w = window.innerWidth;
@@ -365,10 +402,8 @@ let zoomLevel = computeInitDistance(), defaultZoom = zoomLevel;
             }
 
 let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = null, timeTextureUpdateInterval = null;
-            const exitThresholdRatio = 0.35;
 
             // ========== 可取消动作状态机 ==========
-            let cancelableAction = null;
 
             const startCancelableAction = (sprite, rotTarget, zoomTarget, onCommit) => {
                 if (cancelableAction) cancelCurrentAction('superseded');
@@ -411,14 +446,6 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 cancelableAction = null;
             }
 
-            let bottomSwipeData = null, topSwipeData = null;
-            const TOP_ZONE_RATIO = 0.15, BOTTOM_ZONE_RATIO = 0.15;
-
-            // 缩放动画
-            let zoomTarget = null, zoomAnimStart = null, zoomAnimDuration = 0, zoomAnimElapsed = 0, zoomAnimStartVal = 0, zoomAnimEndVal = 0, zoomAnimCallback = null;
-
-            // 旋转动画（用于点击时间图标返回时间视图）
-            let rotationAnimData = null;
 
             function startZoomAnimation(targetVal, duration, callback) {
                 zoomAnimStart = performance.now();
@@ -671,14 +698,6 @@ let zoomComplete = false, rotationComplete = false;
             }
 
             // ========== 纹理生成 ==========
-            const placeholderColors = [
-                '#ff6b6b', '#ff8e72', '#ffa94d', '#ffd43b', '#a9e34b',
-                '#69db7c', '#38d9a9', '#3bc9db', '#4dabf7', '#5c7cfa',
-                '#748ffc', '#9775fa', '#da77f2', '#f783ac', '#ff8787',
-                '#ffb8a8', '#ffc078', '#ffe066', '#c0eb75', '#8ce99a',
-                '#63e6be', '#66d9e8', '#74c0fc', '#91a7ff', '#b197fc',
-            ];
-
             const createPlaceholderTexture = (appName, colorHex) => {
                 console.log('createPlaceholderTexture', appName, 'size:', ICON_RES);
                 const s = Math.max(16, ICON_RES),
@@ -1017,7 +1036,6 @@ window._totalItems = totalItems;
             }
 
             // ========== NativeBridge ==========
-            let nativeBridgeReady = false;
 
             const tryLoadApps = () => {
                 if (typeof NativeBridge !== 'undefined' && NativeBridge.requestInstalledApps) {
@@ -1106,22 +1124,6 @@ window._totalItems = totalItems;
             // ========== 旋转控制 ==========
             const rotationQuat = new THREE.Quaternion();
 let isDragging = false, hasMoved = false;
-            const DRAG_THRESHOLD = 3;
-            const prevScreen = new THREE.Vector2();
-            const inertiaQ = new THREE.Quaternion();
-let inertiaStrength = 0, infiniteInertia = false;
-            const INERTIA_DECAY = 0.975;
-            const INERTIA_FAST_DECAY = 0.85;
-            const INERTIA_MIN = 0.0005;
-            let recentSpeeds = [];
-            const SPEED_SAMPLES = 5;
-            const activePointerIds = new Set();
-
-            const raycaster = new THREE.Raycaster();
-            raycaster.params.Sprite = { threshold: 0.8 };
-            const mouse = new THREE.Vector2();
-let hoveredSprite = null, longPressTimer = null, longPressFired = false, contextMenuOpen = false;
-            const LONG_PRESS_MS = 600;
 
             const screenToSphere = (sx, sy) => {
                 const rect = canvas.getBoundingClientRect();
@@ -1667,7 +1669,6 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 resetAllPointers();
             });
 
-            let lastTap = 0;
             window.addEventListener('touchend', function(e) {
                 if (isInTimeView) return;
                 if (wasPinching || e.touches.length > 0) return;
@@ -1723,7 +1724,6 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 renderer.render(scene, camera);
             }
 
-            let _timePageTimer = null;
             const renderTimePageToTexture = () => {
                 const page = document.getElementById('time-page');
                 if (!page || !timeSprite || !timeSprite.material || typeof html2canvas === 'undefined') return;
