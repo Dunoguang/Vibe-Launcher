@@ -986,8 +986,11 @@ window._totalItems = totalItems;
                         for (var k = 0; k < sprites.length; k++) {
                             if (k < rawPts.length) sprites[k].position.copy(rawPts[k]);
                         }
+                        SPHERE_DIAMETER = SPHERE_RADIUS * 2;
                         defaultZoom = computeInitDistance();
                         timeViewZoom = computeTimeViewZoom();
+                        zoomLevel = defaultZoom;
+                        applyZoom();
                     }
                 } catch(e) {}
 
@@ -2010,8 +2013,11 @@ function updateBatteryDisplay() {
                             }
                         }
                         sphereGroup.quaternion.copy(rotationQuat);
+                        SPHERE_DIAMETER = SPHERE_RADIUS * 2;
                         defaultZoom = computeInitDistance();
                         timeViewZoom = computeTimeViewZoom();
+                        zoomLevel = defaultZoom;
+                        applyZoom();
                     }
                 });
             }
