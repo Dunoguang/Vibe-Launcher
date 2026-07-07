@@ -1,5 +1,4 @@
-import * as THREE from 'three';
-import * as WebGPU from 'three/webgpu';
+import * as THREE from 'three/webgpu';
 import html2canvas from 'html2canvas';
 window.THREE = THREE;
 
@@ -92,9 +91,9 @@ console.log("IIFE starting, THREE:", typeof THREE);
 let renderer = null, rendererType = 'unknown';
 
 // 1. Try WebGPU
-if (typeof WebGPU !== 'undefined' && typeof WebGPU.WebGPURenderer !== 'undefined') {
+if (typeof THREE.WebGPURenderer !== 'undefined') {
     try {
-        renderer = new WebGPU.WebGPURenderer({ antialias: true });
+        renderer = new THREE.WebGPURenderer({ antialias: true });
         await renderer.init();
         rendererType = 'WebGPU';
         console.log('✅ WebGPU renderer');
