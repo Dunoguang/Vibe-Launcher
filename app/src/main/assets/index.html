@@ -643,14 +643,14 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 const now = new Date();
                 const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
                 timeTextureUpdateInterval = setTimeout(() => {
-                    updateTimeSpriteTexture();
+                    renderTimePageToTexture();
                     try { updateBatteryFromNative(); } catch(e) {}
                     scheduleMinuteUpdate();
                 }, msToNextMinute + 50); // +50ms 确保跨过分钟边界
             };
 
             const startTimeTextureUpdates = () => {
-                updateTimeSpriteTexture();
+                renderTimePageToTexture();
                 scheduleMinuteUpdate();
             };
 
@@ -1932,7 +1932,7 @@ let _lastBatteryLevel = -1;
                         _lastBatteryLevel = level;
                         updateBatteryDisplay();
                         // 电量变化触发纹理更新
-                        if (isInTimeView) renderTimePageToTexture();
+                        renderTimePageToTexture();
                     }
                 } catch(e) {}
             };
@@ -1958,7 +1958,6 @@ let _lastBatteryLevel = -1;
                         const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
                         dateEl.textContent = (now.getMonth()+1) + '月' + now.getDate() + '日 ' + weekdays[now.getDay()];
                     }
-                    renderTimePageToTexture();
                 }
                 tick();
                 if (_timePageTimer) clearInterval(_timePageTimer);
@@ -1966,7 +1965,7 @@ let _lastBatteryLevel = -1;
                 updateBatteryFromNative();
             }
             startTimePageClock();
-            setTimeout(function() { renderTimePageToTexture(); }, 100);
+            // initial render handled in startTimePageClock
 
             document.addEventListener('visibilitychange', function() {
                 if (document.hidden) {
