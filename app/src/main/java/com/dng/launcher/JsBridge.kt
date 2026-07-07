@@ -18,6 +18,7 @@ import java.lang.ref.WeakReference
 import java.text.Collator
 import java.util.Locale
 import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.os.BatteryManager
 import android.net.Uri
 import java.util.concurrent.Executors
@@ -199,6 +200,33 @@ class JsBridge(context: Context, webView: WebView) {
             """{"success":true}"""
         } catch (e: Exception) {
             """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun setHotReload(enabled: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val prefs = ctx.getSharedPreferences("vibe_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("hot_reload_enabled", enabled).apply()
+            Log.d("VibeLauncher", "[JS] hotReload set to $enabled")
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getHotReload() {
+        executor.execute {
+            try {
+                val ctx = contextRef.get() ?: return@execute
+                val prefs = ctx.getSharedPreferences("vibe_prefs", Context.MODE_PRIVATE)
+                val enabled = prefs.getBoolean("hot_reload_enabled", false)
+                callback("_onHotReloadLoaded", """{"success":true,"enabled":$enabled}""")
+            } catch (e: Exception) {
+                callback("_onHotReloadLoaded", """{"success":false,"error":"${e.message}"}""")
+            }
         }
     }
 

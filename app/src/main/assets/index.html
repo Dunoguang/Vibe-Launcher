@@ -114,6 +114,15 @@
 #s-clear-cache:hover{background:rgba(255,80,80,0.15);color:#ff6b6b}
 #s-save{background:#8ab4f8;color:#000}
 #s-save:hover{background:#a0c8ff}
+
+#setting-hotreload{display:flex;align-items:center;justify-content:space-between}
+#setting-hotreload .toggle-desc{font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px}
+.toggle-switch{position:relative;width:48px;height:26px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.1);border-radius:26px;transition:0.25s}
+.toggle-slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.25s}
+.toggle-switch input:checked+.toggle-slider{background:#8ab4f8}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(22px)}
 </style>
 </head>
 <body>
@@ -177,6 +186,18 @@
                         <label class="layout-card" onclick="setRadio('layoutMode','hemisphere')"><input type="radio" name="layoutMode" value="hemisphere"><span>🌓 半球</span></label>
                         <label class="layout-card" onclick="setRadio('layoutMode','ring')"><input type="radio" name="layoutMode" value="ring"><span>🔄 竖环</span></label>
                         <label class="layout-card" onclick="setRadio('layoutMode','hbar')"><input type="radio" name="layoutMode" value="hbar"><span>↔ 横环</span></label>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <div id="setting-hotreload">
+                        <div>
+                            <div style="font-size:13px;color:rgba(255,255,255,0.8)">热加载HTML（调试）</div>
+                            <div class="toggle-desc">启用后重启App生效，从外部加载index.html</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="s-hotreload">
+                            <span class="toggle-slider"></span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -1155,6 +1176,16 @@ window._totalItems = totalItems;
                 });
             };
 
+            window._onHotReloadLoaded = function(json) {
+                try {
+                    const data = typeof json === 'string' ? JSON.parse(json) : json;
+                    if (data.success) {
+                        const cb = document.getElementById('s-hotreload');
+                        if (cb) cb.checked = data.enabled;
+                    }
+                } catch(e) {}
+            };
+
             window._onAppsLoaded = function(json) {
                 try {
                     const data = typeof json === 'string' ? JSON.parse(json) : json;
@@ -1591,6 +1622,8 @@ updateMouse(e.clientX, e.clientY);
                                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
                                 const sphereInput = document.getElementById('s-sphere');
                                 if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
+                                const hotreloadCb = document.getElementById('s-hotreload');
+                                if (hotreloadCb) hotreloadCb.checked = !!(saved.hotReload);
                                 if (saved.layoutMode) {
                                     const radios = document.getElementsByName('layoutMode');
                                     for (let ri = 0; ri < radios.length; ri++) {
@@ -1988,12 +2021,16 @@ const updateBatteryDisplay = () => {
                     for (let lr = 0; lr < layoutRadios.length; lr++) {
                         if (layoutRadios[lr].checked) { layoutVal = layoutRadios[lr].value; break; }
                     }
+                    const hotreloadCb = document.getElementById('s-hotreload');
+                    const hotreloadEnabled = hotreloadCb ? hotreloadCb.checked : false;
                     const settings = {
                         iconRes: iconRes ? iconRes.value : '512',
                         sphereSize: sphereSize || '2.5',
-                        layoutMode: layoutVal
+                        layoutMode: layoutVal,
+                        hotReload: hotreloadEnabled
                     };
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
+                    try { NativeBridge.setHotReload(hotreloadEnabled); } catch(e) {}
                     if (layoutMode !== layoutVal) { location.reload(); return; }
                     const prevIconRes = ICON_RES;
                     ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
