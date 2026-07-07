@@ -1270,7 +1270,7 @@ window._totalItems = totalItems;
             function onPointerDown(e) { try{NativeBridge.log('PDOWN');}catch(e){}
                 // 可取消动作进行中：任意新触摸取消
                 if (cancelableAction && cancelableAction.phase === 'animating') {
-                    cancelCurrentAction('new-touch');
+                    cancelCurrentAction('new-touch'); recentSpeeds = []; hasMoved = false; isDragging = false; return;
                 }
                 // 菜单打开时：点击画布关闭菜单，不触发拖动
                 if (contextMenuOpen) {
