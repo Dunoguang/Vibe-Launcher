@@ -1,7 +1,11 @@
 package com.dng.launcher
 
+import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import java.io.File
+import java.io.FileOutputStream
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -13,21 +17,45 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.content.SharedPreferences
 import androidx.activity.addCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "VibeLauncher"
+        private const val PREFS_KEY_ERROR_SHOWN = "error_dialog_shown"
     }
 
     private var webView: WebView? = null
+    private var errorDialogShown = false
+
+    private val exportLogLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val logFile = File(filesDir, "log.txt")
+                if (logFile.exists()) {
+                    contentResolver.openOutputStream(uri)?.use { out ->
+                        logFile.inputStream().use { it.copyTo(out) }
+                    }
+                    Log.d(TAG, "log exported to $uri")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "export failed: ${e.message}")
+            }
+        }
+    }
 
     @Suppress("deprecation")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setTitle(R.string.in_app_title)
         setContentView(R.layout.activity_main)
+
+        val prefs = getSharedPreferences("vibe_prefs", MODE_PRIVATE)
+        errorDialogShown = prefs.getBoolean(PREFS_KEY_ERROR_SHOWN, false)
 
         webView = findViewById(R.id.webView)
         webView?.let { wv ->
@@ -46,8 +74,13 @@ class MainActivity : AppCompatActivity() {
                     try {
                         File(filesDir, "log.txt").appendText(line + "\n")
                     } catch (_: Exception) {}
+
+                    if (msg.messageLevel() == ConsoleMessage.MessageLevel.ERROR && !errorDialogShown) {
+                        showErrorExportDialog()
+                    }
                     return true
                 }
+
                 override fun onJsAlert(view: WebView, url: String, message: String, result: android.webkit.JsResult): Boolean {
                     Log.d(TAG, "[ALERT] $message")
                     result.confirm()
@@ -58,15 +91,18 @@ class MainActivity : AppCompatActivity() {
                 override fun onPageFinished(view: WebView, url: String) {
                     Log.d(TAG, "onPageFinished: $url")
                 }
+
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                     Log.e(TAG, "onReceivedError: ${request.url} code=${error.errorCode} ${error.description}")
+                    if (!errorDialogShown) showErrorExportDialog()
                 }
+
                 override fun onReceivedError(view: WebView, errorCode: Int, description: String, failingUrl: String) {
                     Log.e(TAG, "onReceivedError(deprecated): $failingUrl code=$errorCode $description")
+                    if (!errorDialogShown) showErrorExportDialog()
                 }
             }
             wv.addJavascriptInterface(JsBridge(this, wv), "NativeBridge")
-            val prefs = getSharedPreferences("vibe_prefs", MODE_PRIVATE)
             val hotReload = prefs.getBoolean("hot_reload_enabled", false)
             val externalHtml = java.io.File(filesDir, "index.html")
             val loadPath = if (hotReload && externalHtml.exists()) {
@@ -81,8 +117,23 @@ class MainActivity : AppCompatActivity() {
 
         onBackPressedDispatcher.addCallback {
             webView?.evaluateJavascript("window._onBackPressed();", null)
-            // 定向到 JS 导航，不执行默认返回
         }
+    }
+
+    private fun showErrorExportDialog() {
+        errorDialogShown = true
+        getSharedPreferences("vibe_prefs", MODE_PRIVATE)
+            .edit().putBoolean(PREFS_KEY_ERROR_SHOWN, true).apply()
+
+        AlertDialog.Builder(this)
+            .setTitle("应用出现错误❌")
+            .setMessage("是否导出日志文件？")
+            .setPositiveButton("导出") { _, _ ->
+                exportLogLauncher.launch("vibe-launcher-error-log.txt")
+            }
+            .setNegativeButton("取消", null)
+            .setCancelable(false)
+            .show()
     }
 
     @Suppress("deprecation")
