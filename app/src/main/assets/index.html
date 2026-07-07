@@ -171,10 +171,6 @@
                     <input type="range" id="s-sphere" min="1" max="10" step="0.1" value="2.5">
                 </div>
                 <div class="setting-group">
-                    <div class="setting-label">动画速度 <span class="setting-val" id="s-speed-val">250ms</span></div>
-                    <input type="number" id="s-speed" min="10" max="5000" step="10" value="250" placeholder="250" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;font-size:14px;outline:none;">
-                </div>
-                <div class="setting-group">
                     <div class="setting-label">布局模式</div>
                     <div class="layout-grid">
                         <label class="layout-card" onclick="setRadio('layoutMode','sphere')"><input type="radio" name="layoutMode" value="sphere" checked><span>🌐 球体</span></label>
@@ -376,11 +372,7 @@ let renderer = null, rendererType = 'unknown';
             const FOV_RAD = THREE.MathUtils.degToRad(50);
             const MIN_ZOOM = 0.1;
             
-            let animSpeed = 250; // 动画速度 (ms)，可通过设置调整
-            try {
-                const _s = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
-                if (_s.animSpeed && parseInt(_s.animSpeed) >= 10) animSpeed = parseInt(_s.animSpeed);
-            } catch(e) {}
+            const ROTATION_ANIM_DURATION = 250; // 旋转动画时长
             const exitThresholdRatio = 0.35;
             let cancelableAction = null;
             let bottomSwipeData = null, topSwipeData = null;
@@ -452,12 +444,12 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                     rotDone: false, zoomDone: false, cancelled: false
                 };
                 inertiaQ.identity(); inertiaStrength = 0; infiniteInertia = false;
-                startRotationAnimation(rotTarget, animSpeed, function() {
+                startRotationAnimation(rotTarget, ROTATION_ANIM_DURATION, function() {
                     if (cancelableAction && !cancelableAction.cancelled) {
                         cancelableAction.rotDone = true; tryCommitCancelable();
                     }
                 });
-                startZoomAnimation(zoomTarget, animSpeed, function() {
+                startZoomAnimation(zoomTarget, ROTATION_ANIM_DURATION, function() {
                     zoomLevel = zoomTarget; applyZoom();
                     if (cancelableAction && !cancelableAction.cancelled) {
                         cancelableAction.zoomDone = true; tryCommitCancelable();
@@ -480,7 +472,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 cancelableAction.cancelled = true;
                 try { NativeBridge.log('cancel:' + reason); } catch(e) {}
                 cancelZoomAnimation();
-                startZoomAnimation(defaultZoom, animSpeed, function() {
+                startZoomAnimation(defaultZoom, 250, function() {
                     zoomLevel = defaultZoom; applyZoom();
                 });
                 cancelableAction = null;
@@ -545,7 +537,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                     from: rotationQuat.clone(),
                     to: targetQuat.clone(),
                     startTime: performance.now(),
-                    duration: duration || animSpeed,
+                    duration: duration || ROTATION_ANIM_DURATION,
                     callback: callback || null
                 };
                 if (callback && duration <= 0) {
@@ -645,7 +637,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 const targetZoom = computeTimeViewZoom();
                 timeViewZoom = targetZoom;
                 if (animate) {
-                    startZoomAnimation(targetZoom, animSpeed, function() {
+                    startZoomAnimation(targetZoom, 250, function() {
                         zoomLevel = targetZoom;
                         applyZoom();
                         if (onComplete) onComplete();
@@ -679,7 +671,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 }
                 const targetZoom = defaultZoom;
                 if (animate) {
-                    startZoomAnimation(targetZoom, animSpeed, function() {
+                    startZoomAnimation(targetZoom, 250, function() {
                         zoomLevel = targetZoom;
                         applyZoom();
                         if (callback) callback();
@@ -724,12 +716,12 @@ let zoomComplete = false, rotationComplete = false;
                     }
                 }
 
-                startRotationAnimation(targetQuat, animSpeed, function() {
+                startRotationAnimation(targetQuat, ROTATION_ANIM_DURATION, function() {
                     rotationComplete = true;
                     checkBothComplete();
                 });
 
-                startZoomAnimation(targetZoom, animSpeed, function() {
+                startZoomAnimation(targetZoom, ROTATION_ANIM_DURATION, function() {
                     zoomLevel = targetZoom;
                     applyZoom();
                     zoomComplete = true;
@@ -1132,7 +1124,7 @@ window._totalItems = totalItems;
                 if (overlay && overlay.style.display === "flex") {
                     overlay.style.display = "none";
                     canvas.style.pointerEvents = "auto";
-                    startZoomAnimation(defaultZoom, animSpeed, function() {
+                    startZoomAnimation(defaultZoom, 250, function() {
                         zoomLevel = defaultZoom;
                         applyZoom();
                     });
@@ -1506,7 +1498,7 @@ updateMouse(e.clientX, e.clientY);
                     if (sd.confirmed && zoomLevel <= sd.startTimeViewZoom + (defaultZoom - sd.startTimeViewZoom) * 0.5) {
                         returnToTimeView();
                     } else {
-                        startZoomAnimation(defaultZoom, animSpeed, function() { zoomLevel = defaultZoom; applyZoom(); });
+                        startZoomAnimation(defaultZoom, 250, function() { zoomLevel = defaultZoom; applyZoom(); });
                     }
                     return;
                 }
@@ -1531,7 +1523,7 @@ updateMouse(e.clientX, e.clientY);
                                 inertiaQ.copy(smallQ);
                             });
                         } else {
-                            startZoomAnimation(timeViewZoom, animSpeed, function() {
+                            startZoomAnimation(timeViewZoom, 250, function() {
                                 zoomLevel = timeViewZoom;
                                 applyZoom();
                                 // 恢复原生时间覆盖层
@@ -1541,7 +1533,7 @@ updateMouse(e.clientX, e.clientY);
                         }
                     } else {
                         if (Math.abs(zoomLevel - timeViewZoom) > 0.02) {
-                            startZoomAnimation(timeViewZoom, animSpeed, function() {
+                            startZoomAnimation(timeViewZoom, 250, function() {
                                 zoomLevel = timeViewZoom;
                                 applyZoom();
                                 const tp = document.getElementById('time-page');
@@ -1583,12 +1575,6 @@ updateMouse(e.clientX, e.clientY);
                                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
                                 const sphereInput = document.getElementById('s-sphere');
                                 if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
-                const speedInput = document.getElementById('s-speed');
-                if (saved.animSpeed && speedInput) speedInput.value = saved.animSpeed;
-                if (speedInput) {
-                    const speedVal = document.getElementById('s-speed-val');
-                    speedInput.addEventListener('input', function() { if (speedVal) speedVal.textContent = speedInput.value + 'ms'; });
-                }
                                 if (saved.layoutMode) {
                                     const radios = document.getElementsByName('layoutMode');
                                     for (let ri = 0; ri < radios.length; ri++) {
@@ -1634,10 +1620,10 @@ updateMouse(e.clientX, e.clientY);
                         if (currentZoom >= thresholdZoom) {
                             exitTimeView(true);
                         } else {
-                            startZoomAnimation(timeViewZoom, animSpeed);
+                            startZoomAnimation(timeViewZoom, 250);
                         }
                     } else {
-                        startZoomAnimation(timeViewZoom, animSpeed);
+                        startZoomAnimation(timeViewZoom, 250);
                     }
                     document.body.style.cursor = 'default';
                 }
@@ -1656,10 +1642,10 @@ updateMouse(e.clientX, e.clientY);
                         if (currentZoom >= thresholdZoom) {
                             exitTimeView(true);
                         } else {
-                            startZoomAnimation(timeViewZoom, animSpeed);
+                            startZoomAnimation(timeViewZoom, 250);
                         }
                     } else {
-                        startZoomAnimation(timeViewZoom, animSpeed);
+                        startZoomAnimation(timeViewZoom, 250);
                     }
                 }
                 if (activePointerIds.size === 0) {
@@ -1727,7 +1713,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                         if (zoomLevel >= thresholdZoom) {
                             exitTimeView(true);
                         } else {
-                            startZoomAnimation(timeViewZoom, animSpeed);
+                            startZoomAnimation(timeViewZoom, 250);
                         }
                     }
                     pinchStartDist = 0;
@@ -1884,7 +1870,7 @@ const updateBatteryDisplay = () => {
                     const tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
                 } else if (!document.hidden && zoomLevel < defaultZoom - 0.1 && !isInTimeView && zoomTarget === null) {
-                    startZoomAnimation(defaultZoom, animSpeed, function() {
+                    startZoomAnimation(defaultZoom, 250, function() {
                         zoomLevel = defaultZoom;
                         applyZoom();
                     });
@@ -1947,12 +1933,6 @@ const updateBatteryDisplay = () => {
                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
                 const sphereInput = document.getElementById('s-sphere');
                 if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
-                const speedInput = document.getElementById('s-speed');
-                if (saved.animSpeed && speedInput) speedInput.value = saved.animSpeed;
-                if (speedInput) {
-                    const speedVal = document.getElementById('s-speed-val');
-                    speedInput.addEventListener('input', function() { if (speedVal) speedVal.textContent = speedInput.value + 'ms'; });
-                }
                 if (saved.layoutMode) {
                     const radios = document.getElementsByName('layoutMode');
                     for (let ri = 0; ri < radios.length; ri++) {
@@ -1963,7 +1943,7 @@ const updateBatteryDisplay = () => {
                 backBtn.addEventListener('click', function() {
                     overlay.style.display = 'none';
                     canvas.style.pointerEvents = 'auto';
-                    startZoomAnimation(defaultZoom, animSpeed, function() {
+                    startZoomAnimation(defaultZoom, 250, function() {
                         zoomLevel = defaultZoom;
                         applyZoom();
                     });
@@ -1992,15 +1972,12 @@ const updateBatteryDisplay = () => {
                     for (let lr = 0; lr < layoutRadios.length; lr++) {
                         if (layoutRadios[lr].checked) { layoutVal = layoutRadios[lr].value; break; }
                     }
-                    const speedEl = document.getElementById('s-speed');
                     const settings = {
                         iconRes: iconRes ? iconRes.value : '512',
                         sphereSize: sphereSize || '2.5',
-                        layoutMode: layoutVal,
-                        animSpeed: speedEl ? speedEl.value : '250'
+                        layoutMode: layoutVal
                     };
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
-                    if (settings.animSpeed) animSpeed = Math.max(10, parseInt(settings.animSpeed) || 250);
                     if (layoutMode !== layoutVal) { location.reload(); return; }
                     const prevIconRes = ICON_RES;
                     ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
@@ -2060,7 +2037,6 @@ const updateBatteryDisplay = () => {
                     }
                     settings.sphereSize = '' + inputR;
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
-                    if (settings.animSpeed) animSpeed = Math.max(10, parseInt(settings.animSpeed) || 250);
 
                     if (sphereGroup && inputR > 0) {
                         SPHERE_RADIUS = parseFloat(settings.sphereSize);
