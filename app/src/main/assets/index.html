@@ -65,7 +65,56 @@
             pointer-events: none;
             transition: opacity 0.4s ease;
         }
-    </style>
+    #settings-overlay {
+    position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;
+    background:rgba(0,0,0,0.6);display:none;justify-content:center;align-items:center;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+#settings-card {
+    background:rgba(22,22,36,0.95);border-radius:20px;width:88vw;max-width:400px;
+    overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);
+    animation:slideUp 0.3s ease;
+}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+#settings-header {
+    display:flex;justify-content:space-between;align-items:center;
+    padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.06);
+}
+#settings-title{font-size:18px;font-weight:700;color:#fff}
+#settings-close-btn{font-size:20px;color:rgba(255,255,255,0.4);cursor:pointer;padding:4px 8px}
+#settings-close-btn:hover{color:#fff}
+#settings-body{padding:16px 20px}
+.setting-group{margin-bottom:20px}
+.setting-label{font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px;display:flex;justify-content:space-between}
+.setting-val{color:#8ab4f8;font-weight:600}
+.setting-group input[type=range]{
+    width:100%;height:6px;-webkit-appearance:none;appearance:none;
+    background:rgba(255,255,255,0.08);border-radius:3px;outline:none;
+}
+.setting-group input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:22px;height:22px;border-radius:50%;
+    background:#8ab4f8;cursor:pointer;box-shadow:0 2px 8px rgba(138,180,248,0.4);
+}
+.layout-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.layout-card{
+    padding:12px 10px;border-radius:10px;text-align:center;cursor:pointer;
+    background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.06);
+    font-size:13px;color:rgba(255,255,255,0.6);transition:all 0.2s;
+}
+.layout-card.active,.layout-card:has(input:checked){background:rgba(138,180,248,0.12);border-color:#8ab4f8;color:#fff}
+.layout-card input{display:none}
+#settings-footer{
+    display:flex;gap:10px;padding:16px 20px;border-top:1px solid rgba(255,255,255,0.06);
+}
+#settings-footer button{
+    flex:1;padding:12px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;
+    transition:all 0.2s;
+}
+#s-clear-cache{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5)}
+#s-clear-cache:hover{background:rgba(255,80,80,0.15);color:#ff6b6b}
+#s-save{background:#8ab4f8;color:#000}
+#s-save:hover{background:#a0c8ff}
+</style>
 </head>
 <body>
     <div id="time-page" style="
@@ -106,53 +155,36 @@
             cursor:pointer; white-space:nowrap;
         ">🗑 卸载</div>
     </div>
-    <div id="settings-overlay" style="
-        position:fixed; top:0; left:0; right:0; bottom:0;
-        background:rgba(0,0,0,0.85); z-index:50; display:none; pointer-events:auto;
-        color:#fff; font-family:sans-serif;
-    ">
-        <div id="settings-back" style="
-            position:absolute; top:16px; left:16px; font-size:18px;
-            cursor:pointer; color:rgba(255,255,255,0.7); padding:8px 12px;
-        ">← 返回</div>
-        <div style="position:absolute; top:18px; left:0; right:0; text-align:center; font-size:20px; font-weight:bold;">Vibe Launcher设置</div>
-        <div style="position:absolute; top:70px; left:20px; right:20px; bottom:80px; overflow-y:auto;">
-            <div style="margin-bottom:16px; font-size:14px; color:rgba(255,255,255,0.6);">图标分辨率</div>
-            <div id="settings-icon-res" style="display:flex; align-items:center; gap:8px;">
-                    <input id="settings-icon-input" type="number" value="512" min="16" step="16" style="flex:1; padding:14px; font-size:16px; background:#1a1a2e; color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:8px; outline:none;">
-                    <span style="font-size:14px; color:rgba(255,255,255,0.4); white-space:nowrap;">px（默认512）</span>
-                </div>
-            <div style="margin:20px 0 16px 0; font-size:14px; color:rgba(255,255,255,0.6);">布局模式</div>
-            <div id="settings-layout-mode" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:6px;">
-                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="radio" name="layoutMode" value="sphere" checked style="accent-color:#4a90d9;">
-                    <span style="font-size:14px;">球体</span>
-                </label>
-                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="radio" name="layoutMode" value="hemisphere" style="accent-color:#4a90d9;">
-                    <span style="font-size:14px;">半球</span>
-                </label>
-                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="radio" name="layoutMode" value="ring" style="accent-color:#4a90d9;">
-                    <span style="font-size:14px;">竖环</span>
-                </label>
-                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="radio" name="layoutMode" value="hbar" style="accent-color:#4a90d9;">
-                    <span style="font-size:14px;">横环</span>
-                </label>
-
+    <div id="settings-overlay">
+        <div id="settings-card">
+            <div id="settings-header">
+                <span id="settings-title">⚙ 设置</span>
+                <span id="settings-close-btn">✕</span>
             </div>
-            <div style="margin:20px 0 16px 0; font-size:14px; color:rgba(255,255,255,0.6);">3D球体大小</div>
-            <div id="settings-sphere-size" style="display:flex; align-items:center; gap:8px;">
-                    <input id="settings-sphere-input" type="number" value="2.5" min="0" style="flex:1; padding:14px; font-size:16px; background:#1a1a2e; color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:8px; outline:none;">
-                    <span id="sphere-min-hint" style="font-size:14px; color:rgba(255,255,255,0.4); white-space:nowrap;">最少 —</span>
+            <div id="settings-body">
+                <div class="setting-group">
+                    <div class="setting-label">图标分辨率 <span class="setting-val" id="s-icon-val">512px</span></div>
+                    <input type="range" id="s-icon" min="64" max="1024" step="16" value="512">
                 </div>
+                <div class="setting-group">
+                    <div class="setting-label">球体大小 <span class="setting-val" id="s-sphere-val">2.5</span></div>
+                    <input type="range" id="s-sphere" min="1" max="10" step="0.1" value="2.5">
+                </div>
+                <div class="setting-group">
+                    <div class="setting-label">布局模式</div>
+                    <div class="layout-grid">
+                        <label class="layout-card" onclick="setRadio('layoutMode','sphere')"><input type="radio" name="layoutMode" value="sphere" checked><span>🌐 球体</span></label>
+                        <label class="layout-card" onclick="setRadio('layoutMode','hemisphere')"><input type="radio" name="layoutMode" value="hemisphere"><span>🌓 半球</span></label>
+                        <label class="layout-card" onclick="setRadio('layoutMode','ring')"><input type="radio" name="layoutMode" value="ring"><span>🔄 竖环</span></label>
+                        <label class="layout-card" onclick="setRadio('layoutMode','hbar')"><input type="radio" name="layoutMode" value="hbar"><span>↔ 横环</span></label>
+                    </div>
+                </div>
+            </div>
+            <div id="settings-footer">
+                <button id="s-clear-cache">清除图标缓存</button>
+                <button id="s-save">保存</button>
+            </div>
         </div>
-        <div id="settings-save" style="
-            position:absolute; bottom:40px; left:20px; right:20px;
-            padding:14px; text-align:center; font-size:16px; font-weight:bold;
-            background:#4a90d9; border-radius:10px; cursor:pointer;
-        ">保存</div>
     </div>
     <div class="app-label" id="appLabel"></div>
     <div class="loading-indicator" id="loadingIndicator"></div>
@@ -958,7 +990,7 @@ window._totalItems = totalItems;
 
                 // 更新最小球体半径提示
                 const minR = (BASE_SCALE * 0.44 * 1.1) / Math.sqrt(Math.PI / Math.max(1, sprites.length));
-                const hint = document.getElementById('sphere-min-hint');
+                const hint = null;
                 if (hint) hint.textContent = '最少 ' + minR.toFixed(2) + '（默认2.5）';
 
                 // 启动时应用已保存的球体大小
@@ -1198,7 +1230,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                 const top = Math.min(y, window.innerHeight - mh);
                 menu.style.left = Math.max(0, left) + 'px';
                 menu.style.top = Math.max(0, top) + 'px';
-                menu.style.display = 'block';
+                menu.style.display = 'flex';
             }
             const hideContextMenu = () => {
                 const menu = document.getElementById('context-menu');
@@ -1503,9 +1535,9 @@ updateMouse(e.clientX, e.clientY);
                             startCancelableAction(hoveredSprite, targetQuat, appZoom, function() {
                                 let saved = {};
                                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
-                                const iconInput = document.getElementById('settings-icon-input');
+                                const iconInput = document.getElementById('s-icon');
                                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
-                                const sphereInput = document.getElementById('settings-sphere-input');
+                                const sphereInput = document.getElementById('s-sphere');
                                 if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
                                 if (saved.layoutMode) {
                                     const radios = document.getElementsByName('layoutMode');
@@ -1513,7 +1545,7 @@ updateMouse(e.clientX, e.clientY);
                                         if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
                                     }
                                 }
-                                document.getElementById('settings-overlay').style.display = 'block';
+                                document.getElementById('settings-overlay').style.display = 'flex';
                                 canvas.style.pointerEvents = "none";
                             });
                         } else if (app && app.packageName === '__time__') {
@@ -1816,21 +1848,16 @@ const updateBatteryDisplay = () => {
             });
 
             // 全局设置选项切换
-            window.setRadio = function(group, el) {
-                const val = el.getAttribute('data-val');
-                console.log('setRadio', group, val);
-                const btns = document.querySelectorAll('#' + group + ' .settings-radio');
-                btns.forEach(function(b) {
-                    if (b === el) {
-                        b.style.background = '#4a90d9';
-                        b.style.color = '#fff';
-                        b.style.borderColor = '#4a90d9';
-                        b.classList.add('active');
-                    } else {
-                        b.style.background = '#1a1a2e';
-                        b.style.color = 'rgba(255,255,255,0.6)';
-                        b.style.borderColor = 'rgba(255,255,255,0.2)';
-                        b.classList.remove('active');
+            window.setRadio = function(group, val) {
+                const cards = document.querySelectorAll('.layout-card');
+                cards.forEach(function(c) {
+                    const radio = c.querySelector('input[name="' + group + '"]');
+                    if (radio && radio.value === val) {
+                        radio.checked = true;
+                        c.classList.add('active');
+                    } else if (radio) {
+                        radio.checked = false;
+                        c.classList.remove('active');
                     }
                 });
             }
@@ -1855,8 +1882,8 @@ const updateBatteryDisplay = () => {
 
             const initSettingsPanel = () => {
                 const overlay = document.getElementById('settings-overlay');
-                const backBtn = document.getElementById('settings-back');
-                const saveBtn = document.getElementById('settings-save');
+                const backBtn = document.getElementById('settings-close-btn');
+                const saveBtn = document.getElementById('s-save');
 
                 // Load from localStorage
                 let saved = {};
@@ -1866,9 +1893,9 @@ const updateBatteryDisplay = () => {
 // Radio clicks now use inline onclick="setRadio(...)" — see HTML
 
                 // Apply saved values
-                const iconInput = document.getElementById('settings-icon-input');
+                const iconInput = document.getElementById('s-icon');
                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
-                const sphereInput = document.getElementById('settings-sphere-input');
+                const sphereInput = document.getElementById('s-sphere');
                 if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
                 if (saved.layoutMode) {
                     const radios = document.getElementsByName('layoutMode');
@@ -1886,9 +1913,24 @@ const updateBatteryDisplay = () => {
                     });
                 });
 
+                const clearBtn = document.getElementById('s-clear-cache');
+                clearBtn.addEventListener('click', function() {
+                    if (nativeBridgeReady) {
+                        NativeBridge.clearIconCache();
+                        clearBtn.textContent = '已清除 ✓';
+                        clearBtn.style.background = 'rgba(46,204,113,0.15)';
+                        clearBtn.style.color = '#2ecc71';
+                        setTimeout(() => {
+                            clearBtn.textContent = '清除图标缓存';
+                            clearBtn.style.background = '';
+                            clearBtn.style.color = '';
+                        }, 2000);
+                    }
+                });
+
                 saveBtn.addEventListener('click', function() {
-                    const iconRes = document.getElementById('settings-icon-input');
-                    const sphereSize = document.getElementById('settings-sphere-input').value;
+                    const iconRes = document.getElementById('s-icon');
+                    const sphereSize = document.getElementById('s-sphere').value;
                     const layoutRadios = document.getElementsByName('layoutMode');
                     let layoutVal = 'sphere';
                     for (let lr = 0; lr < layoutRadios.length; lr++) {
