@@ -127,9 +127,19 @@ class MainActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle("应用出现错误❌")
-            .setMessage("是否导出日志文件？")
+            .setMessage("是否导出或分享日志文件？")
             .setPositiveButton("导出") { _, _ ->
                 exportLogLauncher.launch("vibe-launcher-error-log.txt")
+            }
+            .setNeutralButton("分享") { _, _ ->
+                val logFile = File(filesDir, "log.txt")
+                val text = if (logFile.exists()) logFile.readText() else "日志为空"
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "Vibe Launcher 错误日志")
+                    putExtra(Intent.EXTRA_TEXT, text)
+                }
+                startActivity(Intent.createChooser(intent, "分享日志"))
             }
             .setNegativeButton("取消", null)
             .setCancelable(false)
