@@ -1149,7 +1149,7 @@ window._totalItems = totalItems;
                 // 兜底：重置摄像头拉近（保留当前朝向，500ms动画）
                 inertiaQ.identity();
                 inertiaStrength = 0;
-                startZoomAnimation(defaultZoom, 500, function() {
+                startZoomAnimation(defaultZoom, 250, function() {
                     zoomLevel = defaultZoom;
                     applyZoom();
                 });
