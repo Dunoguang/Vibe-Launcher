@@ -646,8 +646,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 const wait = (60 - sec) * 1000 - ms + 50;
                 console.log('SCHEDULE: next update in ' + (wait/1000).toFixed(1) + 's (now ' + sec + 's ' + ms + 'ms)');
                 timeTextureUpdateInterval = setTimeout(() => {
-                    console.log('SCHEDULE: firing! ' + new Date().toTimeString().split(' ')[0]);
-                    try { renderTimePageToTexture(); } catch(e) { console.log('SCHEDULE render error: ' + e); }
+                    renderTimePageToTexture();
                     try { updateBatteryFromNative(); } catch(e) {}
                     scheduleMinuteUpdate();
                 }, wait);
@@ -659,10 +658,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             };
 
             const stopTimeTextureUpdates = () => {
-                if (timeTextureUpdateInterval) {
-                    clearTimeout(timeTextureUpdateInterval);
-                    timeTextureUpdateInterval = null;
-                }
+                // 不再清除全局分钟调度器，仅保留接口兼容
             };
 
             // ========== 进入/退出时间视图 ==========
