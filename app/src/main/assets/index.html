@@ -410,7 +410,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
                 if (!cancelableAction || cancelableAction.cancelled) return;
                 cancelableAction.cancelled = true;
                 try { NativeBridge.log('cancel:' + reason); } catch(e) {}
-                cancelZoomAnimation(); rotationAnimData = null;
+                cancelZoomAnimation();
                 startZoomAnimation(defaultZoom, 250, function() {
                     zoomLevel = defaultZoom; applyZoom();
                 });
