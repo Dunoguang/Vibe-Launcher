@@ -862,12 +862,22 @@ window._totalItems = totalItems;
                 const isHbar = (layoutMode === 'hbar');
                 const isFlatring = (layoutMode === 'flatring');
 
+                // 半球模式：复制透明占位精灵填充后半球
+                if (isHemi) {
+                    const bc = totalItems.length;
+                    for (let ri = 0; ri < bc; ri++) {
+                        totalItems.push({
+                            type: 'redTest',
+                            data: { packageName: '__red__' + ri, appName: '', isSystem: true },
+                            colorIndex: bc + ri
+                        });
+                    }
+                }
+
                 const N = totalItems.length;
-                // 半球模式：生成 2N 个点，只取前半球 (z>0)
-                const pointCount = isHemi ? N * 2 : N;
                 let ringRadius = 0;
                 if (isRing || isHbar || isFlatring) {
-                    ringRadius = Math.max(SPHERE_RADIUS, (pointCount * BASE_SCALE * 1.1) / (2 * Math.PI));
+                    ringRadius = Math.max(SPHERE_RADIUS, (N * BASE_SCALE * 1.1) / (2 * Math.PI));
                     SPHERE_RADIUS = ringRadius;
                     SPHERE_DIAMETER = SPHERE_RADIUS * 2;
                     defaultZoom = isFlatring ? ringRadius * 0.09 : ringRadius * 1.15;
@@ -875,7 +885,7 @@ window._totalItems = totalItems;
                     applyZoom();
                 }
 
-                let rawPoints = sphereCoulomb(pointCount, { radius: SPHERE_RADIUS, iter: 500 });
+                let rawPoints = sphereCoulomb(N, { radius: SPHERE_RADIUS, iter: 500 });
 
                 const timeItemIndex = totalItems.findIndex(function(item) { return item.type === 'time'; });
                 const timeRaw = rawPoints[timeItemIndex];
@@ -909,11 +919,8 @@ window._totalItems = totalItems;
                         v.applyQuaternion(alignQuat);
                         return v;
                     });
-                    // 半球模式：只取前半球 (z>0) 的 N 个点
                     if (isHemi) {
                         allRotated.sort(function(a, b) { return b.z - a.z; });
-                        allRotated = allRotated.slice(0, N);
-                        console.log('HEMI: result ' + allRotated.length + ' points');
                     }
                 }
                 const rotatedPoints = allRotated;
