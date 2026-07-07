@@ -1,6 +1,7 @@
 package com.dng.launcher
 
 import android.graphics.Bitmap
+import java.io.File
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -39,7 +40,16 @@ class MainActivity : AppCompatActivity() {
             wv.overScrollMode = View.OVER_SCROLL_NEVER
             wv.webChromeClient = object : WebChromeClient() {
                 override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
-                    Log.d(TAG, "[${msg.messageLevel()}] ${msg.sourceId()}:${msg.lineNumber()} - ${msg.message()}")
+                    val line = "[${msg.messageLevel()}] ${msg.sourceId()}:${msg.lineNumber()} - ${msg.message()}"
+                    Log.d(TAG, line)
+                    try {
+                        File(filesDir, "log.txt").appendText(line + "\n")
+                    } catch (_: Exception) {}
+                    return true
+                }
+                override fun onJsAlert(view: WebView, url: String, message: String, result: android.webkit.JsResult): Boolean {
+                    Log.d(TAG, "[ALERT] $message")
+                    result.confirm()
                     return true
                 }
             }
@@ -67,8 +77,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         onBackPressedDispatcher.addCallback {
-            if (webView?.canGoBack() == true) webView?.goBack()
-            else { isEnabled = false; onBackPressedDispatcher.onBackPressed(); isEnabled = true }
+            webView?.evaluateJavascript("window._onBackPressed();", null)
+            // 定向到 JS 导航，不执行默认返回
         }
     }
 
