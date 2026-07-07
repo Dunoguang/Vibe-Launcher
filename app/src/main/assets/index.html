@@ -985,11 +985,8 @@ window._totalItems = totalItems;
                 }
             }
             function hideLoadingIfReady() {
-                console.log('hideLoadingIfReady enterAnimComplete:', enterAnimationComplete, 'loadingEl:', !!loadingEl);
-                if (enterAnimationComplete && loadingEl) {
+                if (loadingEl) {
                     loadingEl.style.display = 'none';
-                    loadingEl.textContent = '';
-                    console.log('loading HIDDEN');
                 }
             }
 
