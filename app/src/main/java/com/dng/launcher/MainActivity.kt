@@ -114,7 +114,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         onBackPressedDispatcher.addCallback {
-            webView?.evaluateJavascript("window._onBackPressed();", null)
+            webView?.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
         }
     }
 

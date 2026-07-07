@@ -6,11 +6,11 @@ export default defineConfig({
   plugins: [viteSingleFile()],
   resolve: {
     alias: {
-      'three/webgpu': 'three/src/Three.WebGPU.js'
+      'three/webgpu': 'three/build/three.webgpu.js'
     }
   },
   build: {
     minify: 'terser',
-    target:'es2015'
+    target: 'es2020'
   }
 });
