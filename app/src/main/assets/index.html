@@ -1115,6 +1115,11 @@ window._totalItems = totalItems;
 
 
             window._onBackPressed = function() {
+                // 优先级：菜单 > 设置 > 动画 > 时间视图
+                if (contextMenuOpen) {
+                    hideContextMenu();
+                    return;
+                }
                 var overlay = document.getElementById("settings-overlay");
                 if (overlay && overlay.style.display === "flex") {
                     overlay.style.display = "none";
@@ -1123,6 +1128,10 @@ window._totalItems = totalItems;
                         zoomLevel = defaultZoom;
                         applyZoom();
                     });
+                    return;
+                }
+                if (cancelableAction && cancelableAction.phase === 'animating') {
+                    cancelCurrentAction('back');
                     return;
                 }
                 if (isInTimeView) {
