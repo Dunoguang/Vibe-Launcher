@@ -1738,7 +1738,7 @@ updateMouse(e.clientX, e.clientY);
             // ========== 缩放 ==========
             const onWheel = (e) => {
                 if (isInTimeView) return;
-                try { e.preventDefault(); } catch (ex) {}
+                if (e.cancelable) e.preventDefault();
                 zoomLevel += e.deltaY * 0.01;
                 zoomLevel = Math.max(MIN_ZOOM, zoomLevel);
                 applyZoom();
@@ -1769,7 +1769,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
 
             const onTouchMove = (e) => {
                 if (e.touches.length === 2) {
-                    try { e.preventDefault(); } catch (ex) {}
+                    if (e.cancelable) e.preventDefault();
                     const dist = getTouchDist(e.touches);
                     if (pinchStartDist > 0) {
                         const ratio = pinchStartDist / dist;
