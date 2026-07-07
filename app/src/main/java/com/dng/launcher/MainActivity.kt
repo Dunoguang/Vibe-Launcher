@@ -24,11 +24,10 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "VibeLauncher"
-        private const val PREFS_KEY_ERROR_SHOWN = "error_dialog_shown"
     }
 
     private var webView: WebView? = null
-    private var errorDialogShown = false
+    private var errorDialogShown = false  // 每次启动重置
 
     private val exportLogLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain")
@@ -55,7 +54,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val prefs = getSharedPreferences("vibe_prefs", MODE_PRIVATE)
-        errorDialogShown = prefs.getBoolean(PREFS_KEY_ERROR_SHOWN, false)
 
         webView = findViewById(R.id.webView)
         webView?.let { wv ->
@@ -122,8 +120,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun showErrorExportDialog() {
         errorDialogShown = true
-        getSharedPreferences("vibe_prefs", MODE_PRIVATE)
-            .edit().putBoolean(PREFS_KEY_ERROR_SHOWN, true).apply()
 
         AlertDialog.Builder(this)
             .setTitle("应用出现错误❌")
