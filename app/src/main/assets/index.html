@@ -179,7 +179,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
             }
 
             // ========== 球面库仑斥力分布（Thomson 问题）==========
-            function sphereCoulomb(N, opts = {}) {
+            const sphereCoulomb = (N, opts = {}) => {
                 const { radius = 1, iter = 400, damp = 0.985, dt = 0.03, tol = 1e-6, soft = 0.01 } = opts;
                 if (N <= 0) return [];
                 if (N === 1) return [[0, 0, radius]];
@@ -342,7 +342,7 @@ let SPHERE_RADIUS = 2.5, layoutMode = 'sphere';
             
             const ROTATION_ANIM_DURATION = 400; // 旋转动画时长
 
-            function computeInitDistance() {
+            const computeInitDistance = () => {
                 const w = window.innerWidth;
                 let h = window.innerHeight;
                 const shortEdgeFactor = Math.min(1, w / h);
@@ -355,7 +355,7 @@ let zoomLevel = computeInitDistance(), defaultZoom = zoomLevel;
 
             function applyZoom() { camera.position.z = zoomLevel; }
 
-            function computeTimeViewZoom() {
+            const computeTimeViewZoom = () => {
                 const R = BASE_SCALE * 0.44;
                 const fovHalfRad = THREE.MathUtils.degToRad(camera.fov / 2);
                 const aspect = window.innerWidth / window.innerHeight;
@@ -370,7 +370,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             // ========== 可取消动作状态机 ==========
             let cancelableAction = null;
 
-            function startCancelableAction(sprite, rotTarget, zoomTarget, onCommit) {
+            const startCancelableAction = (sprite, rotTarget, zoomTarget, onCommit) => {
                 if (cancelableAction) cancelCurrentAction('superseded');
                 cancelableAction = {
                     sprite: sprite, onCommit: onCommit, phase: 'animating',
@@ -437,11 +437,11 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 zoomAnimCallback = null;
             }
 
-            function easeOutCubic(t) {
+            const easeOutCubic = (t) => {
                 return 1 - Math.pow(1 - t, 3);
             }
 
-            function updateZoomAnimation(now) {
+            const updateZoomAnimation = (now) => {
                 if (zoomTarget === null) return;
                 zoomAnimElapsed = now - zoomAnimStart;
                 let t = Math.min(1, zoomAnimElapsed / zoomAnimDuration);
@@ -457,7 +457,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 }
             }
 
-            function updateRotationAnimation(now) {
+            const updateRotationAnimation = (now) => {
                 if (!rotationAnimData) return;
                 const elapsed = now - rotationAnimData.startTime;
                 let t = Math.min(1, elapsed / rotationAnimData.duration);
@@ -490,7 +490,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             }
 
             // ========== 设置纹理 ==========
-            function createGearTexture() {
+            const createGearTexture = () => {
                 console.log('createGearTexture size:', ICON_RES);
                 const s = Math.max(16, ICON_RES), ca = document.createElement('canvas');
                 ca.width = s; ca.height = s;
@@ -512,7 +512,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             }
 
             // ========== 时间纹理 ==========
-            function createTimeTexture() {
+            const createTimeTexture = () => {
                 const s = Math.max(window.innerWidth, window.innerHeight);
                 let c = document.createElement('canvas');
                 c.width = s;
@@ -540,7 +540,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 return tex;
             }
 
-            function updateTimeSpriteTexture() {
+            const updateTimeSpriteTexture = () => {
                 if (!timeSprite || !timeSprite.material) return;
                 const newTex = createTimeTexture();
                 if (timeSprite.material.map) {
@@ -550,7 +550,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 timeSprite.material.needsUpdate = true;
             }
 
-            function startTimeTextureUpdates() {
+            const startTimeTextureUpdates = () => {
                 stopTimeTextureUpdates();
                 updateTimeSpriteTexture();
                 timeTextureUpdateInterval = setInterval(async function() {
@@ -563,7 +563,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             function stopTimeTextureUpdates() {}
 
             // ========== 进入/退出时间视图 ==========
-            function enterTimeView(animate, onComplete) {
+            const enterTimeView = (animate, onComplete) => {
                 if (isInTimeView || !timeSprite) return;
                 isInTimeView = true;
                 cancelZoomAnimation();
@@ -595,7 +595,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 }
             }
 
-            function exitTimeView(animate, callback) {
+            const exitTimeView = (animate, callback) => {
                 if (!isInTimeView) return;
                 isInTimeView = false;
                 // 隐藏原生时间页面
@@ -625,7 +625,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             }
 
             // 点击时间图标返回时间视图
-            function returnToTimeView() {
+            const returnToTimeView = () => {
                 if (isInTimeView || !timeSprite) return;
                 isInTimeView = true;
                 // 取消当前所有动画
@@ -648,7 +648,7 @@ let zoomComplete = false, rotationComplete = false;
                 const targetZoom = computeTimeViewZoom();
                 timeViewZoom = targetZoom;
 
-                function checkBothComplete() {
+                const checkBothComplete = () => {
                     if (zoomComplete && rotationComplete) {
                         const tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
@@ -679,7 +679,7 @@ let zoomComplete = false, rotationComplete = false;
                 '#63e6be', '#66d9e8', '#74c0fc', '#91a7ff', '#b197fc',
             ];
 
-            function createPlaceholderTexture(appName, colorHex) {
+            const createPlaceholderTexture = (appName, colorHex) => {
                 console.log('createPlaceholderTexture', appName, 'size:', ICON_RES);
                 const s = Math.max(16, ICON_RES),
                     c = document.createElement('canvas');
@@ -714,7 +714,7 @@ let zoomComplete = false, rotationComplete = false;
                 return tex;
             }
 
-            function createIconTextureFromImage(img) {
+            const createIconTextureFromImage = (img) => {
                 const s = 512,
                     cx = s / 2,
                     cy = s / 2,
@@ -746,7 +746,7 @@ let zoomComplete = false, rotationComplete = false;
             // ========== 精灵管理 ==========
 let apps = [], sprites = [];
 
-            function clearAllSprites() {
+            const clearAllSprites = () => {
                 stopTimeTextureUpdates();
                 for (let i = 0; i < sprites.length; i++) {
                     const s = sprites[i];
@@ -762,7 +762,7 @@ let apps = [], sprites = [];
 
 let pendingIconLoads = 0, enterAnimationComplete = false;
 
-            function createSprites(appList, iconMap) {
+            const createSprites = (appList, iconMap) => {
                 clearAllSprites();
 
                 const totalItems = [];
@@ -1019,7 +1019,7 @@ window._totalItems = totalItems;
             // ========== NativeBridge ==========
             let nativeBridgeReady = false;
 
-            function tryLoadApps() {
+            const tryLoadApps = () => {
                 if (typeof NativeBridge !== 'undefined' && NativeBridge.requestInstalledApps) {
                     nativeBridgeReady = true;
                     NativeBridge.requestInstalledApps();
@@ -1123,7 +1123,7 @@ let inertiaStrength = 0, infiniteInertia = false;
 let hoveredSprite = null, longPressTimer = null, longPressFired = false, contextMenuOpen = false;
             const LONG_PRESS_MS = 600;
 
-            function screenToSphere(sx, sy) {
+            const screenToSphere = (sx, sy) => {
                 const rect = canvas.getBoundingClientRect();
 let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = new THREE.Vector3();
                 v.x = nx * 2 - 1;
@@ -1141,7 +1141,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                 return v.normalize();
             }
 
-            function updateMouse(cx, cy) {
+            const updateMouse = (cx, cy) => {
                 const rect = canvas.getBoundingClientRect();
                 mouse.x = ((cx - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((cy - rect.top) / rect.height) * 2 + 1;
@@ -1149,7 +1149,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
 
             function getAppBySprite(s) { return s && s.userData ? s.userData.app : null; }
 
-            function checkHover(e) {
+            const checkHover = (e) => {
                 if (isInTimeView) return;
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects(sprites);
@@ -1182,11 +1182,11 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                 }
             }
 
-            function clearLongPressTimer() {
+            const clearLongPressTimer = () => {
                 if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
                 
             }
-            function showContextMenu(sprite, x, y) {
+            const showContextMenu = (sprite, x, y) => {
                 const menu = document.getElementById('context-menu');
                 if (!menu) return;
                 const app = getAppBySprite(sprite);
@@ -1199,7 +1199,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                 menu.style.top = Math.max(0, top) + 'px';
                 menu.style.display = 'block';
             }
-            function hideContextMenu() {
+            const hideContextMenu = () => {
                 const menu = document.getElementById('context-menu');
                 if (menu) menu.style.display = 'none';
                 NativeBridge.log("menu-closed");
@@ -1217,7 +1217,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
 
             function quatAngle(q) { return 2 * Math.acos(Math.min(1, Math.abs(q.w))); }
 
-            function startInertiaFromSpeeds() {
+            const startInertiaFromSpeeds = () => {
                 if (recentSpeeds.length > 0) {
                     let sum = 0;
                     for (let i = 0; i < recentSpeeds.length; i++) sum += recentSpeeds[i];
@@ -1226,7 +1226,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                 recentSpeeds = [];
             }
 
-            function resetAllPointers() {
+            const resetAllPointers = () => {
                 activePointerIds.clear();
                 isDragging = false;
                 hasMoved = false;
@@ -1235,10 +1235,10 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                 document.body.style.cursor = isInTimeView ? 'default' : (hoveredSprite ? 'pointer' : 'grab');
             }
 
-            function isInBottomZone(clientY) {
+            const isInBottomZone = (clientY) => {
                 return clientY > window.innerHeight * (1 - BOTTOM_ZONE_RATIO);
             }
-            function isInTopZone(clientY) {
+            const isInTopZone = (clientY) => {
                 return clientY < window.innerHeight * TOP_ZONE_RATIO;
             }
 
@@ -1329,7 +1329,7 @@ updateMouse(e.clientX, e.clientY);
                 }
             }
 
-            function onPointerMove(e) {
+            const onPointerMove = (e) => {
                 if (contextMenuOpen) { activePointerIds.delete(e.pointerId); return; }
                 // 可取消动作进行中 + 拖动 = 取消
                 if (cancelableAction && cancelableAction.phase === 'animating' && isDragging && hasMoved) {
@@ -1420,7 +1420,7 @@ updateMouse(e.clientX, e.clientY);
                 prevScreen.copy(curr);
             }
 
-            function onPointerUp(e) {
+            const onPointerUp = (e) => {
                 if (contextMenuOpen) { activePointerIds.delete(e.pointerId); if (activePointerIds.size===0) document.body.style.cursor='default'; return; }
                 try{NativeBridge.log("PU drag:"+isDragging+" move:"+hasMoved+" hov:"+!!hoveredSprite+" tv:"+isInTimeView);}catch(e){}
                 if (!isInTimeView && topSwipeData && topSwipeData.pointerId === e.pointerId && topSwipeData.active) {
@@ -1535,7 +1535,7 @@ updateMouse(e.clientX, e.clientY);
                 }
             }
 
-            function onPointerLeave(e) {
+            const onPointerLeave = (e) => {
                 if (activePointerIds.has(e.pointerId) && activePointerIds.size === 1 && isDragging && !hasMoved && !isInTimeView) {
                     clearHover();
                 }
@@ -1560,7 +1560,7 @@ updateMouse(e.clientX, e.clientY);
                 }
             }
 
-            function onPointerCancel(e) {
+            const onPointerCancel = (e) => {
                 activePointerIds.delete(e.pointerId);
                 if (isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId) {
                     const bsd = bottomSwipeData;
@@ -1589,7 +1589,7 @@ updateMouse(e.clientX, e.clientY);
             }
 
             // ========== 缩放 ==========
-            function onWheel(e) {
+            const onWheel = (e) => {
                 if (isInTimeView) return;
                 try { e.preventDefault(); } catch (ex) {}
                 zoomLevel += e.deltaY * 0.01;
@@ -1599,12 +1599,12 @@ updateMouse(e.clientX, e.clientY);
 
 let pinchStartDist = 0, pinchStartZoom = zoomLevel, wasPinching = false;
 
-            function getTouchDist(touches) {
+            const getTouchDist = (touches) => {
 let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touches[1].clientY;
                 return Math.sqrt(dx * dx + dy * dy);
             }
 
-            function onTouchStart(e) {
+            const onTouchStart = (e) => {
                 if (e.touches.length === 2) {
                     pinchStartDist = getTouchDist(e.touches);
                     pinchStartZoom = zoomLevel;
@@ -1620,7 +1620,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 }
             }
 
-            function onTouchMove(e) {
+            const onTouchMove = (e) => {
                 if (e.touches.length === 2) {
                     try { e.preventDefault(); } catch (ex) {}
                     const dist = getTouchDist(e.touches);
@@ -1636,7 +1636,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 }
             }
 
-            function onTouchEnd(e) {
+            const onTouchEnd = (e) => {
                 if (e.touches.length < 2) {
                     if (wasPinching && isInTimeView && zoomLevel > timeViewZoom + 0.15) {
                         const zoomRange = defaultZoom - timeViewZoom;
@@ -1700,7 +1700,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             });
 
             // ========== 动画循环 ==========
-            function animate(timestamp) {
+            const animate = (timestamp) => {
                 requestAnimationFrame(animate);
                 const now = timestamp || performance.now();
                 updateZoomAnimation(now);
@@ -1724,7 +1724,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             }
 
             let _timePageTimer = null;
-            function renderTimePageToTexture() {
+            const renderTimePageToTexture = () => {
                 const page = document.getElementById('time-page');
                 if (!page || !timeSprite || !timeSprite.material || typeof html2canvas === 'undefined') return;
                 const s = Math.max(window.innerWidth, window.innerHeight);
@@ -1767,7 +1767,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     if (oldMap && oldMap !== tex) oldMap.dispose();
                 }).catch(function(e) { console.warn('html2canvas error:', e); if (page.style.zIndex !== '100') page.style.visibility = 'hidden'; });
             }
-function updateBatteryDisplay() {
+const updateBatteryDisplay = () => {
                 try {
                     const batteryEl = document.getElementById('time-page-battery');
                     if (!batteryEl) return;
@@ -1778,10 +1778,10 @@ function updateBatteryDisplay() {
                     }
                 } catch(e) {}
             }
-            function startTimePageClock() {
+            const startTimePageClock = () => {
                 const el = document.getElementById('time-page-clock');
                 if (!el) return;
-                function tick() {
+                const tick = () => {
                     const now = new Date();
                     el.textContent = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
                     const dateEl = document.getElementById('time-page-date');
@@ -1854,7 +1854,7 @@ function updateBatteryDisplay() {
                 });
             }
 
-            function initSettingsPanel() {
+            const initSettingsPanel = () => {
                 const overlay = document.getElementById('settings-overlay');
                 const backBtn = document.getElementById('settings-back');
                 const saveBtn = document.getElementById('settings-save');
