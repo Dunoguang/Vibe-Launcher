@@ -411,15 +411,11 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 cancelableAction = null;
             }
 
-            let bottomSwipeData = null;
-                topSwipeData = null;
-            let topSwipeData = null;
-            const TOP_ZONE_RATIO = 0.15;
-            const BOTTOM_ZONE_RATIO = 0.15;
-            const BOTTOM_ZONE_RATIO = 0.22;
+            let bottomSwipeData = null, topSwipeData = null;
+            const TOP_ZONE_RATIO = 0.15, BOTTOM_ZONE_RATIO = 0.15;
 
             // 缩放动画
-let zoomTarget = null, zoomAnimStart = null, zoomAnimDuration = 0, zoomAnimElapsed = 0, zoomAnimStartVal = 0, zoomAnimEndVal = 0, zoomAnimCallback = null;
+            let zoomTarget = null, zoomAnimStart = null, zoomAnimDuration = 0, zoomAnimElapsed = 0, zoomAnimStartVal = 0, zoomAnimEndVal = 0, zoomAnimCallback = null;
 
             // 旋转动画（用于点击时间图标返回时间视图）
             let rotationAnimData = null;
