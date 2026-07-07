@@ -896,17 +896,25 @@ window._totalItems = totalItems;
                     indexed.sort((a, b) => b.p.z - a.p.z);
                     const newPts = indexed.map(x => x.p);
                     const newItems = indexed.map(x => totalItems[x.i]);
-                    // 把 time 和 settings 强制提到最前面
-                    const front = [], rest = [];
+                    // 分离 time/settings 和其他 app
+                    const frontItems = [], restItems = [];
                     for (let zi = 0; zi < newItems.length; zi++) {
                         if (newItems[zi].type === 'time' || newItems[zi].type === 'settings') {
-                            front.push({ pt: newPts[zi], item: newItems[zi] });
+                            frontItems.push(newItems[zi]);
                         } else {
-                            rest.push({ pt: newPts[zi], item: newItems[zi] });
+                            restItems.push(newItems[zi]);
                         }
                     }
-                    front.sort((a, b) => (a.item.type === 'time' ? -1 : 1));
-                    const merged = front.concat(rest);
+                    // time 排最前, settings 第二
+                    frontItems.sort((a, b) => (a.type === 'time' ? -1 : (b.type === 'time' ? 1 : 0)));
+                    // 重组: frontItems 拿最靠近摄像机的点 (newPts[0..]), restItems 拿其余点
+                    const merged = [];
+                    for (let zi = 0; zi < frontItems.length; zi++) {
+                        merged.push({ pt: newPts[zi], item: frontItems[zi] });
+                    }
+                    for (let zi = 0; zi < restItems.length; zi++) {
+                        merged.push({ pt: newPts[frontItems.length + zi], item: restItems[zi] });
+                    }
                     for (let zi = 0; zi < rotatedPoints.length; zi++) {
                         rotatedPoints[zi] = merged[zi].pt;
                         totalItems[zi] = merged[zi].item;
