@@ -178,7 +178,170 @@ console.log("IIFE starting, THREE:", typeof THREE);
                 return;
             }
 
-            // ========== 球面库仑斥力分布（Thomson 问题）==========
+            
+            // ================================================================
+            // CLASS: State — centralized mutable state
+            // ================================================================
+            class State {
+                constructor() {
+                    // Rendering
+                    this.scene = null; this.camera = null; this.renderer = null;
+                    this.rendererType = "unknown"; this.sphereGroup = null;
+                    this.sprites = []; this.canvas = null;
+
+                    // Layout
+                    this.SPHERE_RADIUS = 2.5; this.SPHERE_DIAMETER = 5;
+                    this.layoutMode = "sphere";
+
+                    // Camera
+                    this.zoomLevel = 0; this.defaultZoom = 0; this.timeViewZoom = 0;
+                    this.rotationQuat = new THREE.Quaternion();
+
+                    // Time view
+                    this.isInTimeView = false; this.timeSprite = null;
+                    this.timeTextureUpdateInterval = null;
+
+                    // Drag / gesture
+                    this.isDragging = false; this.hasMoved = false;
+                    this.prevScreen = new THREE.Vector2();
+                    this.mouse = new THREE.Vector2();
+                    this.hoveredSprite = null;
+
+                    // Cancelable actions
+                    this.cancelableAction = null;
+
+                    // Animations
+                    this.zoomTarget = null; this.zoomAnimStart = null;
+                    this.zoomAnimDuration = 0; this.zoomAnimElapsed = 0;
+                    this.zoomAnimStartVal = 0; this.zoomAnimEndVal = 0;
+                    this.zoomAnimCallback = null;
+                    this.rotationAnimData = null;
+
+                    // Inertia
+                    this.inertiaQ = new THREE.Quaternion();
+                    this.inertiaStrength = 0; this.infiniteInertia = false;
+                    this.recentSpeeds = [];
+
+                    // Swipe
+                    this.bottomSwipeData = null; this.topSwipeData = null;
+
+                    // Touch
+                    this.activePointerIds = new Set();
+                    this.longPressTimer = null; this.longPressFired = false;
+                    this.contextMenuOpen = false; this.lastTap = 0;
+                    this.wasPinching = false; this.pinchStartDist = 0;
+                    this.pinchStartZoom = 0;
+
+                    // Icons & loading
+                    this.ICON_RES = 512; this.pendingIconLoads = 0;
+                    this.enterAnimationComplete = false;
+                    this.nativeBridgeReady = false;
+                    this.appList = []; this.totalItems = [];
+                    this._allPkgs = null;
+                }
+
+                resetDrag() {
+                    this.isDragging = false; this.hasMoved = false;
+                    this.recentSpeeds = [];
+                }
+
+                resetPointers() {
+                    this.activePointerIds.clear(); this.resetDrag();
+                    this.bottomSwipeData = null; this.topSwipeData = null;
+                }
+            }
+
+            const S = new State();
+
+            // ================================================================
+            // CLASS: Animator — unified animation controller
+            // ================================================================
+            class Animator {
+                easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+                applyZoom() { S.camera.position.z = S.zoomLevel; }
+
+                startZoom(targetVal, duration, callback) {
+                    S.zoomAnimStart = performance.now();
+                    S.zoomAnimDuration = duration || 500;
+                    S.zoomAnimStartVal = S.zoomLevel;
+                    S.zoomAnimEndVal = targetVal;
+                    S.zoomAnimElapsed = 0;
+                    S.zoomTarget = targetVal;
+                    S.zoomAnimCallback = callback || null;
+                }
+
+                cancelZoom() {
+                    S.zoomTarget = null; S.zoomAnimStart = null;
+                    S.zoomAnimDuration = 0; S.zoomAnimCallback = null;
+                }
+
+                updateZoom(now) {
+                    if (S.zoomTarget === null) return;
+                    S.zoomAnimElapsed = now - S.zoomAnimStart;
+                    const t = Math.min(1, S.zoomAnimElapsed / S.zoomAnimDuration);
+                    const eased = this.easeOutCubic(t);
+                    S.zoomLevel = S.zoomAnimStartVal + (S.zoomAnimEndVal - S.zoomAnimStartVal) * eased;
+                    this.applyZoom();
+                    if (t >= 1) {
+                        S.zoomLevel = S.zoomAnimEndVal; this.applyZoom();
+                        const cb = S.zoomAnimCallback; this.cancelZoom();
+                        if (cb) cb();
+                    }
+                }
+
+                startRotation(targetQuat, duration, callback) {
+                    S.rotationAnimData = {
+                        from: S.rotationQuat.clone(),
+                        to: targetQuat.clone(),
+                        startTime: performance.now(),
+                        duration: duration || ROTATION_ANIM_DURATION,
+                        callback: callback || null
+                    };
+                }
+
+                updateRotation(now) {
+                    if (!S.rotationAnimData) return;
+                    const elapsed = now - S.rotationAnimData.startTime;
+                    const t = Math.min(1, elapsed / S.rotationAnimData.duration);
+                    const eased = this.easeOutCubic(t);
+                    S.rotationQuat.copy(S.rotationAnimData.from).slerp(S.rotationAnimData.to, eased);
+                    S.sphereGroup.quaternion.copy(S.rotationQuat);
+                    if (t >= 1) {
+                        S.rotationQuat.copy(S.rotationAnimData.to);
+                        S.sphereGroup.quaternion.copy(S.rotationQuat);
+                        const cb = S.rotationAnimData.callback;
+                        S.rotationAnimData = null;
+                        if (cb) cb();
+                    }
+                }
+
+                updateInertia() {
+                    if (S.inertiaStrength > INERTIA_MIN && !S.isInTimeView && !S.rotationAnimData) {
+                        const decay = (S.isDragging && S.hasMoved) ? INERTIA_FAST_DECAY : INERTIA_DECAY;
+                        const factor = Math.min(S.inertiaStrength, 1.0);
+                        const applyQ = new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(), S.inertiaQ, factor);
+                        S.rotationQuat.premultiply(applyQ); S.rotationQuat.normalize();
+                        S.sphereGroup.quaternion.copy(S.rotationQuat);
+                        if (!S.infiniteInertia) {
+                            S.inertiaStrength *= decay;
+                            if (S.inertiaStrength < INERTIA_MIN) { S.inertiaStrength = 0; S.inertiaQ.identity(); }
+                        }
+                    }
+                }
+
+                update(timestamp) {
+                    const now = timestamp || performance.now();
+                    this.updateZoom(now);
+                    this.updateRotation(now);
+                    this.updateInertia();
+                    S.renderer.render(S.scene, S.camera);
+                }
+            }
+
+            const anim = new Animator();
+
+// ========== 球面库仑斥力分布（Thomson 问题）==========
             const sphereCoulomb = (N, opts = {}) => {
                 const { radius = 1, iter = 400, damp = 0.985, dt = 0.03, tol = 1e-6, soft = 0.01 } = opts;
                 if (N <= 0) return [];
