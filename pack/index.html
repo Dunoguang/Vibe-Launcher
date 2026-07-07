@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D 桌面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000000;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        body:active {
+            cursor: grabbing;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .app-label {
+            position: fixed;
+            pointer-events: none;
+            z-index: 10;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 500;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 6px 12px;
+            border-radius: 8px;
+            letter-spacing: 0.03em;
+            opacity: 0;
+            transform: translate(-50%, -130%);
+            transition: opacity 0.15s ease;
+            white-space: nowrap;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+        }
+        .app-label.visible {
+            opacity: 1;
+        }
+        .loading-indicator {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.38);
+            font-size: 14px;
+            letter-spacing: 0.05em;
+            z-index: 20;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+    #settings-overlay {
+    position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;
+    background:rgba(0,0,0,0.6);display:none;justify-content:center;align-items:center;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+#settings-card {
+    background:rgba(22,22,36,0.95);border-radius:20px;width:88vw;max-width:400px;
+    overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);
+    animation:slideUp 0.3s ease;
+}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+#settings-header {
+    display:flex;justify-content:space-between;align-items:center;
+    padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.06);
+}
+#settings-title{font-size:18px;font-weight:700;color:#fff}
+#settings-close-btn{font-size:20px;color:rgba(255,255,255,0.4);cursor:pointer;padding:4px 8px}
+#settings-close-btn:hover{color:#fff}
+#settings-body{padding:16px 20px}
+.setting-group{margin-bottom:20px}
+.setting-label{font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px;display:flex;justify-content:space-between}
+.setting-val{color:#8ab4f8;font-weight:600}
+.setting-group input[type=range]{
+    width:100%;height:6px;-webkit-appearance:none;appearance:none;
+    background:rgba(255,255,255,0.08);border-radius:3px;outline:none;
+}
+.setting-group input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:22px;height:22px;border-radius:50%;
+    background:#8ab4f8;cursor:pointer;box-shadow:0 2px 8px rgba(138,180,248,0.4);
+}
+.layout-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.layout-card{
+    padding:12px 10px;border-radius:10px;text-align:center;cursor:pointer;
+    background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.06);
+    font-size:13px;color:rgba(255,255,255,0.6);transition:all 0.2s;
+}
+.layout-card.active,.layout-card:has(input:checked){background:rgba(138,180,248,0.12);border-color:#8ab4f8;color:#fff}
+.layout-card input{display:none}
+#settings-footer{
+    display:flex;gap:10px;padding:16px 20px;border-top:1px solid rgba(255,255,255,0.06);
+}
+#settings-footer button{
+    flex:1;padding:12px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;
+    transition:all 0.2s;
+}
+#s-clear-cache{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5)}
+#s-clear-cache:hover{background:rgba(255,80,80,0.15);color:#ff6b6b}
+#s-save{background:#8ab4f8;color:#000}
+#s-save:hover{background:#a0c8ff}
+
+#setting-hotreload{display:flex;align-items:center;justify-content:space-between}
+#setting-hotreload .toggle-desc{font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px}
+.toggle-switch{position:relative;width:48px;height:26px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.1);border-radius:26px;transition:0.25s}
+.toggle-slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.25s}
+.toggle-switch input:checked+.toggle-slider{background:#8ab4f8}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(22px)}
+</style>
+</head>
+<body>
+    <div id="time-page" style="
+        position:fixed; top:0; left:0; width:100vw; height:100vh;
+        visibility:hidden; z-index:-1;
+        background:#0a0e18; color:#fff;
+        font-family:'SF Pro Display','Segoe UI','PingFang SC','Helvetica Neue',sans-serif;
+    ">
+        <div id="time-page-clock" style="
+            position:absolute; top:5vh; left:0; right:0;
+            text-align:center; font-size:26vw; font-weight:bold;
+            color:#fff;
+            text-shadow:0 0 3vw rgba(255,255,255,0.4);
+        ">12:00</div>
+        <div id="time-page-date" style="
+            position:absolute; top:22vh; left:0; right:0;
+            text-align:center; font-size:5vw;
+            color:rgba(255,255,255,0.7);
+        ">1月1日 周一</div>
+        <div id="time-page-battery" style="
+            position:absolute; bottom:5vh; left:0; right:0;
+            text-align:center; font-size:4vw;
+            color:rgba(255,255,255,0.5);
+        ">🔋 --%</div>
+    </div>
+    <div id="context-menu" style="
+        position:fixed; z-index:90; display:none; pointer-events:auto;
+        background:#1a1a2e; border:1px solid rgba(255,255,255,0.2);
+        border-radius:12px; padding:6px 0; min-width:140px; flex-direction:column;
+        box-shadow:0 8px 24px rgba(0,0,0,0.5);
+    ">
+        <div id="ctx-app-info" style="
+            padding:12px 18px; font-size:16px; color:#fff;
+            cursor:pointer; white-space:nowrap;
+        ">📋 应用信息</div>
+        <div id="ctx-uninstall" style="
+            padding:12px 18px; font-size:16px; color:#ff6b6b;
+            cursor:pointer; white-space:nowrap;
+        ">🗑 卸载</div>
+    </div>
+    <div id="settings-overlay">
+        <div id="settings-card">
+            <div id="settings-header">
+                <span id="settings-title">⚙ 设置</span>
+                <span id="settings-close-btn">✕</span>
+            </div>
+            <div id="settings-body">
+                <div class="setting-group">
+                    <div class="setting-label">图标分辨率 <span class="setting-val" id="s-icon-val">512px</span></div>
+                    <input type="range" id="s-icon" min="64" max="1024" step="16" value="512">
+                </div>
+                <div class="setting-group">
+                    <div class="setting-label">3D球体大小</div>
+                    <div id="settings-sphere-size" style="display:flex;align-items:center;gap:8px;">
+                        <input id="settings-sphere-input" type="number" value="2.5" min="0" step="0.1" style="flex:1;padding:12px;font-size:15px;background:#1a1a2e;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;outline:none;">
+                        <span id="sphere-min-hint" style="font-size:13px;color:rgba(255,255,255,0.4);white-space:nowrap;">最少 —</span>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <div class="setting-label">动画速度 <span style="font-size:12px;color:rgba(255,255,255,0.4);">(ms)</span></div>
+                    <input id="settings-anim-input" type="number" value="250" min="10" max="5000" step="10" style="width:100%;padding:12px;font-size:15px;background:#1a1a2e;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;outline:none;">
+                </div>
+                <div class="setting-group">
+                    <div class="setting-label">布局模式</div>
+                    <div class="layout-grid">
+                        <label class="layout-card" onclick="setRadio('layoutMode','sphere')"><input type="radio" name="layoutMode" value="sphere" checked><span>🌐 球体</span></label>
+                        <label class="layout-card" onclick="setRadio('layoutMode','hemisphere')"><input type="radio" name="layoutMode" value="hemisphere"><span>🌓 半球</span></label>
+                        <label class="layout-card" onclick="setRadio('layoutMode','ring')"><input type="radio" name="layoutMode" value="ring"><span>🔄 竖环</span></label>
+                        <label class="layout-card" onclick="setRadio('layoutMode','hbar')"><input type="radio" name="layoutMode" value="hbar"><span>↔ 横环</span></label>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <div id="setting-hotreload">
+                        <div>
+                            <div style="font-size:13px;color:rgba(255,255,255,0.8)">热加载HTML（调试）</div>
+                            <div class="toggle-desc">启用后重启App生效，从外部加载index.html</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="s-hotreload">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div id="settings-footer">
+                <button id="s-clear-cache">清除图标缓存</button>
+                <button id="s-save">保存</button>
+            </div>
+        </div>
+    </div>
+    <div class="app-label" id="appLabel"></div>
+    <div class="loading-indicator" id="loadingIndicator"></div>
+    <script type="module" src="/main.js"></script>
+</body>
+</html>
