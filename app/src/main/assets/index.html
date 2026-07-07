@@ -88,7 +88,7 @@ const FOV_RAD = THREE.MathUtils.degToRad(FOV);
 const MIN_ZOOM = 0.1;
 const ROTATION_ANIM_DURATION = 400;
 const DRAG_THRESHOLD = 3;
-const INERTIA_DECAY = 0.975;
+const INERTIA_DECAY = 0.92;
 const INERTIA_FAST_DECAY = 0.85;
 const INERTIA_MIN = 0.001;
 const LONG_PRESS_MS = 600;
@@ -250,7 +250,7 @@ const sphereCoulomb = (N, opts = {}) => {
 // ================================================================
 const initScene = async () => {
     $.scene = new THREE.Scene();
-    $.scene.background = new THREE.Color(0x111118);
+    $.scene.background = new THREE.Color(0x000000);
 
     $.camera = new THREE.PerspectiveCamera(FOV, window.innerWidth / window.innerHeight, 0.1, FAR_PLANE);
 
@@ -279,12 +279,12 @@ const initScene = async () => {
     console.log('Renderer:', $.rendererType);
 
     // Lighting
-    const amb = new THREE.AmbientLight(0x334455, 2.5);
+    const amb = new THREE.AmbientLight(0x8899bb, 2.4);
     $.scene.add(amb);
     const dl = new THREE.DirectionalLight(0xffffff, 1.8);
     dl.position.set(1, 1, 2);
     $.scene.add(dl);
-    const dl2 = new THREE.DirectionalLight(0x8899cc, 0.6);
+    const dl2 = new THREE.DirectionalLight(0x8899cc, 0.9);
     dl2.position.set(-1, -0.5, -1);
     $.scene.add(dl2);
 
@@ -668,8 +668,8 @@ class Gestures {
     startInertia() {
         if ($.speeds.length > 0) {
             let sum = 0; for (let i = 0; i < $.speeds.length; i++) sum += $.speeds[i];
-            $.iStrength = Math.min(1.5, Math.max(0.3, sum / $.speeds.length * 80));
-        } else $.iStrength = 0.6;
+            $.iStrength = Math.min(1.5, Math.max(0.3, sum / $.speeds.length * 40));
+        } else $.iStrength = 0.3;
         $.speeds = [];
     }
     pinchDist(touches) {
@@ -991,8 +991,10 @@ const initBridge = () => {
 
 // App list callback (called by NativeBridge)
 window._onAppsLoaded = (data) => {
+    console.log('_onAppsLoaded called, apps:', data ? (typeof data === 'string' ? data.substring(0,80) : 'object') : 'null');
     const parsed = typeof data === 'string' ? JSON.parse(data) : data;
     const apps = (parsed.apps || []).filter(a => a.packageName !== 'com.dng.launcher');
+    console.log('_onAppsLoaded: ' + apps.length + ' apps');
     $.apps = apps;
     $.totalItems = [
         { type: 'time', app: null },
@@ -1029,6 +1031,7 @@ window._onIconsLoaded = (iconData) => {
 const loadApps = () => {
     if (!$.bridgeReady) { setTimeout(loadApps, 500); return; }
     try {
+        console.log('loadApps: requesting...');
         NativeBridge.requestInstalledApps();
     } catch (e) {
         console.error('loadApps error:', e);
@@ -1138,6 +1141,29 @@ const init = async () => {
         if (saved.layoutMode) { $.layoutMode = saved.layoutMode; const r = document.querySelector(`input[name="layoutMode"][value="${saved.layoutMode}"]`); if (r) r.checked = true; }
     } catch(e) {}
     setTimeout(loadApps, 100);
+    // Fallback: if no apps after 3s, create demo sphere
+    setTimeout(() => {
+        if ($.sprites.length === 0) {
+            console.log('No apps loaded, creating demo sphere');
+            const demo = [
+                { packageName: 'demo.1', appName: '时钟', isSystem: true },
+                { packageName: 'demo.2', appName: '相册', isSystem: true },
+                { packageName: 'demo.3', appName: '音乐', isSystem: false },
+                { packageName: 'demo.4', appName: '浏览器', isSystem: false },
+                { packageName: 'demo.5', appName: '日历', isSystem: true },
+                { packageName: 'demo.6', appName: '计算器', isSystem: true },
+            ];
+            $.apps = demo;
+            $.totalItems = [
+                { type: 'time', app: null },
+                ...demo.map(a => ({ type: 'app', app: a })),
+                { type: 'settings', app: { packageName: '__settings__', appName: '设置', isSystem: true } },
+            ];
+            createSprites(demo, null);
+            $.loadingEl.style.opacity = '0';
+            setTimeout(() => { if ($.loadingEl.parentNode) $.loadingEl.remove(); }, 500);
+        }
+    }, 3000);
 
     // Start loop
     const loop = (ts) => { anim.update(ts); requestAnimationFrame(loop); };
