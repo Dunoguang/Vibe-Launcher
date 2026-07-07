@@ -1,2190 +1,1047 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D 桌面</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        html,
-        body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: #000000;
-            cursor: grab;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: none;
-            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-        }
-        body:active {
-            cursor: grabbing;
-        }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-        .app-label {
-            position: fixed;
-            pointer-events: none;
-            z-index: 10;
-            color: #ffffff;
-            font-size: 13px;
-            font-weight: 500;
-            background: rgba(0, 0, 0, 0.75);
-            padding: 6px 12px;
-            border-radius: 8px;
-            letter-spacing: 0.03em;
-            opacity: 0;
-            transform: translate(-50%, -130%);
-            transition: opacity 0.15s ease;
-            white-space: nowrap;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
-        }
-        .app-label.visible {
-            opacity: 1;
-        }
-        .loading-indicator {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: rgba(255, 255, 255, 0.38);
-            font-size: 14px;
-            letter-spacing: 0.05em;
-            z-index: 20;
-            pointer-events: none;
-            transition: opacity 0.4s ease;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Vibe Launcher</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif}
+body:active{cursor:grabbing}
+canvas{display:block}
+#loading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:5vw;z-index:200;transition:opacity .4s}
+#time-page{position:fixed;top:0;left:0;width:100vw;height:100vh;visibility:hidden;z-index:-1;background:#0a0e18;color:#fff}
+#time-page-clock{position:absolute;top:5vh;left:0;right:0;text-align:center;font-size:26vw;font-weight:700;text-shadow:0 0 3vw rgba(255,255,255,.4)}
+#time-page-date{position:absolute;top:22vh;left:0;right:0;text-align:center;font-size:5vw;color:rgba(255,255,255,.7)}
+#time-page-battery{position:absolute;bottom:5vh;left:0;right:0;text-align:center;font-size:4vw;color:rgba(255,255,255,.5)}
+#context-menu{position:fixed;z-index:90;display:none;background:rgba(30,30,40,.95);border-radius:12px;padding:6px 0;min-width:130px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+#context-menu div{padding:10px 18px;font-size:14px;color:#ddd;cursor:pointer}
+#context-menu div:hover{background:rgba(255,255,255,.1)}
+#settings-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.7);z-index:80;display:none;justify-content:center;align-items:center;color:#fff}
+#settings-panel{background:rgba(30,30,45,.95);border-radius:16px;padding:24px;width:80vw;max-width:380px}
+#settings-panel h3{margin:0 0 16px;font-size:18px}
+#settings-panel label{display:block;margin:12px 0 4px;font-size:13px;color:#aaa}
+#settings-panel input[type=range],#settings-panel input[type=number]{width:100%;margin-bottom:8px}
+#settings-panel button{margin-top:16px;padding:10px 20px;border:none;border-radius:8px;font-size:14px;cursor:pointer}
+#settings-close{background:0 0;color:#aaa;border:1px solid #aaa;margin-right:8px}
+#settings-save{background:#4a90d9;color:#fff}
+.layout-options{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.layout-options label{margin:0;font-size:12px;color:#ccc}
+#appLabel{position:fixed;bottom:6vh;left:50%;transform:translateX(-50%);color:#fff;font-size:3.5vw;z-index:50;text-align:center;pointer-events:none;text-shadow:0 0 10px rgba(0,0,0,.7);transition:opacity .2s}
+</style>
 </head>
 <body>
-    <div id="time-page" style="
-        position:fixed; top:0; left:0; width:100vw; height:100vh;
-        visibility:hidden; z-index:-1;
-        background:#0a0e18; color:#fff;
-        font-family:'SF Pro Display','Segoe UI','PingFang SC','Helvetica Neue',sans-serif;
-    ">
-        <div id="time-page-clock" style="
-            position:absolute; top:5vh; left:0; right:0;
-            text-align:center; font-size:26vw; font-weight:bold;
-            color:#fff;
-            text-shadow:0 0 3vw rgba(255,255,255,0.4);
-        ">12:00</div>
-        <div id="time-page-date" style="
-            position:absolute; top:22vh; left:0; right:0;
-            text-align:center; font-size:5vw;
-            color:rgba(255,255,255,0.7);
-        ">1月1日 周一</div>
-        <div id="time-page-battery" style="
-            position:absolute; bottom:5vh; left:0; right:0;
-            text-align:center; font-size:4vw;
-            color:rgba(255,255,255,0.5);
-        ">🔋 --%</div>
+<div id="loading">加载中...</div>
+<div id="time-page">
+  <div id="time-page-clock">12:00</div>
+  <div id="time-page-date">1月1日 周一</div>
+  <div id="time-page-battery">🔋 --%</div>
+</div>
+<div id="context-menu">
+  <div id="ctx-app-info">应用信息</div>
+  <div id="ctx-uninstall">卸载</div>
+</div>
+<div id="settings-overlay">
+  <div id="settings-panel">
+    <h3>设置</h3>
+    <label>图标分辨率: <span id="settings-icon-val">512</span></label>
+    <input id="settings-icon-input" type="range" min="64" max="1024" step="16" value="512">
+    <label>球体大小: <span id="settings-sphere-val">2.5</span></label>
+    <input id="settings-sphere-input" type="range" min="1" max="10" step="0.1" value="2.5">
+    <label>布局模式:</label>
+    <div class="layout-options">
+      <label><input type="radio" name="layoutMode" value="sphere" checked> 球体</label>
+      <label><input type="radio" name="layoutMode" value="hemisphere"> 半球</label>
+      <label><input type="radio" name="layoutMode" value="ring"> 环</label>
+      <label><input type="radio" name="layoutMode" value="hbar"> 水平条</label>
     </div>
-    <div id="context-menu" style="
-        position:fixed; z-index:90; display:none; pointer-events:auto;
-        background:#1a1a2e; border:1px solid rgba(255,255,255,0.2);
-        border-radius:12px; padding:6px 0; min-width:140px;
-        box-shadow:0 8px 24px rgba(0,0,0,0.5);
-    ">
-        <div id="ctx-app-info" style="
-            padding:12px 18px; font-size:16px; color:#fff;
-            cursor:pointer; white-space:nowrap;
-        ">📋 应用信息</div>
-        <div id="ctx-uninstall" style="
-            padding:12px 18px; font-size:16px; color:#ff6b6b;
-            cursor:pointer; white-space:nowrap;
-        ">🗑 卸载</div>
-    </div>
-    <div id="settings-overlay" style="
-        position:fixed; top:0; left:0; right:0; bottom:0;
-        background:rgba(0,0,0,0.85); z-index:50; display:none; pointer-events:auto;
-        color:#fff; font-family:sans-serif;
-    ">
-        <div id="settings-back" style="
-            position:absolute; top:16px; left:16px; font-size:18px;
-            cursor:pointer; color:rgba(255,255,255,0.7); padding:8px 12px;
-        ">← 返回</div>
-        <div style="position:absolute; top:18px; left:0; right:0; text-align:center; font-size:20px; font-weight:bold;">Vibe Launcher设置</div>
-        <div style="position:absolute; top:70px; left:20px; right:20px; bottom:80px; overflow-y:auto;">
-            <div style="margin-bottom:16px; font-size:14px; color:rgba(255,255,255,0.6);">图标分辨率</div>
-            <div id="settings-icon-res" style="display:flex; align-items:center; gap:8px;">
-                    <input id="settings-icon-input" type="number" value="512" min="16" step="16" style="flex:1; padding:14px; font-size:16px; background:#1a1a2e; color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:8px; outline:none;">
-                    <span style="font-size:14px; color:rgba(255,255,255,0.4); white-space:nowrap;">px（默认512）</span>
-                </div>
-            <div style="margin:20px 0 16px 0; font-size:14px; color:rgba(255,255,255,0.6);">布局模式</div>
-            <div id="settings-layout-mode" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:6px;">
-                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="radio" name="layoutMode" value="sphere" checked style="accent-color:#4a90d9;">
-                    <span style="font-size:14px;">球体</span>
-                </label>
-                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="radio" name="layoutMode" value="hemisphere" style="accent-color:#4a90d9;">
-                    <span style="font-size:14px;">半球</span>
-                </label>
-                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="radio" name="layoutMode" value="ring" style="accent-color:#4a90d9;">
-                    <span style="font-size:14px;">竖环</span>
-                </label>
-                <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="radio" name="layoutMode" value="hbar" style="accent-color:#4a90d9;">
-                    <span style="font-size:14px;">横环</span>
-                </label>
+    <button id="settings-close">关闭</button>
+    <button id="settings-save">保存</button>
+  </div>
+</div>
+<div id="appLabel"></div>
 
-            </div>
-            <div style="margin:20px 0 16px 0; font-size:14px; color:rgba(255,255,255,0.6);">3D球体大小</div>
-            <div id="settings-sphere-size" style="display:flex; align-items:center; gap:8px;">
-                    <input id="settings-sphere-input" type="number" value="2.5" min="0" style="flex:1; padding:14px; font-size:16px; background:#1a1a2e; color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:8px; outline:none;">
-                    <span id="sphere-min-hint" style="font-size:14px; color:rgba(255,255,255,0.4); white-space:nowrap;">最少 —</span>
-                </div>
-        </div>
-        <div id="settings-save" style="
-            position:absolute; bottom:40px; left:20px; right:20px;
-            padding:14px; text-align:center; font-size:16px; font-weight:bold;
-            background:#4a90d9; border-radius:10px; cursor:pointer;
-        ">保存</div>
-    </div>
-    <div class="app-label" id="appLabel"></div>
-    <div class="loading-indicator" id="loadingIndicator"></div>
-
+<script src="https://unpkg.com/three@0.185.1/build/three.min.js"></script>
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.185.1/build/three.module.js",
-    "three/webgpu": "https://unpkg.com/three@0.185.1/build/three.webgpu.js"
-  }
-}
-</script>
-
-<script type="module">
-import * as THREE from 'three/webgpu';
-window.THREE = THREE;
-
-(async function() {
+<script>
+(function() {
+"use strict";
 console.log("IIFE starting, THREE:", typeof THREE);
-            if (typeof THREE === 'undefined') {
-                document.getElementById('loadingIndicator').textContent = 'Three.js 未加载';
-                return;
+
+// ================================================================
+// CONSTANTS
+// ================================================================
+const FAR_PLANE = 1e8;
+const BASE_SCALE = 0.52;
+const FOV = 50;
+const FOV_RAD = THREE.MathUtils.degToRad(FOV);
+const MIN_ZOOM = 0.1;
+const ROTATION_ANIM_DURATION = 400;
+const DRAG_THRESHOLD = 3;
+const INERTIA_DECAY = 0.975;
+const INERTIA_FAST_DECAY = 0.85;
+const INERTIA_MIN = 0.001;
+const LONG_PRESS_MS = 600;
+const SPEED_SAMPLES = 5;
+const TOP_ZONE_RATIO = 0.15;
+const BOTTOM_ZONE_RATIO = 0.15;
+const EXIT_THRESHOLD_RATIO = 0.35;
+
+const PLACEHOLDER_COLORS = [
+    '#ff6b6b','#ff8e72','#ffa94d','#ffd43b','#a9e34b',
+    '#69db7c','#38d9a9','#3bc9db','#4dabf7','#5c7cfa',
+    '#748ffc','#9775fa','#da77f2','#f783ac','#ff8787',
+];
+
+// ================================================================
+// CLASS: App — single source of truth
+// ================================================================
+class App {
+    constructor() {
+        // DOM
+        this.labelEl = document.getElementById('appLabel');
+        this.loadingEl = document.getElementById('loading');
+        this.timePage = document.getElementById('time-page');
+        this.timeClock = document.getElementById('time-page-clock');
+        this.timeDate = document.getElementById('time-page-date');
+        this.timeBattery = document.getElementById('time-page-battery');
+        this.ctxMenu = document.getElementById('context-menu');
+        this.settingsOverlay = document.getElementById('settings-overlay');
+
+        // Three.js (set in init)
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.rendererType = 'unknown';
+        this.canvas = null;
+        this.sphereGroup = null;
+
+        // Layout
+        this.N = 0;
+        this.radius = 2.5;
+        this.diameter = 5.0;
+        this.layoutMode = 'sphere';
+
+        // Zoom
+        this.zoom = 0;
+        this.defaultZoom = 0;
+        this.timeViewZoom = 0;
+
+        // Rotation (quaternion of sphereGroup)
+        this.quat = new THREE.Quaternion();
+
+        // Time view
+        this.inTimeView = false;
+        this.timeSprite = null;
+        this.timeTexInterval = null;
+
+        // Gesture
+        this.dragging = false;
+        this.moved = false;
+        this.prev = new THREE.Vector2();
+        this.mouse = new THREE.Vector2();
+        this.hovered = null;
+        this.pointers = new Set();
+        this.longPressTimer = null;
+        this.longPressFired = false;
+        this.menuOpen = false;
+
+        // Zoom animation
+        this.zTarget = null;
+        this.zStart = null;
+        this.zDuration = 0;
+        this.zElapsed = 0;
+        this.zFrom = 0;
+        this.zTo = 0;
+        this.zCallback = null;
+
+        // Rotation animation
+        this.rData = null;
+
+        // Inertia
+        this.iQuat = new THREE.Quaternion();
+        this.iStrength = 0;
+        this.iInfinite = false;
+        this.speeds = [];
+
+        // Swipe
+        this.bottomSwipe = null;
+        this.topSwipe = null;
+
+        // Icons
+        this.iconRes = 512;
+        this.pendingIcons = 0;
+        this.sprites = [];
+        this.apps = [];
+        this.totalItems = [];
+
+        // Bridge
+        this.bridgeReady = false;
+        this._allPkgs = null;
+        this._lastSettingsClick = 0;
+    }
+
+    resetGesture() {
+        this.dragging = false;
+        this.moved = false;
+        this.speeds = [];
+    }
+}
+
+const $ = new App();
+
+console.log("State initialized");
+})();
+</script>
+</body>
+</html>
+
+// ================================================================
+// ALGORITHM: sphereCoulomb
+// ================================================================
+const sphereCoulomb = (N, opts = {}) => {
+    const { radius = 1, iter = 400, damp = 0.985, dt = 0.03, tol = 1e-6, soft = 0.01 } = opts;
+    if (N <= 0) return [];
+    if (N === 1) return [[0, 0, radius]];
+    const p = Array.from({ length: N }, () => {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        return [radius * Math.sin(phi) * Math.cos(theta), radius * Math.sin(phi) * Math.sin(theta), radius * Math.cos(phi)];
+    });
+    const v = Array.from({ length: N }, () => [0, 0, 0]);
+    const f = Array.from({ length: N }, () => [0, 0, 0]);
+    for (let t = 0; t < iter; t++) {
+        for (let i = 0; i < N; i++) f[i][0] = f[i][1] = f[i][2] = 0;
+        let maxForce = 0;
+        for (let i = 0; i < N; i++) {
+            for (let j = i + 1; j < N; j++) {
+                let dx = p[i][0] - p[j][0], dy = p[i][1] - p[j][1], dz = p[i][2] - p[j][2];
+                const dist2 = dx * dx + dy * dy + dz * dz + soft;
+                const dist = Math.sqrt(dist2);
+                const force = 1 / dist2;
+                const fx = force * dx / dist, fy = force * dy / dist, fz = force * dz / dist;
+                f[i][0] += fx; f[i][1] += fy; f[i][2] += fz;
+                f[j][0] -= fx; f[j][1] -= fy; f[j][2] -= fz;
+                maxForce = Math.max(maxForce, Math.abs(fx), Math.abs(fy), Math.abs(fz));
             }
+        }
+        if (maxForce < tol) break;
+        for (let i = 0; i < N; i++) {
+            v[i][0] = (v[i][0] + f[i][0] * dt) * damp;
+            v[i][1] = (v[i][1] + f[i][1] * dt) * damp;
+            v[i][2] = (v[i][2] + f[i][2] * dt) * damp;
+            p[i][0] += v[i][0] * dt; p[i][1] += v[i][1] * dt; p[i][2] += v[i][2] * dt;
+            const r2 = p[i][0]*p[i][0] + p[i][1]*p[i][1] + p[i][2]*p[i][2];
+            const s = radius / Math.sqrt(r2);
+            p[i][0] *= s; p[i][1] *= s; p[i][2] *= s;
+        }
+    }
+    return p;
+};
 
-            
-            // ================================================================
-            // CLASS: State — centralized mutable state
-            // ================================================================
-            class State {
-                constructor() {
-                    // Rendering
-                    this.scene = null; this.camera = null; this.renderer = null;
-                    this.rendererType = "unknown"; this.sphereGroup = null;
-                    this.sprites = []; this.canvas = null;
+// ================================================================
+// SCENE SETUP
+// ================================================================
+const initScene = () => {
+    $.scene = new THREE.Scene();
+    $.scene.background = new THREE.Color(0x111118);
 
-                    // Layout
-                    this.SPHERE_RADIUS = 2.5; this.SPHERE_DIAMETER = 5;
-                    this.layoutMode = "sphere";
+    $.camera = new THREE.PerspectiveCamera(FOV, window.innerWidth / window.innerHeight, 0.1, FAR_PLANE);
 
-                    // Camera
-                    this.zoomLevel = 0; this.defaultZoom = 0; this.timeViewZoom = 0;
-                    this.rotationQuat = new THREE.Quaternion();
-
-                    // Time view
-                    this.isInTimeView = false; this.timeSprite = null;
-                    this.timeTextureUpdateInterval = null;
-
-                    // Drag / gesture
-                    this.isDragging = false; this.hasMoved = false;
-                    this.prevScreen = new THREE.Vector2();
-                    this.mouse = new THREE.Vector2();
-                    this.hoveredSprite = null;
-
-                    // Cancelable actions
-                    this.cancelableAction = null;
-
-                    // Animations
-                    this.zoomTarget = null; this.zoomAnimStart = null;
-                    this.zoomAnimDuration = 0; this.zoomAnimElapsed = 0;
-                    this.zoomAnimStartVal = 0; this.zoomAnimEndVal = 0;
-                    this.zoomAnimCallback = null;
-                    this.rotationAnimData = null;
-
-                    // Inertia
-                    this.inertiaQ = new THREE.Quaternion();
-                    this.inertiaStrength = 0; this.infiniteInertia = false;
-                    this.recentSpeeds = [];
-
-                    // Swipe
-                    this.bottomSwipeData = null; this.topSwipeData = null;
-
-                    // Touch
-                    this.activePointerIds = new Set();
-                    this.longPressTimer = null; this.longPressFired = false;
-                    this.contextMenuOpen = false; this.lastTap = 0;
-                    this.wasPinching = false; this.pinchStartDist = 0;
-                    this.pinchStartZoom = 0;
-
-                    // Icons & loading
-                    this.ICON_RES = 512; this.pendingIconLoads = 0;
-                    this.enterAnimationComplete = false;
-                    this.nativeBridgeReady = false;
-                    this.appList = []; this.totalItems = [];
-                    this._allPkgs = null;
-                }
-
-                resetDrag() {
-                    this.isDragging = false; this.hasMoved = false;
-                    this.recentSpeeds = [];
-                }
-
-                resetPointers() {
-                    this.activePointerIds.clear(); this.resetDrag();
-                    this.bottomSwipeData = null; this.topSwipeData = null;
-                }
+    // Try WebGPU, fall back to WebGL
+    try {
+        $.renderer = new THREE.WebGPURenderer({ antialias: true, alpha: false });
+        $.rendererType = 'webgpu';
+    } catch (e) {
+        try {
+            $.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            $.rendererType = 'webgl2';
+            const ctx = $.renderer.getContext();
+            if (ctx && !ctx.getParameter(ctx.VERSION).includes('WebGL 2')) {
+                $.rendererType = 'webgl1';
             }
+        } catch (e2) {
+            $.renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+            $.rendererType = 'webgl1-fallback';
+        }
+    }
+    $.renderer.setSize(window.innerWidth, window.innerHeight);
+    $.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild($.renderer.domElement);
+    $.canvas = $.renderer.domElement;
+    console.log('Renderer:', $.rendererType);
 
-            const S = new State();
+    // Lighting
+    const amb = new THREE.AmbientLight(0x334455, 2.5);
+    $.scene.add(amb);
+    const dl = new THREE.DirectionalLight(0xffffff, 1.8);
+    dl.position.set(1, 1, 2);
+    $.scene.add(dl);
+    const dl2 = new THREE.DirectionalLight(0x8899cc, 0.6);
+    dl2.position.set(-1, -0.5, -1);
+    $.scene.add(dl2);
 
-            // ================================================================
-            // CLASS: Animator — unified animation controller
-            // ================================================================
-            class Animator {
-                easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+    // Sphere group
+    $.sphereGroup = new THREE.Group();
+    $.scene.add($.sphereGroup);
 
-                applyZoom() { S.camera.position.z = S.zoomLevel; }
+    // Initial zoom
+    const w = window.innerWidth, h = window.innerHeight;
+    const sef = Math.min(1, w / h);
+    const minVis = $.diameter / (2 * Math.tan(FOV_RAD / 2) * sef);
+    $.zoom = minVis * 1.15;
+    $.defaultZoom = $.zoom;
+    $.camera.position.set(0, 0, $.zoom);
+};
 
-                startZoom(targetVal, duration, callback) {
-                    S.zoomAnimStart = performance.now();
-                    S.zoomAnimDuration = duration || 500;
-                    S.zoomAnimStartVal = S.zoomLevel;
-                    S.zoomAnimEndVal = targetVal;
-                    S.zoomAnimElapsed = 0;
-                    S.zoomTarget = targetVal;
-                    S.zoomAnimCallback = callback || null;
-                }
+const computeTimeViewZoom = () => {
+    const R = BASE_SCALE * 0.44;
+    const fovHalf = THREE.MathUtils.degToRad($.camera.fov / 2);
+    const aspect = window.innerWidth / window.innerHeight;
+    const halfDiag = Math.sqrt(aspect * aspect + 1);
+    return $.radius + R / (Math.tan(fovHalf) * halfDiag);
+};
 
-                cancelZoom() {
-                    S.zoomTarget = null; S.zoomAnimStart = null;
-                    S.zoomAnimDuration = 0; S.zoomAnimCallback = null;
-                }
+console.log("Scene + sphereCoulomb ready");
 
-                updateZoom(now) {
-                    if (S.zoomTarget === null) return;
-                    S.zoomAnimElapsed = now - S.zoomAnimStart;
-                    const t = Math.min(1, S.zoomAnimElapsed / S.zoomAnimDuration);
-                    const eased = this.easeOutCubic(t);
-                    S.zoomLevel = S.zoomAnimStartVal + (S.zoomAnimEndVal - S.zoomAnimStartVal) * eased;
-                    this.applyZoom();
-                    if (t >= 1) {
-                        S.zoomLevel = S.zoomAnimEndVal; this.applyZoom();
-                        const cb = S.zoomAnimCallback; this.cancelZoom();
-                        if (cb) cb();
-                    }
-                }
+// ================================================================
+// TEXTURE GENERATION
+// ================================================================
+const createGearTexture = () => {
+    const s = Math.max(16, $.iconRes);
+    const c = document.createElement('canvas'); c.width = s; c.height = s;
+    const ctx = c.getContext('2d');
+    const cx = s / 2, cy = s / 2, r = s * 0.44;
+    ctx.fillStyle = '#8899bb';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#aabbcc'; ctx.lineWidth = s * 0.06;
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = `bold ${s*0.35}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('⚙', cx, cy);
+    return new THREE.CanvasTexture(c);
+};
 
-                startRotation(targetQuat, duration, callback) {
-                    S.rotationAnimData = {
-                        from: S.rotationQuat.clone(),
-                        to: targetQuat.clone(),
-                        startTime: performance.now(),
-                        duration: duration || ROTATION_ANIM_DURATION,
-                        callback: callback || null
-                    };
-                }
+const createTimeTexture = () => {
+    const s = Math.max(window.innerWidth, window.innerHeight);
+    const c = document.createElement('canvas'); c.width = s; c.height = s;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#0a0e18'; ctx.fillRect(0, 0, s, s);
+    ctx.strokeStyle = '#334466'; ctx.lineWidth = s * 0.004;
+    ctx.beginPath(); ctx.arc(s/2, s/2, s*0.44, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#8899bb'; ctx.font = `bold ${s*0.08}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🕐', s/2, s/2);
+    return new THREE.CanvasTexture(c);
+};
 
-                updateRotation(now) {
-                    if (!S.rotationAnimData) return;
-                    const elapsed = now - S.rotationAnimData.startTime;
-                    const t = Math.min(1, elapsed / S.rotationAnimData.duration);
-                    const eased = this.easeOutCubic(t);
-                    S.rotationQuat.copy(S.rotationAnimData.from).slerp(S.rotationAnimData.to, eased);
-                    S.sphereGroup.quaternion.copy(S.rotationQuat);
-                    if (t >= 1) {
-                        S.rotationQuat.copy(S.rotationAnimData.to);
-                        S.sphereGroup.quaternion.copy(S.rotationQuat);
-                        const cb = S.rotationAnimData.callback;
-                        S.rotationAnimData = null;
-                        if (cb) cb();
-                    }
-                }
+const createPlaceholderTexture = (appName, colorHex) => {
+    const s = Math.max(16, $.iconRes);
+    const c = document.createElement('canvas'); c.width = s; c.height = s;
+    const ctx = c.getContext('2d');
+    const cx = s / 2, cy = s / 2, r = s * 0.44;
+    ctx.fillStyle = colorHex || '#667788';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    const initial = (appName || '?')[0].toUpperCase();
+    ctx.fillStyle = '#fff'; ctx.font = `bold ${s*0.45}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(initial, cx, cy);
+    return new THREE.CanvasTexture(c);
+};
 
-                updateInertia() {
-                    if (S.inertiaStrength > INERTIA_MIN && !S.isInTimeView && !S.rotationAnimData) {
-                        const decay = (S.isDragging && S.hasMoved) ? INERTIA_FAST_DECAY : INERTIA_DECAY;
-                        const factor = Math.min(S.inertiaStrength, 1.0);
-                        const applyQ = new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(), S.inertiaQ, factor);
-                        S.rotationQuat.premultiply(applyQ); S.rotationQuat.normalize();
-                        S.sphereGroup.quaternion.copy(S.rotationQuat);
-                        if (!S.infiniteInertia) {
-                            S.inertiaStrength *= decay;
-                            if (S.inertiaStrength < INERTIA_MIN) { S.inertiaStrength = 0; S.inertiaQ.identity(); }
-                        }
-                    }
-                }
+const createIconTextureFromImage = (img) => {
+    const s = Math.max(16, $.iconRes);
+    const c = document.createElement('canvas'); c.width = s; c.height = s;
+    const ctx = c.getContext('2d');
+    ctx.beginPath(); ctx.arc(s/2, s/2, s*0.44, 0, Math.PI*2); ctx.clip();
+    ctx.drawImage(img, 0, 0, s, s);
+    return new THREE.CanvasTexture(c);
+};
 
-                update(timestamp) {
-                    const now = timestamp || performance.now();
-                    this.updateZoom(now);
-                    this.updateRotation(now);
-                    this.updateInertia();
-                    S.renderer.render(S.scene, S.camera);
-                }
+// ================================================================
+// SPRITE MANAGEMENT
+// ================================================================
+const createSprites = (appList, iconMap) => {
+    // Clear old
+    $.sprites.forEach(s => { if (s.material.map) s.material.map.dispose(); s.material.dispose(); });
+    $.sprites = [];
+    while ($.sphereGroup.children.length > 0) $.sphereGroup.remove($.sphereGroup.children[0]);
+
+    const N = appList.length + 2; // +time +settings
+    $.N = N;
+    $.totalItems = [
+        { type: 'time', app: null },
+        ...appList.map(a => ({ type: 'app', app: a })),
+        { type: 'settings', app: { packageName: '__settings__', appName: '设置', isSystem: true } },
+    ];
+
+    const raw = sphereCoulomb(N, { radius: $.radius, iter: 500 });
+
+    // Align time sprite to camera
+    const tIdx = $.totalItems.findIndex(it => it.type === 'time');
+    if (tIdx >= 0) {
+        const tp = new THREE.Vector3(raw[tIdx][0], raw[tIdx][1], raw[tIdx][2]);
+        const aq = new THREE.Quaternion().setFromUnitVectors(tp.clone().normalize(), new THREE.Vector3(0, 0, 1));
+        for (let i = 0; i < raw.length; i++) {
+            const v = new THREE.Vector3(raw[i][0], raw[i][1], raw[i][2]);
+            v.applyQuaternion(aq);
+            raw[i] = v;
+        }
+        if ($.layoutMode === 'hemisphere') raw.sort((a, b) => b.z - a.z);
+    }
+
+    for (let i = 0; i < $.totalItems.length; i++) {
+        const item = $.totalItems[i];
+        const pos = raw[i];
+        let tex;
+        if (item.type === 'time') {
+            tex = createTimeTexture();
+        } else if (item.type === 'settings') {
+            tex = createGearTexture();
+        } else if (iconMap && iconMap[item.app.packageName]) {
+            tex = createPlaceholderTexture(item.app.appName, PLACEHOLDER_COLORS[i % PLACEHOLDER_COLORS.length]);
+        } else {
+            const ci = i % PLACEHOLDER_COLORS.length;
+            tex = createPlaceholderTexture(item.app.appName, PLACEHOLDER_COLORS[ci]);
+        }
+
+        const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true, depthWrite: false });
+        const sprite = new THREE.Sprite(mat);
+        sprite.position.set(pos.x, pos.y, pos.z);
+        sprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
+        sprite.userData = { item, app: item.app, colorIdx: i % PLACEHOLDER_COLORS.length, hasRealIcon: false };
+        $.sphereGroup.add(sprite);
+        $.sprites.push(sprite);
+
+        if (item.type === 'time') $.timeSprite = sprite;
+    }
+};
+
+// Raycaster
+const raycaster = new THREE.Raycaster();
+raycaster.far = FAR_PLANE;
+
+const checkHover = () => {
+    raycaster.setFromCamera($.mouse, $.camera);
+    const hits = raycaster.intersectObjects($.sprites);
+    const prev = $.hovered;
+    if (hits.length > 0) {
+        const spr = hits[0].object;
+        if (spr !== prev) {
+            if (prev) prev.scale.set(BASE_SCALE, BASE_SCALE, 1);
+            $.hovered = spr;
+            spr.scale.set(BASE_SCALE * 1.4, BASE_SCALE * 1.4, 1);
+            $.labelEl.style.opacity = '1';
+            const app = spr.userData.app;
+            $.labelEl.textContent = spr.userData.item.type === 'time' ? '时间'
+                : spr.userData.item.type === 'settings' ? '设置'
+                : (app ? app.appName : '');
+        }
+    } else {
+        if (prev) { prev.scale.set(BASE_SCALE, BASE_SCALE, 1); $.hovered = null; }
+        $.labelEl.style.opacity = '0';
+    }
+};
+const clearHover = () => {
+    if ($.hovered) { $.hovered.scale.set(BASE_SCALE, BASE_SCALE, 1); $.hovered = null; }
+    $.labelEl.style.opacity = '0';
+};
+
+console.log("Textures + Sprites ready");
+
+// ================================================================
+// CLASS: Animator
+// ================================================================
+class Animator {
+    ease(t) { return 1 - Math.pow(1 - t, 3); }
+
+    applyZoom() { $.camera.position.z = $.zoom; }
+
+    startZoom(to, dur, cb) {
+        $.zStart = performance.now();
+        $.zDuration = dur || 500;
+        $.zFrom = $.zoom;
+        $.zTo = to;
+        $.zElapsed = 0;
+        $.zTarget = to;
+        $.zCallback = cb || null;
+    }
+
+    cancelZoom() {
+        $.zTarget = null; $.zStart = null;
+        $.zDuration = 0; $.zCallback = null;
+    }
+
+    updateZoom(now) {
+        if ($.zTarget === null) return;
+        $.zElapsed = now - $.zStart;
+        const t = Math.min(1, $.zElapsed / $.zDuration);
+        $.zoom = $.zFrom + ($.zTo - $.zFrom) * this.ease(t);
+        this.applyZoom();
+        if (t >= 1) { $.zoom = $.zTo; this.applyZoom(); const cb = $.zCallback; this.cancelZoom(); if (cb) cb(); }
+    }
+
+    startRot(to, dur, cb) {
+        $.rData = {
+            from: $.quat.clone(), to: to.clone(),
+            start: performance.now(), dur: dur || ROTATION_ANIM_DURATION, cb: cb || null
+        };
+    }
+
+    updateRot(now) {
+        if (!$.rData) return;
+        const t = Math.min(1, (now - $.rData.start) / $.rData.dur);
+        $.quat.copy($.rData.from).slerp($.rData.to, this.ease(t));
+        $.sphereGroup.quaternion.copy($.quat);
+        if (t >= 1) { $.quat.copy($.rData.to); $.sphereGroup.quaternion.copy($.quat); const cb = $.rData.cb; $.rData = null; if (cb) cb(); }
+    }
+
+    updateInertia() {
+        if ($.iStrength <= INERTIA_MIN || $.inTimeView || $.rData) return;
+        const decay = ($.dragging && $.moved) ? INERTIA_FAST_DECAY : INERTIA_DECAY;
+        const q = new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(), $.iQuat, Math.min($.iStrength, 1));
+        $.quat.premultiply(q).normalize();
+        $.sphereGroup.quaternion.copy($.quat);
+        if (!$.iInfinite) { $.iStrength *= decay; if ($.iStrength < INERTIA_MIN) { $.iStrength = 0; $.iQuat.identity(); } }
+    }
+
+    update(ts) {
+        const now = ts || performance.now();
+        this.updateZoom(now);
+        this.updateRot(now);
+        this.updateInertia();
+        $.renderer.render($.scene, $.camera);
+    }
+}
+const anim = new Animator();
+
+// ================================================================
+// CLASS: TimeView
+// ================================================================
+class TimeView {
+    enter(animate, onDone) {
+        if ($.inTimeView || !$.timeSprite) return;
+        $.inTimeView = true;
+        anim.cancelZoom(); $.rData = null;
+        $.iQuat.identity(); $.iStrength = 0;
+        clearHover(); document.body.style.cursor = 'default';
+        $.timeViewZoom = computeTimeViewZoom();
+        if (animate) {
+            anim.startZoom($.timeViewZoom, 300, () => {
+                $.zoom = $.timeViewZoom; anim.applyZoom();
+                this._showPage(); if (onDone) onDone();
+            });
+        } else {
+            $.zoom = $.timeViewZoom; anim.applyZoom();
+            this._showPage(); if (onDone) onDone();
+        }
+    }
+
+    exit(animate, cb) {
+        if (!$.inTimeView) return;
+        $.inTimeView = false;
+        this._hidePage();
+        anim.cancelZoom(); $.rData = null;
+        $.bottomSwipe = null; $.topSwipe = null;
+        document.body.style.cursor = 'grab';
+        if ($.timeSprite) $.timeSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
+        if (animate) {
+            anim.startZoom($.defaultZoom, 250, () => { $.zoom = $.defaultZoom; anim.applyZoom(); if (cb) cb(); });
+        } else {
+            $.zoom = $.defaultZoom; anim.applyZoom(); if (cb) cb();
+        }
+    }
+
+    returnToView() {
+        if ($.inTimeView || !$.timeSprite) return;
+        $.inTimeView = true;
+        anim.cancelZoom(); $.rData = null;
+        $.iQuat.identity(); $.iStrength = 0;
+        clearHover(); document.body.style.cursor = 'default';
+        const q = new THREE.Quaternion().setFromUnitVectors(
+            $.timeSprite.position.clone().normalize(), new THREE.Vector3(0,0,1));
+        $.timeViewZoom = computeTimeViewZoom();
+        let zDone = false, rDone = false;
+        const check = () => { if (zDone && rDone) { this._showPage(); } };
+        anim.startRot(q, ROTATION_ANIM_DURATION, () => { rDone = true; check(); });
+        anim.startZoom($.timeViewZoom, ROTATION_ANIM_DURATION, () => { $.zoom = $.timeViewZoom; anim.applyZoom(); zDone = true; check(); });
+    }
+
+    _showPage() {
+        $.timePage.style.visibility = 'visible'; $.timePage.style.zIndex = '100';
+        $.timePage.style.pointerEvents = 'none';
+        this._updateTex();
+        $.timeTexInterval = setInterval(() => this._updateTex(), 30000);
+    }
+
+    _hidePage() {
+        $.timePage.style.visibility = 'hidden'; $.timePage.style.zIndex = '-1';
+        $.timePage.style.pointerEvents = 'none';
+        if ($.timeTexInterval) { clearInterval($.timeTexInterval); $.timeTexInterval = null; }
+    }
+
+    _updateTex() {
+        if (!$.timeSprite || !$.timeSprite.material) return;
+        const t = createTimeTexture();
+        if ($.timeSprite.material.map) $.timeSprite.material.map.dispose();
+        $.timeSprite.material.map = t;
+        $.timeSprite.material.needsUpdate = true;
+    }
+}
+const timeView = new TimeView();
+
+// ================================================================
+// CLASS: Gestures
+// ================================================================
+class Gestures {
+    screenToSphere(sx, sy) {
+        const v = new THREE.Vector3(
+            (sx / window.innerWidth) * 2 - 1,
+            -(sy / window.innerHeight) * 2 + 1, 0.5);
+        v.unproject($.camera).sub($.camera.position).normalize();
+        return v;
+    }
+
+    updateMouse(sx, sy) {
+        $.mouse.set((sx / window.innerWidth) * 2 - 1, -(sy / window.innerHeight) * 2 + 1);
+    }
+
+    startInertia() {
+        if ($.speeds.length > 0) {
+            let sum = 0; for (let i = 0; i < $.speeds.length; i++) sum += $.speeds[i];
+            $.iStrength = Math.min(1.5, Math.max(0.3, sum / $.speeds.length * 80));
+        } else $.iStrength = 0.6;
+        $.speeds = [];
+    }
+}
+const G = new Gestures();
+
+// ================================================================
+// CLASS: Actions (cancelable)
+// ================================================================
+class Actions {
+    constructor() { this._act = null; }
+
+    start(sprite, rotTarget, zoomTarget, onCommit) {
+        if (this._act) this.cancel('superseded');
+        this._act = { sprite, onCommit, phase: 'animating', rotDone: false, zoomDone: false, cancelled: false };
+        $.iQuat.identity(); $.iStrength = 0; $.iInfinite = false;
+        anim.startRot(rotTarget, ROTATION_ANIM_DURATION, () => this._try());
+        anim.startZoom(zoomTarget, ROTATION_ANIM_DURATION, () => {
+            $.zoom = zoomTarget; anim.applyZoom(); this._try();
+        });
+    }
+
+    _try() {
+        const a = this._act;
+        if (!a || a.cancelled || a.phase !== 'animating') return;
+        a.zoomDone = true; a.rotDone = true;
+        a.phase = 'committed'; const cb = a.onCommit; this._act = null;
+        if (cb) cb();
+    }
+
+    cancel(reason) {
+        const a = this._act;
+        if (!a || a.cancelled) return;
+        a.cancelled = true;
+        try { NativeBridge.log('cancel:' + reason); } catch (e) {}
+        anim.cancelZoom();
+        anim.startZoom($.defaultZoom, 175, () => { $.zoom = $.defaultZoom; anim.applyZoom(); });
+        $.resetGesture();
+        this._act = null;
+    }
+
+    active() { return this._act && this._act.phase === 'animating'; }
+}
+const acts = new Actions();
+
+// ================================================================
+// EVENT HANDLERS
+// ================================================================
+const isInBottomZone = (cy) => cy > window.innerHeight * (1 - BOTTOM_ZONE_RATIO);
+const isInTopZone = (cy) => cy < window.innerHeight * TOP_ZONE_RATIO;
+const getAppBySprite = (s) => s && s.userData ? s.userData.app : null;
+
+const showContextMenu = (spr, x, y) => {
+    $.ctxMenu.style.display = 'block';
+    $.ctxMenu.style.left = Math.min(x, window.innerWidth - 150) + 'px';
+    $.ctxMenu.style.top = Math.min(y, window.innerHeight - 80) + 'px';
+    $.ctxMenu.setAttribute('data-pkg', spr.userData.app ? spr.userData.app.packageName : '');
+    $.menuOpen = true;
+    $.canvas.style.pointerEvents = 'auto';
+};
+const hideContextMenu = () => {
+    $.ctxMenu.style.display = 'none'; $.menuOpen = false; $.longPressFired = false;
+    $.canvas.style.pointerEvents = 'auto';
+};
+
+const onPointerDown = (e) => {
+    if ($.menuOpen) { hideContextMenu(); $.pointers.delete(e.pointerId); return; }
+    if (acts.active()) { acts.cancel('new-touch'); $.resetGesture(); return; }
+
+    $.iInfinite = false;
+
+    if (!$.inTimeView && $.pointers.size === 0 && isInTopZone(e.clientY)) {
+        $.topSwipe = { pid: e.pointerId, startY: e.clientY, startZ: $.zoom, active: true, confirmed: false, startTVZ: computeTimeViewZoom() };
+        $.pointers.add(e.pointerId); return;
+    }
+    if ($.inTimeView && $.pointers.size === 0) {
+        $.bottomSwipe = { pid: e.pointerId, startY: e.clientY, startZ: $.zoom, minY: e.clientY, active: true, confirmed: false };
+        $.pointers.add(e.pointerId); return;
+    }
+
+    if ($.pointers.size === 0) {
+        $.dragging = true; $.moved = false;
+        $.prev.set(e.clientX, e.clientY);
+        $.pointers.add(e.pointerId);
+        // Long press
+        const cx = e.clientX, cy = e.clientY;
+        $.longPressFired = false;
+        if ($.longPressTimer) clearTimeout($.longPressTimer);
+        $.longPressTimer = setTimeout(() => {
+            $.longPressFired = true;
+            $.dragging = false; $.moved = false;
+            G.updateMouse(cx, cy);
+            checkHover();
+            if ($.hovered && $.hovered.userData.app) showContextMenu($.hovered, cx, cy);
+        }, LONG_PRESS_MS);
+    } else {
+        $.dragging = false;
+        if ($.longPressTimer) { clearTimeout($.longPressTimer); $.longPressTimer = null; }
+    }
+};
+
+const onPointerMove = (e) => {
+    if ($.menuOpen) { $.pointers.delete(e.pointerId); return; }
+    if (acts.active() && $.dragging && $.moved) { acts.cancel('drag'); $.resetGesture(); return; }
+
+    G.updateMouse(e.clientX, e.clientY);
+
+    // Top swipe (enter time view)
+    if (!$.inTimeView && $.topSwipe && $.topSwipe.active && $.topSwipe.pid === e.pointerId && $.pointers.size === 1) {
+        const dY = e.clientY - $.topSwipe.startY;
+        if (dY > 3 && !$.topSwipe.confirmed) $.topSwipe.confirmed = true;
+        if ($.topSwipe.confirmed || dY > 8) {
+            $.topSwipe.confirmed = true;
+            const md = window.innerHeight * 0.6;
+            const cd = Math.max(0, Math.min(md, dY));
+            const zr = $.defaultZoom - $.topSwipe.startTVZ;
+            $.zoom = Math.max(MIN_ZOOM, Math.min($.defaultZoom, $.topSwipe.startZ - (cd/md)*zr));
+            anim.applyZoom();
+        }
+        return;
+    }
+    // Bottom swipe (exit time view)
+    if ($.inTimeView && $.bottomSwipe && $.bottomSwipe.active && $.bottomSwipe.pid === e.pointerId && $.pointers.size === 1) {
+        const deltaY = $.bottomSwipe.startY - e.clientY;
+        if (deltaY < -5 && e.clientY < $.bottomSwipe.minY) $.bottomSwipe.minY = e.clientY;
+        if (deltaY > 3 && !$.bottomSwipe.confirmed) $.bottomSwipe.confirmed = true;
+        if ($.bottomSwipe.confirmed || deltaY > 8) {
+            $.bottomSwipe.confirmed = true;
+            const maxDelta = window.innerHeight * 0.4;
+            const clampedDelta = Math.max(0, Math.min(maxDelta, deltaY));
+            const zRange = $.defaultZoom - $.timeViewZoom;
+            const tZ = $.bottomSwipe.startZ + (clampedDelta / maxDelta) * zRange * 1.3;
+            $.zoom = Math.max($.timeViewZoom, Math.min($.defaultZoom * 1.3, tZ));
+            anim.applyZoom();
+        }
+        return;
+    }
+
+    if (!$.dragging || $.pointers.size !== 1 || $.inTimeView) return;
+
+    const dx = e.clientX - $.prev.x, dy = e.clientY - $.prev.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (!$.moved && dist > DRAG_THRESHOLD) {
+        $.moved = true;
+        if ($.longPressTimer) { clearTimeout($.longPressTimer); $.longPressTimer = null; }
+        clearHover();
+        document.body.style.cursor = 'grabbing';
+    }
+    if (!$.moved) return;
+
+    const curr = G.screenToSphere(e.clientX, e.clientY);
+    const prev = G.screenToSphere($.prev.x, $.prev.y);
+    const axis = new THREE.Vector3().crossVectors(prev, curr);
+    const angle = Math.acos(Math.min(1, Math.max(-1, prev.dot(curr))));
+    const deltaQ = new THREE.Quaternion().setFromAxisAngle(axis.normalize(), angle * 1.2);
+    $.quat.premultiply(deltaQ).normalize();
+    $.sphereGroup.quaternion.copy($.quat);
+
+    const speed = 2 * Math.acos(Math.min(1, Math.abs(deltaQ.w)));
+    $.speeds.push(speed);
+    if ($.speeds.length > SPEED_SAMPLES) $.speeds.shift();
+    $.iQuat.copy(deltaQ);
+    $.prev.copy(curr);
+    checkHover();
+};
+
+const onPointerUp = (e) => {
+    if ($.menuOpen) { $.pointers.delete(e.pointerId); if ($.pointers.size === 0) document.body.style.cursor = 'default'; return; }
+
+    // Top swipe complete
+    if (!$.inTimeView && $.topSwipe && $.topSwipe.pid === e.pointerId && $.topSwipe.active) {
+        $.pointers.delete(e.pointerId);
+        const sd = $.topSwipe; $.topSwipe = null;
+        if (sd.confirmed && $.zoom <= sd.startTVZ + ($.defaultZoom - sd.startTVZ) * 0.5) {
+            timeView.enter(true);
+        } else {
+            anim.startZoom($.defaultZoom, 175, () => { $.zoom = $.defaultZoom; anim.applyZoom(); });
+        }
+        return;
+    }
+    // Bottom swipe complete
+    if ($.inTimeView && $.bottomSwipe && $.bottomSwipe.pid === e.pointerId && $.bottomSwipe.active) {
+        $.pointers.delete(e.pointerId);
+        const sd = $.bottomSwipe; $.bottomSwipe = null; $.topSwipe = null;
+        document.body.style.cursor = 'default';
+        if (sd.confirmed) {
+            const zR = $.defaultZoom - $.timeViewZoom;
+            const tZ = $.timeViewZoom + zR * EXIT_THRESHOLD_RATIO;
+            if ($.zoom >= tZ) {
+                timeView.exit(true, () => { $.iStrength = 0.4; $.iInfinite = true;
+                    const axis = $.layoutMode === 'hbar' ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
+                    $.iQuat.copy(new THREE.Quaternion().setFromAxisAngle(axis, -0.015)); });
+            } else {
+                anim.startZoom($.timeViewZoom, 175);
             }
+        } else {
+            if (Math.abs($.zoom - $.timeViewZoom) > 0.02) {
+                anim.startZoom($.timeViewZoom, 150, () => { $.zoom = $.timeViewZoom; anim.applyZoom(); });
+            }
+        }
+        return;
+    }
 
-            const anim = new Animator();
+    $.pointers.delete(e.pointerId);
 
-// ========== 球面库仑斥力分布（Thomson 问题）==========
-            const sphereCoulomb = (N, opts = {}) => {
-                const { radius = 1, iter = 400, damp = 0.985, dt = 0.03, tol = 1e-6, soft = 0.01 } = opts;
-                if (N <= 0) return [];
-                if (N === 1) return [[0, 0, radius]];
+    if ($.longPressTimer) { clearTimeout($.longPressTimer); $.longPressTimer = null; }
 
-                const p = Array.from({ length: N }, () => {
-                    const u = Math.random() * 2 - 1,
-                        th = Math.random() * Math.PI * 2;
-                    const r = Math.sqrt(1 - u * u) * radius;
-                    return [r * Math.cos(th), u * radius, r * Math.sin(th)];
+    if ($.pointers.size === 0) {
+        // Click?
+        if ($.dragging && !$.moved && $.hovered && !$.inTimeView && !$.longPressFired) {
+            const app = getAppBySprite($.hovered);
+            const targetDir = $.hovered.position.clone().normalize();
+            const targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0,0,1));
+            const z = computeTimeViewZoom();
+
+            if (app && app.packageName === '__settings__') {
+                acts.start($.hovered, targetQuat, z, () => {
+                    $.settingsOverlay.style.display = 'flex';
+                    $.canvas.style.pointerEvents = 'none';
                 });
-                const v = Array.from({ length: N }, () => [0, 0, 0]);
-                const f = Array.from({ length: N }, () => [0, 0, 0]);
-
-                for (let t = 0; t < iter; t++) {
-                    for (let i = 0; i < N; i++) f[i][0] = f[i][1] = f[i][2] = 0;
-
-                    for (let i = 0; i < N; i++) {
-                        for (let j = i + 1; j < N; j++) {
-                            const dx = p[i][0] - p[j][0],
-                                dy = p[i][1] - p[j][1],
-                                dz = p[i][2] - p[j][2];
-                            const d2 = dx * dx + dy * dy + dz * dz + soft * soft;
-                            const k = 1 / (d2 * Math.sqrt(d2));
-                            const fx = k * dx,
-                                fy = k * dy,
-                                fz = k * dz;
-                            f[i][0] += fx;
-                            f[i][1] += fy;
-                            f[i][2] += fz;
-                            f[j][0] -= fx;
-                            f[j][1] -= fy;
-                            f[j][2] -= fz;
-                        }
-                    }
-
-                    let maxV = 0;
-                    for (let i = 0; i < N; i++) {
-                        const x = p[i][0],
-                            y = p[i][1],
-                            z = p[i][2];
-                        const len = Math.sqrt(x * x + y * y + z * z);
-                        const nx = x / len,
-                            ny = y / len,
-                            nz = z / len;
-                        const dot = f[i][0] * nx + f[i][1] * ny + f[i][2] * nz;
-                        const ftx = f[i][0] - dot * nx,
-                            fty = f[i][1] - dot * ny,
-                            ftz = f[i][2] - dot * nz;
-
-                        v[i][0] = (v[i][0] + ftx * dt) * damp;
-                        v[i][1] = (v[i][1] + fty * dt) * damp;
-                        v[i][2] = (v[i][2] + ftz * dt) * damp;
-
-                        const spd = Math.sqrt(v[i][0] ** 2 + v[i][1] ** 2 + v[i][2] ** 2);
-                        if (spd > maxV) maxV = spd;
-
-                        let px = x + v[i][0] * dt,
-                            py = y + v[i][1] * dt,
-                            pz = z + v[i][2] * dt;
-                        const plen = Math.sqrt(px * px + py * py + pz * pz);
-                        p[i][0] = px * radius / plen;
-                        p[i][1] = py * radius / plen;
-                        p[i][2] = pz * radius / plen;
-                    }
-                    if (maxV < tol) break;
-                }
-                return p;
+            } else if (app && app.packageName === '__time__') {
+                timeView.returnToView();
+            } else if (app && !$.inTimeView) {
+                acts.start($.hovered, targetQuat, z, () => {
+                    if (NativeBridge && NativeBridge.launchApp) NativeBridge.launchApp(app.packageName);
+                });
             }
+        }
+        if ($.dragging && $.moved && !$.inTimeView) G.startInertia();
+        $.dragging = false; $.moved = false;
+        document.body.style.cursor = $.hovered ? 'pointer' : 'grab';
+    }
+};
 
-            const labelEl = document.getElementById('appLabel');
-            const loadingEl = document.getElementById('loadingIndicator');
+const onPointerLeave = (e) => {
+    if ($.pointers.has(e.pointerId) && $.pointers.size === 1 && $.dragging && !$.moved && !$.inTimeView) clearHover();
+    if ($.inTimeView && $.bottomSwipe && $.bottomSwipe.pid === e.pointerId && $.bottomSwipe.active) {
+        $.pointers.delete(e.pointerId);
+        const sd = $.bottomSwipe; $.bottomSwipe = null; $.topSwipe = null;
+        if (sd.confirmed && $.zoom > $.timeViewZoom + 0.1) {
+            const zR = $.defaultZoom - $.timeViewZoom;
+            const tZ = $.timeViewZoom + zR * EXIT_THRESHOLD_RATIO;
+            if ($.zoom >= tZ) timeView.exit(true);
+            else anim.startZoom($.timeViewZoom, 175);
+        }
+    }
+    if (!$.inTimeView && $.topSwipe && $.topSwipe.pid === e.pointerId && $.topSwipe.active) {
+        $.pointers.delete(e.pointerId); $.topSwipe = null;
+        anim.startZoom($.defaultZoom, 175, () => { $.zoom = $.defaultZoom; anim.applyZoom(); });
+    }
+};
+const onPointerCancel = (e) => { onPointerLeave(e); };
 
-            // ========== 场景 ==========
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000);
-            const FAR_PLANE = 1e8;
-            const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, FAR_PLANE);
-let renderer = null, rendererType = 'unknown';
+// Touch / wheel stubs for pinch zoom
+const onWheel = (e) => {
+    if ($.inTimeView) return;
+    const dz = e.deltaY > 0 ? 0.3 : -0.3;
+    $.zoom = Math.max(MIN_ZOOM, Math.min($.defaultZoom * 2, $.zoom + dz));
+    anim.applyZoom();
+};
 
-            // 1. Try WebGPU
-            if (typeof THREE.WebGPURenderer !== 'undefined') {
-                try {
-                    renderer = new THREE.WebGPURenderer({ antialias: true });
-                    await renderer.init();
-                    rendererType = 'WebGPU';
-                    console.log('✅ WebGPU renderer');
-                } catch(e) { console.warn('WebGPU failed:', e.message); renderer = null; }
-            }
+console.log("Events ready");
 
-            // 2. Try WebGL2
-            if (!renderer) {
-                try {
-                    const c2 = document.createElement('canvas');
-                    const gl2 = c2.getContext('webgl2');
-                    if (gl2) {
-                        renderer = new THREE.WebGLRenderer({ antialias: true, canvas: document.createElement('canvas') });
-                        rendererType = 'WebGL2';
-                        console.log('✅ WebGL2 renderer');
-                    }
-                } catch(e) { console.warn('WebGL2 failed:', e.message); renderer = null; }
-            }
+// ================================================================
+// NATIVE BRIDGE
+// ================================================================
+const initBridge = () => {
+    if (typeof NativeBridge !== 'undefined') {
+        $.bridgeReady = true;
+        NativeBridge.log('bridge-ready');
+    } else {
+        // Poll
+        let tries = 0;
+        const poll = setInterval(() => {
+            if (typeof NativeBridge !== 'undefined') { $.bridgeReady = true; NativeBridge.log('bridge-late'); clearInterval(poll); }
+            if (++tries > 50) clearInterval(poll);
+        }, 200);
+    }
+};
 
-            // 3. Try WebGL1
-            if (!renderer) {
-                try {
-                    const c1 = document.createElement('canvas');
-                    const gl1 = c1.getContext('webgl') || c1.getContext('experimental-webgl');
-                    if (gl1) {
-                        renderer = new THREE.WebGLRenderer({ antialias: false, canvas: document.createElement('canvas') });
-                        rendererType = 'WebGL1';
-                        console.log('⚠️ WebGL1 renderer');
-                    }
-                } catch(e) { console.warn('WebGL1 failed:', e.message); renderer = null; }
-            }
+const loadApps = () => {
+    if (!$.bridgeReady) { setTimeout(loadApps, 500); return; }
+    try {
+        const raw = NativeBridge.getInstalledApps();
+        const data = JSON.parse(raw);
+        $.apps = (data.apps || []).filter(a => a.packageName !== 'com.dng.launcher');
+        $.totalItems = [
+            { type: 'time', app: null },
+            ...$.apps.map(a => ({ type: 'app', app: a })),
+            { type: 'settings', app: { packageName: '__settings__', appName: '设置', isSystem: true } },
+        ];
+        createSprites($.apps, null);
+        $.loadingEl.style.opacity = '0';
+        setTimeout(() => { if ($.loadingEl.parentNode) $.loadingEl.remove(); }, 500);
+        // Load real icons
+        $.apps.forEach(app => loadRealIcon(app.packageName));
+    } catch (e) {
+        console.error('loadApps error:', e);
+        setTimeout(loadApps, 1000);
+    }
+};
 
-            // 4. Error
-            if (!renderer) {
-                loadingEl.textContent = '不支持3D渲染，请使用支持的设备';
-                loadingEl.style.display = 'flex';
-                return;
-            }
+const loadRealIcon = (pkg) => {
+    // Stub: real icons loaded via NativeBridge.requestAppIcons
+};
 
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            if (renderer.outputColorSpace !== undefined) {
-                renderer.outputColorSpace = THREE.SRGBColorSpace;
-            }
-            document.body.appendChild(renderer.domElement);
-            const canvas = renderer.domElement;
+// ================================================================
+// SETTINGS PANEL
+// ================================================================
+const initSettings = () => {
+    const closeBtn = document.getElementById('settings-close');
+    const saveBtn = document.getElementById('settings-save');
+    const iconInput = document.getElementById('settings-icon-input');
+    const sphereInput = document.getElementById('settings-sphere-input');
+    const iconVal = document.getElementById('settings-icon-val');
+    const sphereVal = document.getElementById('settings-sphere-val');
 
-            scene.add(new THREE.AmbientLight(0x8899bb, 2.4));
-            const dl = new THREE.DirectionalLight(0xffffff, 1.8);
-            dl.position.set(2, 3, 5);
-            scene.add(dl);
-            let d2 = new THREE.DirectionalLight(0x8899cc, 0.9);
-            d2.position.set(-3, -1, -2);
-            scene.add(d2);
+    iconInput.addEventListener('input', () => { iconVal.textContent = iconInput.value; });
+    sphereInput.addEventListener('input', () => { sphereVal.textContent = sphereInput.value; });
 
-            const sphereGroup = new THREE.Group();
-            scene.add(sphereGroup);
+    closeBtn.addEventListener('click', () => {
+        $.settingsOverlay.style.display = 'none';
+        $.canvas.style.pointerEvents = 'auto';
+    });
 
-            // ========== 常量 ==========
-let SPHERE_RADIUS = 2.5, layoutMode = 'sphere';
-            (function() {
-                try {
-                    const _s = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
-                    if (_s.layoutMode) layoutMode = _s.layoutMode;
-                } catch(e) {}
+    saveBtn.addEventListener('click', () => {
+        const iconRes = Math.max(16, parseInt(iconInput.value) || 512);
+        const newRadius = parseFloat(sphereInput.value) || 2.5;
+        const layoutVal = document.querySelector('input[name="layoutMode"]:checked').value;
+
+        localStorage.setItem('vibe-settings', JSON.stringify({
+            iconRes, sphereSize: newRadius, layoutMode: layoutVal
+        }));
+
+        if ($.layoutMode !== layoutVal) { location.reload(); return; }
+
+        $.iconRes = iconRes;
+        if ($.radius !== newRadius) {
+            $.radius = newRadius;
+            $.diameter = newRadius * 2;
+            createSprites($.apps, null);
+            $.defaultZoom = (() => {
+                const w = window.innerWidth, h = window.innerHeight;
+                const sef = Math.min(1, w / h);
+                return ($.diameter / (2 * Math.tan(FOV_RAD / 2) * sef)) * 1.15;
             })();
-            let SPHERE_DIAMETER = SPHERE_RADIUS * 2;
-            const BASE_SCALE = 0.52;
-            let ICON_RES = 512;
-            try {
-                const _saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
-                if (_saved.iconRes && parseInt(_saved.iconRes) >= 16) ICON_RES = parseInt(_saved.iconRes);
-            } catch(e) {}
-            const HOVER_SCALE = 0.72;
-            const FOV_RAD = THREE.MathUtils.degToRad(50);
-            const MIN_ZOOM = 0.1;
-            
-            const ROTATION_ANIM_DURATION = 400; // 旋转动画时长
-
-            const computeInitDistance = () => {
-                const w = window.innerWidth;
-                let h = window.innerHeight;
-                const shortEdgeFactor = Math.min(1, w / h);
-                const minVisible = SPHERE_DIAMETER / (2 * Math.tan(FOV_RAD / 2) * shortEdgeFactor);
-                return minVisible * 1.15;
-            }
-
-let zoomLevel = computeInitDistance(), defaultZoom = zoomLevel;
-            camera.position.set(0, 0, zoomLevel);
-
-            function applyZoom() { camera.position.z = zoomLevel; }
-
-            const computeTimeViewZoom = () => {
-                const R = BASE_SCALE * 0.44;
-                const fovHalfRad = THREE.MathUtils.degToRad(camera.fov / 2);
-                const aspect = window.innerWidth / window.innerHeight;
-                const halfDiagonalNDC = Math.sqrt(aspect * aspect + 1);
-                const distance = R / (Math.tan(fovHalfRad) * halfDiagonalNDC);
-                return SPHERE_RADIUS + distance;
-            }
-
-let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = null, timeTextureUpdateInterval = null;
-            const exitThresholdRatio = 0.35;
-
-            // ========== 可取消动作状态机 ==========
-            let cancelableAction = null;
-
-            const startCancelableAction = (sprite, rotTarget, zoomTarget, onCommit) => {
-                if (cancelableAction) cancelCurrentAction('superseded');
-                cancelableAction = {
-                    sprite: sprite, onCommit: onCommit, phase: 'animating',
-                    rotDone: false, zoomDone: false, cancelled: false
-                };
-                inertiaQ.identity(); inertiaStrength = 0; infiniteInertia = false;
-                startRotationAnimation(rotTarget, ROTATION_ANIM_DURATION, function() {
-                    if (cancelableAction && !cancelableAction.cancelled) {
-                        cancelableAction.rotDone = true; tryCommitCancelable();
-                    }
-                });
-                startZoomAnimation(zoomTarget, ROTATION_ANIM_DURATION, function() {
-                    zoomLevel = zoomTarget; applyZoom();
-                    if (cancelableAction && !cancelableAction.cancelled) {
-                        cancelableAction.zoomDone = true; tryCommitCancelable();
-                    }
-                });
-            }
-
-            function tryCommitCancelable() {
-                const a = cancelableAction;
-                if (!a || a.cancelled || a.phase !== 'animating') return;
-                if (a.rotDone && a.zoomDone) {
-                    a.phase = 'committed';
-                    const cb = a.onCommit; cancelableAction = null;
-                    if (cb) cb();
-                }
-            }
-
-            function cancelCurrentAction(reason) {
-                if (!cancelableAction || cancelableAction.cancelled) return;
-                cancelableAction.cancelled = true;
-                try { NativeBridge.log('cancel:' + reason); } catch(e) {}
-                cancelZoomAnimation();
-                startZoomAnimation(defaultZoom, 175, function() {
-                    zoomLevel = defaultZoom; applyZoom();
-                });
-                cancelableAction = null;
-            }
-
-            let bottomSwipeData = null, topSwipeData = null;
-            const TOP_ZONE_RATIO = 0.15, BOTTOM_ZONE_RATIO = 0.15;
-
-            // 缩放动画
-            let zoomTarget = null, zoomAnimStart = null, zoomAnimDuration = 0, zoomAnimElapsed = 0, zoomAnimStartVal = 0, zoomAnimEndVal = 0, zoomAnimCallback = null;
-
-            // 旋转动画（用于点击时间图标返回时间视图）
-            let rotationAnimData = null;
-
-            function startZoomAnimation(targetVal, duration, callback) {
-                zoomAnimStart = performance.now();
-                zoomAnimDuration = duration || 500;
-                zoomAnimStartVal = zoomLevel;
-                zoomAnimEndVal = targetVal;
-                zoomAnimElapsed = 0;
-                zoomTarget = targetVal;
-                zoomAnimCallback = callback || null;
-            }
-
-            function cancelZoomAnimation() {
-                zoomTarget = null;
-                zoomAnimStart = null;
-                zoomAnimDuration = 0;
-                zoomAnimCallback = null;
-            }
-
-            const easeOutCubic = (t) => {
-                return 1 - Math.pow(1 - t, 3);
-            }
-
-            const updateZoomAnimation = (now) => {
-                if (zoomTarget === null) return;
-                zoomAnimElapsed = now - zoomAnimStart;
-                let t = Math.min(1, zoomAnimElapsed / zoomAnimDuration);
-                const eased = easeOutCubic(t);
-                zoomLevel = zoomAnimStartVal + (zoomAnimEndVal - zoomAnimStartVal) * eased;
-                applyZoom();
-                if (t >= 1) {
-                    zoomLevel = zoomAnimEndVal;
-                    applyZoom();
-                    const cb = zoomAnimCallback;
-                    cancelZoomAnimation();
-                    if (cb) cb();
-                }
-            }
-
-            const updateRotationAnimation = (now) => {
-                if (!rotationAnimData) return;
-                const elapsed = now - rotationAnimData.startTime;
-                let t = Math.min(1, elapsed / rotationAnimData.duration);
-                const eased = easeOutCubic(t);
-                rotationQuat.copy(rotationAnimData.from).slerp(rotationAnimData.to, eased);
-                sphereGroup.quaternion.copy(rotationQuat);
-                if (t >= 1) {
-                    rotationQuat.copy(rotationAnimData.to);
-                    sphereGroup.quaternion.copy(rotationQuat);
-                    const cb = rotationAnimData.callback;
-                    rotationAnimData = null;
-                    if (cb) cb();
-                }
-            }
-
-            function startRotationAnimation(targetQuat, duration, callback) {
-                rotationAnimData = {
-                    from: rotationQuat.clone(),
-                    to: targetQuat.clone(),
-                    startTime: performance.now(),
-                    duration: duration || ROTATION_ANIM_DURATION,
-                    callback: callback || null
-                };
-                if (callback && duration <= 0) {
-                    rotationQuat.copy(targetQuat);
-                    sphereGroup.quaternion.copy(rotationQuat);
-                    rotationAnimData = null;
-                    callback();
-                }
-            }
-
-            // ========== 设置纹理 ==========
-            const createGearTexture = () => {
-                console.log('createGearTexture size:', ICON_RES);
-                const s = Math.max(16, ICON_RES), ca = document.createElement('canvas');
-                ca.width = s; ca.height = s;
-                const ctx = ca.getContext('2d'), cx = s/2, cy = s/2, rr = s * 0.44;
-                ctx.fillStyle = '#000000';
-                ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI*2); ctx.fill();
-                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-                ctx.lineWidth = s * 0.012;
-                ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI*2); ctx.stroke();
-                ctx.fillStyle = 'rgba(255,255,255,0.5)';
-                ctx.font = 'bold ' + (s * 0.45) + 'px sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText('⚙', cx, cy);
-                const tex = new THREE.CanvasTexture(ca);
-                tex.minFilter = THREE.LinearFilter;
-                tex.magFilter = THREE.LinearFilter;
-                if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                return tex;
-            }
-
-            // ========== 时间纹理 ==========
-            const createTimeTexture = () => {
-                const s = Math.max(window.innerWidth, window.innerHeight);
-                let c = document.createElement('canvas');
-                c.width = s;
-                c.height = s;
-                const ctx = c.getContext('2d');
-let cx = s / 2, cy = s / 2, r = s * 0.44;
-
-                // 背景圆
-                ctx.fillStyle = '#0a0e18';
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.fill();
-
-                // 外圈
-                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-                ctx.lineWidth = s * 0.012;
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.stroke();
-
-                const tex = new THREE.CanvasTexture(c);
-                tex.minFilter = THREE.LinearFilter;
-                tex.magFilter = THREE.LinearFilter;
-                if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                return tex;
-            }
-
-            const updateTimeSpriteTexture = () => {
-                if (!timeSprite || !timeSprite.material) return;
-                const newTex = createTimeTexture();
-                if (timeSprite.material.map) {
-                    timeSprite.material.map.dispose();
-                }
-                timeSprite.material.map = newTex;
-                timeSprite.material.needsUpdate = true;
-            }
-
-            const startTimeTextureUpdates = () => {
-                stopTimeTextureUpdates();
-                updateTimeSpriteTexture();
-                timeTextureUpdateInterval = setInterval(async function() {
-                    if (timeSprite && timeSprite.material) {
-                        updateTimeSpriteTexture();
-                    }
-                }, 30000);
-            }
-
-            function stopTimeTextureUpdates() {}
-
-            // ========== 进入/退出时间视图 ==========
-            const enterTimeView = (animate, onComplete) => {
-                if (isInTimeView || !timeSprite) return;
-                isInTimeView = true;
-                cancelZoomAnimation();
-                rotationAnimData = null;
-                inertiaQ.identity();
-                inertiaStrength = 0;
-                recentSpeeds = [];
-                clearHover();
-                document.body.style.cursor = 'default';
-                updateTimeSpriteTexture();
-                startTimeTextureUpdates();
-                const targetZoom = computeTimeViewZoom();
-                timeViewZoom = targetZoom;
-                if (animate) {
-                    startZoomAnimation(targetZoom, 300, function() {
-                        zoomLevel = targetZoom;
-                        applyZoom();
-                        if (onComplete) onComplete();
-                        // 显示原生时间页面覆盖层（最高分辨率）
-                        const tp = document.getElementById('time-page');
-                        if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                    });
-                } else {
-                    zoomLevel = targetZoom;
-                    applyZoom();
-                    if (onComplete) onComplete();
-                    const tp = document.getElementById('time-page');
-                    if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                }
-            }
-
-            const exitTimeView = (animate, callback) => {
-                if (!isInTimeView) return;
-                isInTimeView = false;
-                // 隐藏原生时间页面
-                const tp = document.getElementById('time-page');
-                if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
-                cancelZoomAnimation();
-                rotationAnimData = null;
-                stopTimeTextureUpdates();
-                bottomSwipeData = null;
-                topSwipeData = null;
-                document.body.style.cursor = 'grab';
-                if (timeSprite) {
-                    timeSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
-                }
-                const targetZoom = defaultZoom;
-                if (animate) {
-                    startZoomAnimation(targetZoom, 250, function() {
-                        zoomLevel = targetZoom;
-                        applyZoom();
-                        if (callback) callback();
-                    });
-                } else {
-                    zoomLevel = targetZoom;
-                    applyZoom();
-                    if (callback) callback();
-                }
-            }
-
-            // 点击时间图标返回时间视图
-            const returnToTimeView = () => {
-                if (isInTimeView || !timeSprite) return;
-                isInTimeView = true;
-                // 取消当前所有动画
-                cancelZoomAnimation();
-                rotationAnimData = null;
-                inertiaQ.identity();
-                inertiaStrength = 0;
-                recentSpeeds = [];
-                clearHover();
-                document.body.style.cursor = 'default';
-
-                // 计算需要旋转的目标四元数：使时间图标正对摄像机
-                const timePos = timeSprite.position.clone();
-                const targetDir = timePos.clone().normalize();
-                const cameraDir = new THREE.Vector3(0, 0, 1);
-                const targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
-
-                // 同时执行旋转和缩放动画
-let zoomComplete = false, rotationComplete = false;
-                const targetZoom = computeTimeViewZoom();
-                timeViewZoom = targetZoom;
-
-                const checkBothComplete = () => {
-                    if (zoomComplete && rotationComplete) {
-                        const tp = document.getElementById('time-page');
-                        if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                        updateTimeSpriteTexture();
-                        startTimeTextureUpdates();
-                    }
-                }
-
-                startRotationAnimation(targetQuat, ROTATION_ANIM_DURATION, function() {
-                    rotationComplete = true;
-                    checkBothComplete();
-                });
-
-                startZoomAnimation(targetZoom, ROTATION_ANIM_DURATION, function() {
-                    zoomLevel = targetZoom;
-                    applyZoom();
-                    zoomComplete = true;
-                    checkBothComplete();
-                });
-            }
-
-            // ========== 纹理生成 ==========
-            const placeholderColors = [
-                '#ff6b6b', '#ff8e72', '#ffa94d', '#ffd43b', '#a9e34b',
-                '#69db7c', '#38d9a9', '#3bc9db', '#4dabf7', '#5c7cfa',
-                '#748ffc', '#9775fa', '#da77f2', '#f783ac', '#ff8787',
-                '#ffb8a8', '#ffc078', '#ffe066', '#c0eb75', '#8ce99a',
-                '#63e6be', '#66d9e8', '#74c0fc', '#91a7ff', '#b197fc',
-            ];
-
-            const createPlaceholderTexture = (appName, colorHex) => {
-                console.log('createPlaceholderTexture', appName, 'size:', ICON_RES);
-                const s = Math.max(16, ICON_RES),
-                    c = document.createElement('canvas');
-                c.width = s;
-                c.height = s;
-                const ctx = c.getContext('2d'),
-                    cx = s / 2,
-                    cy = s / 2,
-                    r = s * 0.44;
-                ctx.fillStyle = '#000000';
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = colorHex + 'aa';
-                ctx.lineWidth = s * 0.03;
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.stroke();
-                const initial = (appName || '?').charAt(0).toUpperCase();
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold ' + (s * 0.5) + 'px "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.shadowColor = colorHex;
-                ctx.shadowBlur = s * 0.1;
-                ctx.fillText(initial, cx, cy);
-                ctx.shadowBlur = 0;
-                const tex = new THREE.CanvasTexture(c);
-                tex.minFilter = THREE.LinearFilter;
-                tex.magFilter = THREE.LinearFilter;
-                if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                return tex;
-            }
-
-            const createIconTextureFromImage = (img) => {
-                const s = 512,
-                    cx = s / 2,
-                    cy = s / 2,
-                    r = s * 0.44,
-                    margin = s * 0.04;
-                const c2 = document.createElement('canvas');
-                c2.width = s;
-                c2.height = s;
-                const ctx2 = c2.getContext('2d');
-                ctx2.beginPath();
-                ctx2.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx2.clip();
-                const imgSize = Math.min(img.width, img.height);
-                const sx = (img.width - imgSize) / 2,
-                    sy = (img.height - imgSize) / 2;
-                ctx2.drawImage(img, sx, sy, imgSize, imgSize, margin, margin, s - margin * 2, s - margin * 2);
-                ctx2.beginPath();
-                ctx2.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx2.strokeStyle = 'rgba(255,255,255,0.35)';
-                ctx2.lineWidth = s * 0.025;
-                ctx2.stroke();
-                const tex = new THREE.CanvasTexture(c2);
-                tex.minFilter = THREE.LinearFilter;
-                tex.magFilter = THREE.LinearFilter;
-                if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                return tex;
-            }
-
-            // ========== 精灵管理 ==========
-let apps = [], sprites = [];
-
-            const clearAllSprites = () => {
-                stopTimeTextureUpdates();
-                for (let i = 0; i < sprites.length; i++) {
-                    const s = sprites[i];
-                    if (s.material) {
-                        if (s.material.map) s.material.map.dispose();
-                        s.material.dispose();
-                    }
-                    sphereGroup.remove(s);
-                }
-                sprites = [];
-                timeSprite = null;
-            }
-
-let pendingIconLoads = 0, enterAnimationComplete = false;
-
-            const createSprites = (appList, iconMap) => {
-                clearAllSprites();
-
-                const totalItems = [];
-window._totalItems = totalItems;
-                totalItems.push({
-                    type: 'time',
-                    data: { packageName: '__time__', appName: '时钟', isSystem: true },
-                    colorIndex: 0
-                });
-                totalItems.push({
-                    type: 'settings',
-                    data: { packageName: '__settings__', appName: '设置', isSystem: true },
-                    colorIndex: 1
-                });
-                for (let i = 0; i < appList.length; i++) {
-                    totalItems.push({
-                        type: 'app',
-                        data: appList[i],
-                        colorIndex: i + 2
-                    });
-                }
-
-                const isHemi = (layoutMode === 'hemisphere');
-                const isRing = (layoutMode === 'ring');
-                const isHbar = (layoutMode === 'hbar');
-                const isFlatring = (layoutMode === 'flatring');
-
-                if (isHemi) {
-                    const bc = totalItems.length;
-                    for (let ri = 0; ri < bc; ri++) {
-                        totalItems.push({
-                            type: 'redTest',
-                            data: { packageName: '__red__' + ri, appName: '红', isSystem: true },
-                            colorIndex: bc + ri
-                        });
-                    }
-                }
-
-                const N = totalItems.length;
-                const Nhalf = isHemi ? N / 2 : N;
-                let ringRadius = 0;
-                if (isRing || isHbar || isFlatring) {
-                    ringRadius = Math.max(SPHERE_RADIUS, (N * BASE_SCALE * 1.1) / (2 * Math.PI));
-                    SPHERE_RADIUS = ringRadius;
-                    SPHERE_DIAMETER = SPHERE_RADIUS * 2;
-                    defaultZoom = isFlatring ? ringRadius * 0.09 : ringRadius * 1.15;
-                    zoomLevel = defaultZoom;
-                    applyZoom();
-                }
-
-                let rawPoints = sphereCoulomb(N, { radius: SPHERE_RADIUS, iter: 500 });
-
-                const timeItemIndex = totalItems.findIndex(function(item) { return item.type === 'time'; });
-                const timeRaw = rawPoints[timeItemIndex];
-                const timePos = new THREE.Vector3(timeRaw[0], timeRaw[1], timeRaw[2]);
-                const targetDir = timePos.clone().normalize();
-                const cameraDir = new THREE.Vector3(0, 0, 1);
-                const alignQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
-
-                let allRotated;
-                if (isRing) {
-                    allRotated = [];
-                    for (let ri2 = 0; ri2 < N; ri2++) {
-                        const a = (ri2 / N) * Math.PI * 2;
-                        allRotated.push(new THREE.Vector3(0, Math.sin(a) * ringRadius, Math.cos(a) * ringRadius));
-                    }
-                } else if (isHbar) {
-                    allRotated = [];
-                    for (let ri2 = 0; ri2 < N; ri2++) {
-                        const a = (ri2 / N) * Math.PI * 2;
-                        allRotated.push(new THREE.Vector3(Math.sin(a) * ringRadius, 0, Math.cos(a) * ringRadius));
-                    }
-                } else if (isFlatring) {
-                    allRotated = [];
-                    for (let ri2 = 0; ri2 < N; ri2++) {
-                        const a = (ri2 / N) * Math.PI * 2 + Math.PI / 2;
-                        allRotated.push(new THREE.Vector3(Math.cos(a) * ringRadius, Math.sin(a) * ringRadius, 0));
-                    }
-                } else {
-                    allRotated = rawPoints.map(function(p) {
-                        let v = new THREE.Vector3(p[0], p[1], p[2]);
-                        v.applyQuaternion(alignQuat);
-                        return v;
-                    });
-                    if (isHemi) {
-                        allRotated.sort(function(a, b) { return b.z - a.z; });
-                    }
-                }
-                const rotatedPoints = allRotated;
-
-                for (let j = 0; j < N; j++) {
-                    const item = totalItems[j];
-                    let p = rotatedPoints[j];
-
-                    if (item.type === 'settings') {
-                        const gearTex = createGearTexture();
-                        const gearMat = new THREE.SpriteMaterial({ map: gearTex, transparent: true, depthTest: true, depthWrite: true });
-                        const gearSprite = new THREE.Sprite(gearMat);
-                        gearSprite.position.copy(p);
-                        gearSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
-                        gearSprite.userData = { isTimeSprite: false, app: item.data, baseScale: BASE_SCALE };
-                        sphereGroup.add(gearSprite);
-                        sprites.push(gearSprite);
-                    } else if (item.type === 'redTest') {
-                        const redC = document.createElement('canvas');
-                        redC.width = ICON_RES; redC.height = ICON_RES;
-                        const rtx = redC.getContext('2d');
-                        rtx.fillStyle = '#ff0000';
-                        rtx.fillRect(0, 0, ICON_RES, ICON_RES);
-                        const redTex = new THREE.CanvasTexture(redC);
-                        redTex.minFilter = THREE.LinearFilter;
-                        redTex.magFilter = THREE.LinearFilter;
-                        const redMat = new THREE.SpriteMaterial({ map: redTex, transparent: true, depthTest: true, depthWrite: true, opacity: 0 });
-                        const redSprite = new THREE.Sprite(redMat);
-                        redSprite.position.copy(p);
-                        redSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
-                        redSprite.userData = { isTimeSprite: false, app: item.data, baseScale: BASE_SCALE, isDecor: true };
-                        sphereGroup.add(redSprite);
-                        sprites.push(redSprite);
-                    } else if (item.type === 'time') {
-                        const timeTex = createTimeTexture();
-                        const timeMat = new THREE.SpriteMaterial({
-                            map: timeTex,
-                            transparent: true,
-                            depthTest: true,
-                            depthWrite: true
-                        });
-                        const sprite = new THREE.Sprite(timeMat);
-                        sprite.position.copy(p);
-                        sprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
-                        sprite.userData = {
-                            isTimeSprite: true,
-                            app: item.data,
-                            baseScale: BASE_SCALE
-                        };
-                        sphereGroup.add(sprite);
-                        sprites.push(sprite);
-                        timeSprite = sprite;
-                    } else {
-                        const app = item.data;
-                        const color = placeholderColors[item.colorIndex % placeholderColors.length];
-                        const placeholderTex = createPlaceholderTexture(app.appName, color);
-                        const mat = new THREE.SpriteMaterial({
-                            map: placeholderTex,
-                            transparent: true,
-                            depthTest: true,
-                            depthWrite: true
-                        });
-                        const appSprite = new THREE.Sprite(mat);
-                        appSprite.position.copy(p);
-                        appSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
-                        appSprite.userData = {
-                            isTimeSprite: false,
-                            app: app,
-                            color: color,
-                            hasRealIcon: false,
-                            baseScale: BASE_SCALE
-                        };
-                        sphereGroup.add(appSprite);
-                        sprites.push(appSprite);
-
-                        if (iconMap && iconMap[app.packageName]) {
-                            loadRealIcon(appSprite, iconMap[app.packageName]);
-                        }
-                    }
-                }
-
-                rotationQuat.identity();
-                sphereGroup.quaternion.identity();
-                if (layoutMode === 'flatring' && sprites.length > 0) {
-                    const tw = new THREE.Vector3();
-                    sprites[0].getWorldPosition(tw);
-                    camera.lookAt(tw);
-                }
-
-                // 更新最小球体半径提示
-                const minR = (BASE_SCALE * 0.44 * 1.1) / Math.sqrt(Math.PI / Math.max(1, sprites.length));
-                const hint = document.getElementById('sphere-min-hint');
-                if (hint) hint.textContent = '最少 ' + minR.toFixed(2) + '（默认2.5）';
-
-                // 启动时应用已保存的球体大小
-                try {
-                    let saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
-                    if (saved.sphereSize && parseFloat(saved.sphereSize) > 0 && layoutMode !== 'ring' && layoutMode !== 'hbar' && layoutMode !== 'flatring') {
-                        SPHERE_RADIUS = parseFloat(saved.sphereSize);
-                        // sphereGroup now uses Coulomb points directly, no need for scale
-                        // 重新分布
-                        let rawPts = sphereCoulomb(totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
-                        const tIdx = totalItems.findIndex(function(it) { return it.type === 'time'; });
-                        if (tIdx >= 0) {
-                            const tp = new THREE.Vector3(rawPts[tIdx][0], rawPts[tIdx][1], rawPts[tIdx][2]);
-                            const aq = new THREE.Quaternion().setFromUnitVectors(tp.clone().normalize(), new THREE.Vector3(0,0,1));
-                            rawPts = rawPts.map(function(pt) {
-                                let v = new THREE.Vector3(pt[0],pt[1],pt[2]);
-                                v.applyQuaternion(aq);
-                                return v;
-                            });
-                            if (layoutMode === 'hemisphere') rawPts.sort(function(a, b) { return b.z - a.z; });
-                        }
-                        for (let k = 0; k < sprites.length; k++) {
-                            if (k < rawPts.length) sprites[k].position.copy(rawPts[k]);
-                        }
-                        SPHERE_DIAMETER = SPHERE_RADIUS * 2;
-                        defaultZoom = computeInitDistance();
-                        timeViewZoom = computeTimeViewZoom();
-                        zoomLevel = defaultZoom;
-                        applyZoom();
-                    }
-                } catch(e) {}
-
-                timeViewZoom = computeTimeViewZoom();
-
-                console.log('createSprites DONE, calling hideLoadingIfReady');
-                hideLoadingIfReady();  // 先隐藏loading
-                enterTimeView(true, function() {
-                    enterAnimationComplete = true;
-                    checkAllIconsLoaded();
-                });
-            }
-
-            function loadRealIcon(sprite, iconUrl) {
-                pendingIconLoads++;
-                const img = new Image();
-                img.onload = function() {
-                    try {
-                        const tex = createIconTextureFromImage(img);
-                        if (sprite.material && sprite.material.map && !sprite.userData.hasRealIcon) {
-                            sprite.material.map.dispose();
-                        }
-                        sprite.material.map = tex;
-                        sprite.material.needsUpdate = true;
-                        sprite.userData.hasRealIcon = true;
-                        sprite.userData._iconUrl = iconUrl;
-                    } catch (e) { console.warn('图标处理失败:', iconUrl, e); }
-                    pendingIconLoads--;
-                    checkAllIconsLoaded();
-                };
-                img.onerror = function() { console.warn('图标加载失败:', iconUrl); pendingIconLoads--; checkAllIconsLoaded(); };
-                img.src = iconUrl;
-            }
-
-            function checkAllIconsLoaded() {
-                if (pendingIconLoads <= 0 && enterAnimationComplete) {
-                    loadingEl.style.opacity = '0';
-                    setTimeout(function() { loadingEl.textContent = ''; }, 500);
-                }
-            }
-            function hideLoadingIfReady() {
-                if (loadingEl) {
-                    loadingEl.style.display = 'none';
-                }
-            }
-
-            // ========== NativeBridge ==========
-            let nativeBridgeReady = false;
-
-            const tryLoadApps = () => {
-                if (typeof NativeBridge !== 'undefined' && NativeBridge.requestInstalledApps) {
-                    nativeBridgeReady = true;
-                    NativeBridge.requestInstalledApps();
-                } else {
-                    setTimeout(async function() {
-                        if (typeof NativeBridge !== 'undefined' && NativeBridge.requestInstalledApps) {
-                            nativeBridgeReady = true;
-                            NativeBridge.requestInstalledApps();
-                        } else {
-                            loadingEl.textContent = 'NativeBridge 不可用，使用演示数据';
-                            createDemoApps();
-                        }
-                    }, 800);
-                }
-            }
-
-            function createDemoApps() {
-                const demoNames = [
-                    '微信', 'QQ', '淘宝', '支付宝', '抖音', '美团', '饿了么', 'B站', '知乎', '微博',
-                    '网易云', '高德', '百度', '京东', '拼多多', '小红书', '快手', '滴滴', '闲鱼', '携程',
-                    '酷狗', 'UC', 'WPS', '钉钉', '飞书',
-                ];
-                const demoApps = [];
-                for (let i = 0; i < demoNames.length; i++) {
-                    demoApps.push({
-                        packageName: 'com.demo.' + demoNames[i].toLowerCase(),
-                        appName: demoNames[i],
-                        isSystem: false
-                    });
-                }
-                apps = demoApps;
-                createSprites(demoApps, null);
-            }
-
-            window._onAppsLoaded = function(json) {
-                try {
-                    const data = typeof json === 'string' ? JSON.parse(json) : json;
-                    if (data.success && data.apps && data.apps.length > 0) {
-                        const newPkgs = [];
-                        for (let i = 0; i < data.apps.length; i++) newPkgs.push(data.apps[i].packageName);
-                        const oldPkgs = window._allPkgs || [];
-                        let changed = newPkgs.length !== oldPkgs.length;
-                        if (!changed) {
-                            const oldSet = {}; for (let j = 0; j < oldPkgs.length; j++) oldSet[oldPkgs[j]] = true;
-                            for (let k = 0; k < newPkgs.length; k++) { if (!oldSet[newPkgs[k]]) { changed = true; break; } }
-                        }
-                        if (!changed && sprites.length > 0) return; // 没变化，不重建
-                        apps = data.apps;
-                        loadingEl.textContent = '正在加载图标…';
-                        createSprites(apps, null);
-                        window._allPkgs = newPkgs;
-                        if (nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(newPkgs), ICON_RES);
-                    } else {
-                        loadingEl.textContent = '没有找到应用';
-                        createSprites([], null);
-                    }
-                } catch (e) {
-                    console.error('解析应用列表失败:', e);
-                    loadingEl.textContent = '加载失败';
-                }
-            };
-
-            window._onIconsLoaded = function(json) {
-                try {
-                    const iconData = typeof json === 'string' ? JSON.parse(json) : json;
-                    const iconMap = {};
-                    if (Array.isArray(iconData)) {
-                        for (let i = 0; i < iconData.length; i++) {
-                            const item = iconData[i];
-                            if (item.packageName && item.iconUrl) iconMap[item.packageName] = item.iconUrl;
-                        }
-                    }
-                    for (let j = 0; j < sprites.length; j++) {
-                        const sprite = sprites[j];
-                        if (sprite.userData.isTimeSprite) continue;
-                        const app = sprite.userData.app;
-                        if (app && iconMap[app.packageName] && !sprite.userData.hasRealIcon) {
-                            loadRealIcon(sprite, iconMap[app.packageName]);
-                        }
-                    }
-                } catch (e) { console.error('解析图标数据失败:', e); }
-            };
-
-            // ========== 旋转控制 ==========
-            const rotationQuat = new THREE.Quaternion();
-let isDragging = false, hasMoved = false;
-            const DRAG_THRESHOLD = 3;
-            const prevScreen = new THREE.Vector2();
-            const inertiaQ = new THREE.Quaternion();
-let inertiaStrength = 0, infiniteInertia = false;
-            const INERTIA_DECAY = 0.975;
-            const INERTIA_FAST_DECAY = 0.85;
-            const INERTIA_MIN = 0.0005;
-            let recentSpeeds = [];
-            const SPEED_SAMPLES = 5;
-            const activePointerIds = new Set();
-
-            const raycaster = new THREE.Raycaster();
-            raycaster.params.Sprite = { threshold: 0.8 };
-            const mouse = new THREE.Vector2();
-let hoveredSprite = null, longPressTimer = null, longPressFired = false, contextMenuOpen = false;
-            const LONG_PRESS_MS = 600;
-
-            const screenToSphere = (sx, sy) => {
-                const rect = canvas.getBoundingClientRect();
-let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = new THREE.Vector3();
-                v.x = nx * 2 - 1;
-                v.y = -(ny * 2 - 1);
-                const a = rect.width / rect.height;
-                v.x *= a;
-                const magSq = v.x * v.x + v.y * v.y;
-                if (magSq <= 1.0) v.z = Math.sqrt(1.0 - magSq);
-                else {
-                    const inv = 1.0 / Math.sqrt(magSq);
-                    v.x *= inv;
-                    v.y *= inv;
-                    v.z = 0;
-                }
-                return v.normalize();
-            }
-
-            const updateMouse = (cx, cy) => {
-                const rect = canvas.getBoundingClientRect();
-                mouse.x = ((cx - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((cy - rect.top) / rect.height) * 2 + 1;
-            }
-
-            function getAppBySprite(s) { return s && s.userData ? s.userData.app : null; }
-
-            const checkHover = (e) => {
-                if (isInTimeView) return;
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(sprites);
-                let newHovered = null;
-                for (let hi = 0; hi < intersects.length; hi++) {
-                    if (intersects[hi].object.userData.isDecor) continue;
-                    newHovered = intersects[hi].object;
-                    break;
-                }
-                if (hoveredSprite !== newHovered) {
-                    if (newHovered) {
-                        document.body.style.cursor = 'pointer';
-                        const app = getAppBySprite(newHovered);
-                        if (app) {
-                            labelEl.textContent = app.appName;
-                            labelEl.classList.add('visible');
-                            if (e) {
-                                labelEl.style.left = e.clientX + 'px';
-                                labelEl.style.top = e.clientY + 'px';
-                            }
-                        }
-                    } else {
-                        document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
-                        labelEl.classList.remove('visible');
-                    }
-                    hoveredSprite = newHovered;
-                } else if (hoveredSprite && e) {
-                    labelEl.style.left = e.clientX + 'px';
-                    labelEl.style.top = e.clientY + 'px';
-                }
-            }
-
-            const clearLongPressTimer = () => {
-                if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-                
-            }
-            const showContextMenu = (sprite, x, y) => {
-                const menu = document.getElementById('context-menu');
-                if (!menu) return;
-                const app = getAppBySprite(sprite);
-                NativeBridge.log('menu-open ' + (app?app.packageName:'?') ); if (app) menu.setAttribute('data-pkg', app.packageName);
-                // 定位菜单，保持在屏幕内
-                const mw = 160, mh = 100;
-                const left = Math.min(x, window.innerWidth - mw);
-                const top = Math.min(y, window.innerHeight - mh);
-                menu.style.left = Math.max(0, left) + 'px';
-                menu.style.top = Math.max(0, top) + 'px';
-                menu.style.display = 'block';
-            }
-            const hideContextMenu = () => {
-                const menu = document.getElementById('context-menu');
-                if (menu) menu.style.display = 'none';
-                NativeBridge.log("menu-closed");
-                contextMenuOpen = false;
-                longPressFired = false;
-            }
-
-            function clearHover() {
-                if (hoveredSprite && hoveredSprite.userData.baseScale) {
-                    hoveredSprite.scale.set(hoveredSprite.userData.baseScale, hoveredSprite.userData.baseScale, 1);
-                    hoveredSprite = null;
-                }
-                labelEl.classList.remove('visible');
-            }
-
-            function quatAngle(q) { return 2 * Math.acos(Math.min(1, Math.abs(q.w))); }
-
-            const startInertiaFromSpeeds = () => {
-                if (recentSpeeds.length > 0) {
-                    let sum = 0;
-                    for (let i = 0; i < recentSpeeds.length; i++) sum += recentSpeeds[i];
-                    inertiaStrength = Math.min(1.5, Math.max(0.3, (sum / recentSpeeds.length) * 80));
-                } else inertiaStrength = 0.6;
-                recentSpeeds = [];
-            }
-
-            const resetAllPointers = () => {
-                activePointerIds.clear();
-                isDragging = false;
-                hasMoved = false;
-                bottomSwipeData = null;
-                topSwipeData = null;
-                document.body.style.cursor = isInTimeView ? 'default' : (hoveredSprite ? 'pointer' : 'grab');
-            }
-
-            const isInBottomZone = (clientY) => {
-                return clientY > window.innerHeight * (1 - BOTTOM_ZONE_RATIO);
-            }
-            const isInTopZone = (clientY) => {
-                return clientY < window.innerHeight * TOP_ZONE_RATIO;
-            }
-
-            function onPointerDown(e) { try{NativeBridge.log('PDOWN');}catch(e){}
-                // 可取消动作进行中：任意新触摸取消
-                if (cancelableAction && cancelableAction.phase === 'animating') {
-                    cancelCurrentAction('new-touch'); recentSpeeds = []; hasMoved = false; isDragging = false; return;
-                }
-                // 菜单打开时：点击画布关闭菜单，不触发拖动
-                if (contextMenuOpen) {
-                    const menu = document.getElementById('context-menu');
-                    if (menu && menu.style.display === 'block') {
-                        const rect = menu.getBoundingClientRect();
-                        if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
-                            hideContextMenu();
-                        }
-                    }
-                    isDragging = false;
-                    hasMoved = false;
-                    longPressFired = false;
-                    return;
-                }
-                infiniteInertia = false;
-                if (!isInTimeView && activePointerIds.size === 0 && isInTopZone(e.clientY)) {
-                    topSwipeData = { pointerId: e.pointerId, startY: e.clientY, startZoom: zoomLevel, active: true, confirmed: false, startTimeViewZoom: computeTimeViewZoom() };
-                    activePointerIds.add(e.pointerId);
-                    cancelZoomAnimation();
-                    return;
-                }
-                if (isInTimeView && activePointerIds.size === 0) {
-                    if (isInBottomZone(e.clientY)) {
-                        bottomSwipeData = {
-                            pointerId: e.pointerId,
-                            startY: e.clientY,
-                            startZoom: zoomLevel,
-                            active: true,
-                            confirmed: false,
-                            minY: e.clientY,
-                        };
-                        activePointerIds.add(e.pointerId);
-                        document.body.style.cursor = 'grabbing';
-                        cancelZoomAnimation();
-                        return;
-                    } else {
-                        return;
-                    }
-                }
-                if (isInTimeView) return;
-
-                activePointerIds.add(e.pointerId);
-                if (activePointerIds.size === 1) {
-                    isDragging = true;
-                    hasMoved = false;
-                    prevScreen.set(e.clientX, e.clientY);
-                    document.body.style.cursor = 'grabbing';
-updateMouse(e.clientX, e.clientY);
-                    checkHover(e);
-                    // 长按检测：直接定时600ms，到时raycaster检测
-                    const _lpX2 = e.clientX, _lpY2 = e.clientY;
-                    clearLongPressTimer();
-                    longPressFired = false;
-                    if (!isInTimeView) {
-                        longPressTimer = setTimeout(function() {
-                            NativeBridge.log("lp-timer-fired");
-                            updateMouse(_lpX2, _lpY2);
-                            raycaster.setFromCamera(mouse, camera);
-                            let hits = raycaster.intersectObjects(sprites);
-                            hits = hits.filter(function(h) { return !h.object.userData.isDecor; });
-                            let spr = hits.length > 0 ? hits[0].object : null;
-                            if (spr) {
-                                const app = getAppBySprite(spr);
-                                if (app && app.packageName !== '__settings__' && app.packageName !== '__time__') {
-                                    longPressFired = true;
-                                    isDragging = false;
-                                    hasMoved = false;
-                                    contextMenuOpen = true;
-                                    showContextMenu(spr, _lpX2, _lpY2);
-                                }
-                            }
-                        }, LONG_PRESS_MS);
-                    }
-                } else {
-                    isDragging = false;
-                    hasMoved = false;
-                    clearLongPressTimer();
-                    clearHover();
-                    document.body.style.cursor = 'grab';
-                }
-            }
-
-            const onPointerMove = (e) => {
-                if (contextMenuOpen) { activePointerIds.delete(e.pointerId); return; }
-                // 可取消动作进行中 + 拖动 = 取消
-                if (cancelableAction && cancelableAction.phase === 'animating' && isDragging && hasMoved) {
-                    cancelCurrentAction('drag'); recentSpeeds = []; hasMoved = false; isDragging = false; return;
-                }
-                updateMouse(e.clientX, e.clientY);
-                if (!isInTimeView && topSwipeData && topSwipeData.active && topSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
-                    const dY = e.clientY - topSwipeData.startY;
-                    if (dY > 3 && !topSwipeData.confirmed) topSwipeData.confirmed = true;
-                    if (topSwipeData.confirmed || dY > 8) {
-                        topSwipeData.confirmed = true;
-                        const md = window.innerHeight * 0.6;
-                        const cd = Math.max(0, Math.min(md, dY));
-                        const zr = defaultZoom - topSwipeData.startTimeViewZoom;
-                        zoomLevel = Math.max(MIN_ZOOM, Math.min(defaultZoom, topSwipeData.startZoom - (cd/md) * zr));
-                        applyZoom();
-                    }
-                    return;
-                }
-                if (isInTimeView && bottomSwipeData && bottomSwipeData.active &&
-                    bottomSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
-                    const deltaY = bottomSwipeData.startY - e.clientY;
-                    if (deltaY < -5 && e.clientY < bottomSwipeData.minY) {
-                        bottomSwipeData.minY = e.clientY;
-                    }
-                    if (deltaY > 3 && !bottomSwipeData.confirmed) {
-                        bottomSwipeData.confirmed = true;
-                    }
-                    if (bottomSwipeData.confirmed || deltaY > 8) {
-                        bottomSwipeData.confirmed = true;
-                        // 有上滑意图立即隐藏原生时间覆盖层
-                        const tp = document.getElementById('time-page');
-                        if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; }
-                        const screenH = window.innerHeight;
-                        const maxDelta = screenH * 0.7;
-                        const clampedDelta = Math.max(0, Math.min(maxDelta, deltaY));
-                        const zoomRange = defaultZoom - timeViewZoom;
-                        let targetZ = bottomSwipeData.startZoom + (clampedDelta / maxDelta) * zoomRange * 1.3;
-                        targetZ = Math.max(timeViewZoom, Math.min(defaultZoom * 1.3, targetZ));
-                        zoomLevel = targetZ;
-                        applyZoom();
-                    }
-                    if (e.clientY < bottomSwipeData.minY) {
-                        bottomSwipeData.minY = e.clientY;
-                    }
-                    return;
-                }
-
-                if (!isInTimeView && (!hasMoved || activePointerIds.size !== 1)) checkHover(e);
-                // 持续追踪长按目标                }
-                if (!isDragging || activePointerIds.size !== 1 || isInTimeView) {
-                    return;
-                }
-
-                const curr = new THREE.Vector2(e.clientX, e.clientY);
-                const dist = Math.sqrt(prevScreen.distanceToSquared(curr));
-                if (!hasMoved && dist > DRAG_THRESHOLD) {
-                    hasMoved = true;
-                    clearLongPressTimer();
-                    clearHover();
-                    document.body.style.cursor = 'grabbing';
-                    recentSpeeds = [];
-                }
-                if (!hasMoved || dist < 0.5) return;
-                let deltaQ;
-                if (layoutMode === 'flatring') {
-                    let dx = curr.x - prevScreen.x;
-                    deltaQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -dx * 0.001);
-                } else {
-                    const p0 = screenToSphere(prevScreen.x, prevScreen.y);
-                    const p1 = screenToSphere(curr.x, curr.y);
-                    deltaQ = new THREE.Quaternion().setFromUnitVectors(p0, p1);
-                    if (layoutMode === 'ring') {
-                        const euler = new THREE.Euler().setFromQuaternion(deltaQ);
-                        deltaQ.setFromEuler(new THREE.Euler(euler.x * 0.25, 0, 0));
-                    } else if (layoutMode === 'hbar') {
-                        const euler = new THREE.Euler().setFromQuaternion(deltaQ);
-                        deltaQ.setFromEuler(new THREE.Euler(0, euler.y * 0.25, 0));
-                    }
-                }
-                rotationQuat.premultiply(deltaQ);
-                rotationQuat.normalize();
-                sphereGroup.quaternion.copy(rotationQuat);
-                const speed = quatAngle(deltaQ);
-                recentSpeeds.push(speed);
-                if (recentSpeeds.length > SPEED_SAMPLES) recentSpeeds.shift();
-                inertiaQ.copy(deltaQ);
-                prevScreen.copy(curr);
-            }
-
-            const onPointerUp = (e) => {
-                if (contextMenuOpen) { activePointerIds.delete(e.pointerId); if (activePointerIds.size===0) document.body.style.cursor='default'; return; }
-                try{NativeBridge.log("PU drag:"+isDragging+" move:"+hasMoved+" hov:"+!!hoveredSprite+" tv:"+isInTimeView);}catch(e){}
-                if (!isInTimeView && topSwipeData && topSwipeData.pointerId === e.pointerId && topSwipeData.active) {
-                    activePointerIds.delete(e.pointerId);
-                    const sd = topSwipeData; topSwipeData = null;
-                    if (sd.confirmed && zoomLevel <= sd.startTimeViewZoom + (defaultZoom - sd.startTimeViewZoom) * 0.5) {
-                        returnToTimeView();
-                    } else {
-                        startZoomAnimation(defaultZoom, 175, function() { zoomLevel = defaultZoom; applyZoom(); });
-                    }
-                    return;
-                }
-                if (isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId && bottomSwipeData.active) {
-                    activePointerIds.delete(e.pointerId);
-                    const swipeData = bottomSwipeData;
-                    bottomSwipeData = null;
-                topSwipeData = null;
-                    document.body.style.cursor = 'default';
-                    if (swipeData.confirmed) {
-                        const currentZoom = zoomLevel;
-                        const zoomRange = defaultZoom - timeViewZoom;
-                        const thresholdZoom = timeViewZoom + zoomRange * exitThresholdRatio;
-                        if (currentZoom >= thresholdZoom) {
-                            exitTimeView(true, function() {
-                                inertiaStrength = 0.4;
-                                infiniteInertia = true;
-                                let spinAxis;
-                                if (layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
-                                else spinAxis = new THREE.Vector3(1, 0, 0);
-                                const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
-                                inertiaQ.copy(smallQ);
-                            });
-                        } else {
-                            startZoomAnimation(timeViewZoom, 175, function() {
-                                zoomLevel = timeViewZoom;
-                                applyZoom();
-                                // 恢复原生时间覆盖层
-                                const tp = document.getElementById('time-page');
-                                if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
-                            });
-                        }
-                    } else {
-                        if (Math.abs(zoomLevel - timeViewZoom) > 0.02) {
-                            startZoomAnimation(timeViewZoom, 150, function() {
-                                zoomLevel = timeViewZoom;
-                                applyZoom();
-                                const tp = document.getElementById('time-page');
-                                if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
-                            });
-                        } else {
-                            const tp = document.getElementById('time-page');
-                            if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
-                        }
-                    }
-                    if (activePointerIds.size === 0) {
-                        document.body.style.cursor = 'default';
-                    }
-                    return;
-                }
-
-                activePointerIds.delete(e.pointerId);
-                clearLongPressTimer();
-                // 点击菜单外部时关闭
-                const menu = document.getElementById('context-menu');
-                if (menu && menu.style.display === 'block' && e.target !== menu && !menu.contains(e.target)) {
-                    hideContextMenu();
-                }
-                if (activePointerIds.size === 0) {
-                    if (isDragging && !hasMoved && hoveredSprite && !isInTimeView && !longPressFired) {
-                        try { NativeBridge.log('click-detect:' + (getAppBySprite(hoveredSprite)||{}).packageName); } catch(e) {}
-                        const a=getAppBySprite(hoveredSprite); try{NativeBridge.log("CLICK:"+(a?a.packageName:"null"));}catch(e){}
-                        const app = getAppBySprite(hoveredSprite);
-                        const targetDir = hoveredSprite.position.clone().normalize();
-                        const targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
-                        const appZoom = computeTimeViewZoom();
-                        if (app && app.packageName === '__settings__') {
-                            window._lastSettingsClick = Date.now();
-                            try { NativeBridge.log('settings clicked'); } catch(e) {}
-                            startCancelableAction(hoveredSprite, targetQuat, appZoom, function() {
-                                let saved = {};
-                                try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
-                                const iconInput = document.getElementById('settings-icon-input');
-                                if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
-                                const sphereInput = document.getElementById('settings-sphere-input');
-                                if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
-                                if (saved.layoutMode) {
-                                    const radios = document.getElementsByName('layoutMode');
-                                    for (let ri = 0; ri < radios.length; ri++) {
-                                        if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
-                                    }
-                                }
-                                document.getElementById('settings-overlay').style.display = 'block';
-                                canvas.style.pointerEvents = "none";
-                            });
-                        } else if (app && app.packageName === '__time__') {
-                            returnToTimeView();
-                        } else if (app && !isInTimeView) {
-                            startCancelableAction(hoveredSprite, targetQuat, appZoom, function() {
-                                if (app && nativeBridgeReady) {
-                                    try {
-                                        const result = NativeBridge.launchApp(app.packageName);
-                                        if (result && !result.success) console.warn('启动失败:', result.error);
-                                    } catch (err) { console.error('启动应用异常:', err); }
-                                }
-                            });
-                        }
-                    }
-                    if (isDragging && hasMoved && !isInTimeView) startInertiaFromSpeeds();
-                    isDragging = false;
-                    hasMoved = false;
-                    document.body.style.cursor = hoveredSprite ? 'pointer' : 'grab';
-                }
-            }
-
-            const onPointerLeave = (e) => {
-                if (activePointerIds.has(e.pointerId) && activePointerIds.size === 1 && isDragging && !hasMoved && !isInTimeView) {
-                    clearHover();
-                }
-                if (isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId && bottomSwipeData.active) {
-                    activePointerIds.delete(e.pointerId);
-                    const bsd = bottomSwipeData;
-                    bottomSwipeData = null;
-                topSwipeData = null;
-                    if (bsd.confirmed && zoomLevel > timeViewZoom + 0.1) {
-                        const currentZoom = zoomLevel;
-                        const zoomRange = defaultZoom - timeViewZoom;
-                        const thresholdZoom = timeViewZoom + zoomRange * exitThresholdRatio;
-                        if (currentZoom >= thresholdZoom) {
-                            exitTimeView(true);
-                        } else {
-                            startZoomAnimation(timeViewZoom, 175);
-                        }
-                    } else {
-                        startZoomAnimation(timeViewZoom, 150);
-                    }
-                    document.body.style.cursor = 'default';
-                }
-            }
-
-            const onPointerCancel = (e) => {
-                activePointerIds.delete(e.pointerId);
-                if (isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId) {
-                    const bsd = bottomSwipeData;
-                    bottomSwipeData = null;
-                topSwipeData = null;
-                    if (bsd.confirmed && zoomLevel > timeViewZoom + 0.1) {
-                        const currentZoom = zoomLevel;
-                        const zoomRange = defaultZoom - timeViewZoom;
-                        const thresholdZoom = timeViewZoom + zoomRange * exitThresholdRatio;
-                        if (currentZoom >= thresholdZoom) {
-                            exitTimeView(true);
-                        } else {
-                            startZoomAnimation(timeViewZoom, 175);
-                        }
-                    } else {
-                        startZoomAnimation(timeViewZoom, 150);
-                    }
-                }
-                if (activePointerIds.size === 0) {
-                    isDragging = false;
-                    hasMoved = false;
-                    clearLongPressTimer();
-                    clearHover();
-                    document.body.style.cursor = isInTimeView ? 'default' : 'grab';
-                }
-            }
-
-            // ========== 缩放 ==========
-            const onWheel = (e) => {
-                if (isInTimeView) return;
-                try { e.preventDefault(); } catch (ex) {}
-                zoomLevel += e.deltaY * 0.01;
-                zoomLevel = Math.max(MIN_ZOOM, zoomLevel);
-                applyZoom();
-            }
-
-let pinchStartDist = 0, pinchStartZoom = zoomLevel, wasPinching = false;
-
-            const getTouchDist = (touches) => {
-let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touches[1].clientY;
-                return Math.sqrt(dx * dx + dy * dy);
-            }
-
-            const onTouchStart = (e) => {
-                if (e.touches.length === 2) {
-                    pinchStartDist = getTouchDist(e.touches);
-                    pinchStartZoom = zoomLevel;
-                    isDragging = false;
-                    hasMoved = false;
-                    clearLongPressTimer();
-                    clearHover();
-                    wasPinching = true;
-                    cancelZoomAnimation();
-                    bottomSwipeData = null;
-                topSwipeData = null;
-                    activePointerIds.clear();
-                }
-            }
-
-            const onTouchMove = (e) => {
-                if (e.touches.length === 2) {
-                    try { e.preventDefault(); } catch (ex) {}
-                    const dist = getTouchDist(e.touches);
-                    if (pinchStartDist > 0) {
-                        const ratio = pinchStartDist / dist;
-                        zoomLevel = pinchStartZoom * ratio;
-                        zoomLevel = Math.max(MIN_ZOOM, zoomLevel);
-                        if (isInTimeView) {
-                            zoomLevel = Math.max(timeViewZoom, zoomLevel);
-                        }
-                        applyZoom();
-                    }
-                }
-            }
-
-            const onTouchEnd = (e) => {
-                if (e.touches.length < 2) {
-                    if (wasPinching && isInTimeView && zoomLevel > timeViewZoom + 0.15) {
-                        const zoomRange = defaultZoom - timeViewZoom;
-                        const thresholdZoom = timeViewZoom + zoomRange * exitThresholdRatio;
-                        if (zoomLevel >= thresholdZoom) {
-                            exitTimeView(true);
-                        } else {
-                            startZoomAnimation(timeViewZoom, 175);
-                        }
-                    }
-                    pinchStartDist = 0;
-                    if (wasPinching) setTimeout(async function() { wasPinching = false; }, 400);
-                }
-            }
-
-            // ========== 事件绑定 ==========
-            canvas.addEventListener('pointerdown', onPointerDown);
-            window.addEventListener('pointermove', onPointerMove);
-            window.addEventListener('pointerup', onPointerUp);
-            canvas.addEventListener('pointerleave', onPointerLeave);
-            window.addEventListener('pointercancel', onPointerCancel);
-            canvas.addEventListener('wheel', onWheel, { passive: false });
-            canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-            canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-            canvas.addEventListener('touchend', onTouchEnd);
-            canvas.addEventListener('touchcancel', function(e) {
-                onTouchEnd(e);
-                resetAllPointers();
-            });
-
-            let lastTap = 0;
-            window.addEventListener('touchend', function(e) {
-                if (isInTimeView) return;
-                if (wasPinching || e.touches.length > 0) return;
-                const now = Date.now();
-                if (now - lastTap < 300 && !isDragging) {
-                    rotationQuat.identity();
-                    sphereGroup.quaternion.identity();
-                    inertiaQ.identity();
-                    inertiaStrength = 0;
-                    zoomLevel = defaultZoom;
-                    applyZoom();
-                    lastTap = 0;
-                    return;
-                }
-                lastTap = now;
-            });
-
-            window.addEventListener('resize', function() {
-                const w = window.innerWidth,
-                    h = window.innerHeight;
-                renderer.setSize(w, h);
-                camera.aspect = w / h;
-                camera.updateProjectionMatrix();
-                defaultZoom = computeInitDistance();
-                timeViewZoom = computeTimeViewZoom();
-                if (!isInTimeView && zoomTarget === null) {
-                    zoomLevel = defaultZoom;
-                    applyZoom();
-                }
-            });
-
-            // ========== 动画循环 ==========
-            const animate = (timestamp) => {
-                requestAnimationFrame(animate);
-                const now = timestamp || performance.now();
-                updateZoomAnimation(now);
-                updateRotationAnimation(now);
-                if (inertiaStrength > INERTIA_MIN && !isInTimeView && !rotationAnimData) {
-                    const decay = (isDragging && hasMoved) ? INERTIA_FAST_DECAY : INERTIA_DECAY;
-                    const factor = Math.min(inertiaStrength, 1.0);
-                    const applyQ = new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(), inertiaQ, factor);
-                    rotationQuat.premultiply(applyQ);
-                    rotationQuat.normalize();
-                    sphereGroup.quaternion.copy(rotationQuat);
-                    if (!infiniteInertia) {
-                        inertiaStrength *= decay;
-                        if (inertiaStrength < INERTIA_MIN) {
-                            inertiaStrength = 0;
-                            inertiaQ.identity();
-                        }
-                    }
-                }
-                renderer.render(scene, camera);
-            }
-
-            let _timePageTimer = null;
-            const renderTimePageToTexture = () => {
-                const page = document.getElementById('time-page');
-                if (!page || !timeSprite || !timeSprite.material || typeof html2canvas === 'undefined') return;
-                const s = Math.max(window.innerWidth, window.innerHeight);
-
-                page.style.visibility = 'visible';
-                html2canvas(page, { scale: 1, useCORS: true, backgroundColor: null }).then(function(domCanvas) {
-                    // 只有当不是原生覆盖模式时才隐藏页面
-                    if (page.style.zIndex !== '100') page.style.visibility = 'hidden';
-                    const texCanvas = document.createElement('canvas');
-                    texCanvas.width = s; texCanvas.height = s;
-                    const ctx = texCanvas.getContext('2d');
-                    let cx = s/2, cy = s/2, r = s * 0.44;
-
-                    // 背景圆
-                    ctx.fillStyle = '#0a0e18';
-                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-                    // 外圈
-                    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-                    ctx.lineWidth = s * 0.012;
-                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
-
-                    // 裁切圆内，绘制 DOM 截图
-                    ctx.save();
-                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
-                    const aspect = window.innerWidth / window.innerHeight;
-                    const diag = Math.sqrt(aspect*aspect + 1);
-                    const rectW = 2 * r * (aspect / diag);
-                    const rectH = 2 * r * (1 / diag);
-                    ctx.drawImage(domCanvas, cx - rectW/2, cy - rectH/2, rectW, rectH);
-                    ctx.restore();
-
-                    console.log('html2canvas OK: ' + domCanvas.width + 'x' + domCanvas.height);
-                    const oldMap = timeSprite.material.map;
-                    const tex = new THREE.CanvasTexture(texCanvas);
-                    tex.minFilter = THREE.LinearFilter;
-                    tex.magFilter = THREE.LinearFilter;
-                    if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                    timeSprite.material.map = tex;
-                    timeSprite.material.needsUpdate = true;
-                    if (oldMap && oldMap !== tex) oldMap.dispose();
-                }).catch(function(e) { console.warn('html2canvas error:', e); if (page.style.zIndex !== '100') page.style.visibility = 'hidden'; });
-            }
-const updateBatteryDisplay = () => {
-                try {
-                    const batteryEl = document.getElementById('time-page-battery');
-                    if (!batteryEl) return;
-                    const bl = JSON.parse(NativeBridge.getBatteryLevel());
-                    const ch = JSON.parse(NativeBridge.isCharging());
-                    if (bl.success) {
-                        batteryEl.textContent = (ch.charging ? '⚡' : '🔋') + ' ' + bl.level + '%';
-                    }
-                } catch(e) {}
-            }
-            const startTimePageClock = () => {
-                const el = document.getElementById('time-page-clock');
-                if (!el) return;
-                const tick = () => {
-                    const now = new Date();
-                    el.textContent = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-                    const dateEl = document.getElementById('time-page-date');
-                    if (dateEl) {
-                        const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
-                        dateEl.textContent = (now.getMonth()+1) + '月' + now.getDate() + '日 ' + weekdays[now.getDay()];
-                    }
-                    renderTimePageToTexture();
-                }
-                tick();
-                if (_timePageTimer) clearInterval(_timePageTimer);
-                _timePageTimer = setInterval(function() { tick(); updateBatteryDisplay(); }, 1000);
-            }
-            startTimePageClock();
-            setTimeout(function() { renderTimePageToTexture(); }, 100);
-
-            document.addEventListener('visibilitychange', function() {
-                if (document.hidden) {
-                    const tp = document.getElementById('time-page');
-                    if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
-                } else if (!document.hidden && zoomLevel < defaultZoom - 0.1 && !isInTimeView && zoomTarget === null) {
-                    startZoomAnimation(defaultZoom, 300, function() {
-                        zoomLevel = defaultZoom;
-                        applyZoom();
-                    });
-                }
-                // 返回前台时检测应用列表变动
-                if (!document.hidden && nativeBridgeReady) {
-                    setTimeout(function() {
-                        NativeBridge.requestInstalledApps();
-                    }, 500);
-                }
-            });
-
-            // 全局设置选项切换
-            window.setRadio = function(group, el) {
-                const val = el.getAttribute('data-val');
-                console.log('setRadio', group, val);
-                const btns = document.querySelectorAll('#' + group + ' .settings-radio');
-                btns.forEach(function(b) {
-                    if (b === el) {
-                        b.style.background = '#4a90d9';
-                        b.style.color = '#fff';
-                        b.style.borderColor = '#4a90d9';
-                        b.classList.add('active');
-                    } else {
-                        b.style.background = '#1a1a2e';
-                        b.style.color = 'rgba(255,255,255,0.6)';
-                        b.style.borderColor = 'rgba(255,255,255,0.2)';
-                        b.classList.remove('active');
-                    }
-                });
-            }
-
-            window.highlightRadio = function(group, val) {
-                console.log('highlightRadio', group, val);
-                const btns = document.querySelectorAll('#' + group + ' .settings-radio');
-                btns.forEach(function(b) {
-                    if (b.getAttribute('data-val') === val) {
-                        b.style.background = '#4a90d9';
-                        b.style.color = '#fff';
-                        b.style.borderColor = '#4a90d9';
-                        b.classList.add('active');
-                    } else {
-                        b.style.background = '#1a1a2e';
-                        b.style.color = 'rgba(255,255,255,0.6)';
-                        b.style.borderColor = 'rgba(255,255,255,0.2)';
-                        b.classList.remove('active');
-                    }
-                });
-            }
-
-            const initSettingsPanel = () => {
-                const overlay = document.getElementById('settings-overlay');
-                const backBtn = document.getElementById('settings-back');
-                const saveBtn = document.getElementById('settings-save');
-
-                // Load from localStorage
-                let saved = {};
-                try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
-
-                // Setup radio button clicks
-// Radio clicks now use inline onclick="setRadio(...)" — see HTML
-
-                // Apply saved values
-                const iconInput = document.getElementById('settings-icon-input');
-                if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
-                const sphereInput = document.getElementById('settings-sphere-input');
-                if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
-                if (saved.layoutMode) {
-                    const radios = document.getElementsByName('layoutMode');
-                    for (let ri = 0; ri < radios.length; ri++) {
-                        if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
-                    }
-                }
-
-                backBtn.addEventListener('click', function() {
-                    overlay.style.display = 'none';
-                    canvas.style.pointerEvents = 'auto';
-                    startZoomAnimation(defaultZoom, 175, function() {
-                        zoomLevel = defaultZoom;
-                        applyZoom();
-                    });
-                });
-
-                saveBtn.addEventListener('click', function() {
-                    const iconRes = document.getElementById('settings-icon-input');
-                    const sphereSize = document.getElementById('settings-sphere-input').value;
-                    const layoutRadios = document.getElementsByName('layoutMode');
-                    let layoutVal = 'sphere';
-                    for (let lr = 0; lr < layoutRadios.length; lr++) {
-                        if (layoutRadios[lr].checked) { layoutVal = layoutRadios[lr].value; break; }
-                    }
-                    const settings = {
-                        iconRes: iconRes ? iconRes.value : '512',
-                        sphereSize: sphereSize || '2.5',
-                        layoutMode: layoutVal
-                    };
-                    localStorage.setItem('vibe-settings', JSON.stringify(settings));
-                    if (layoutMode !== layoutVal) { location.reload(); return; }
-                    const prevIconRes = ICON_RES;
-                    ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
-
-                    // 第一步：用现有缓存文件按新分辨率重建纹理
-                    if (ICON_RES !== prevIconRes) {
-                        console.log('Rebuilding textures at ICON_RES:', ICON_RES);
-                        sprites.forEach(function(spr) {
-                            if (spr.userData.isTimeSprite) {
-                                spr.material.map = createTimeTexture();
-                            } else if (spr.userData.app && spr.userData.app.packageName === '__settings__') {
-                                spr.material.map = createGearTexture();
-                            } else if (spr.userData._iconUrl) {
-                                // 从旧缓存文件重新加载（先用新分辨率canvas渲染）
-                                (function(s) {
-                                    const img = new Image();
-                                    img.onload = function() {
-                                        s.material.map = createIconTextureFromImage(img);
-                                        s.material.needsUpdate = true;
-                                    };
-                                    img.src = s.userData._iconUrl;
-                                })(spr);
-                            } else if (spr.userData.color) {
-                                spr.material.map = createPlaceholderTexture(spr.userData.app.appName, spr.userData.color);
-                            }
-                            spr.material.needsUpdate = true;
-                        });
-                    }
-
-                    // 第二步：清除旧缓存，强制重新加载
-                    if (nativeBridgeReady) NativeBridge.clearIconCache();
-                    sprites.forEach(function(spr) { spr.userData.hasRealIcon = false; });
-                    if (window._allPkgs && nativeBridgeReady) {
-                        NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
-                    }
-
-                    saveBtn.textContent = '已保存 ✓';
-                    saveBtn.style.background = '#2ecc71';
-                    setTimeout(function() {
-                        saveBtn.textContent = '保存';
-                        saveBtn.style.background = '#4a90d9';
-                    }, 1500);
-                    // 计算最小不碰撞半径
-                    const iconCount = window._totalItems ? window._totalItems.length : 100;
-                    const iconVisRadius = BASE_SCALE * 0.44 * 1.1; // 留10%余量
-                    const minRadius = iconVisRadius / Math.sqrt(Math.PI / iconCount);
-                    let inputR = parseFloat(settings.sphereSize);
-                    if (inputR < minRadius) {
-                        inputR = minRadius;
-                        document.getElementById("settings-sphere-input").value = Math.ceil(minRadius * 100) / 100;
-                        saveBtn.textContent = '已自动调整至最小 ✓';
-                        saveBtn.style.background = '#e67e22';
-                        setTimeout(function() {
-                            saveBtn.textContent = '保存';
-                            saveBtn.style.background = '#4a90d9';
-                        }, 2000);
-                    }
-                    settings.sphereSize = '' + inputR;
-                    localStorage.setItem('vibe-settings', JSON.stringify(settings));
-
-                    if (sphereGroup && inputR > 0) {
-                        SPHERE_RADIUS = parseFloat(settings.sphereSize);
-                        // 重新分布所有sprite位置
-                        let rawPoints = sphereCoulomb(window._totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
-                        const timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
-                        if (timeIdx >= 0) {
-                            const timePos = new THREE.Vector3(rawPoints[timeIdx][0], rawPoints[timeIdx][1], rawPoints[timeIdx][2]);
-                            const alignQ = new THREE.Quaternion().setFromUnitVectors(timePos.clone().normalize(), new THREE.Vector3(0,0,1));
-                            rawPoints = rawPoints.map(function(p) {
-                                let v = new THREE.Vector3(p[0],p[1],p[2]);
-                                v.applyQuaternion(alignQ);
-                                return v;
-                            });
-                            if (layoutMode === 'hemisphere') rawPoints.sort(function(a, b) { return b.z - a.z; });
-                        }
-                        for (let k = 0; k < sprites.length; k++) {
-                            if (k < rawPoints.length) {
-                                sprites[k].position.copy(rawPoints[k]);
-                            }
-                        }
-                        sphereGroup.quaternion.copy(rotationQuat);
-                        SPHERE_DIAMETER = SPHERE_RADIUS * 2;
-                        defaultZoom = computeInitDistance();
-                        timeViewZoom = computeTimeViewZoom();
-                        zoomLevel = defaultZoom;
-                        applyZoom();
-                    }
-                });
-            }
-
-            function init() {
-                zoomLevel = computeInitDistance();
-                defaultZoom = zoomLevel;
-                timeViewZoom = computeTimeViewZoom();
-                camera.position.set(0, 0, zoomLevel);
-                applyZoom();
-                isInTimeView = false;
-                initSettingsPanel();
-                // 上下文菜单事件
-                const ctxInfo = document.getElementById('ctx-app-info');
-                const ctxUninstall = document.getElementById('ctx-uninstall');
-                if (ctxInfo) ctxInfo.addEventListener('click', function() {
-                    const menu = document.getElementById('context-menu');
-                    const pkg = menu ? menu.getAttribute('data-pkg') : null;
-                    NativeBridge.log("ctx-info " + pkg); if (pkg && nativeBridgeReady) NativeBridge.log('details-result ' + NativeBridge.openAppDetails(pkg));
-                    hideContextMenu();
-                });
-                if (ctxUninstall) ctxUninstall.addEventListener('click', function() {
-                    const menu = document.getElementById('context-menu');
-                    const pkg = menu ? menu.getAttribute('data-pkg') : null;
-                    NativeBridge.log("ctx-uninstall " + pkg); if (pkg && nativeBridgeReady) NativeBridge.log('uninst-result ' + NativeBridge.uninstallApp(pkg));
-                    hideContextMenu();
-                });
-                requestAnimationFrame(animate);
-                tryLoadApps();
-                setTimeout(function() { updateBatteryDisplay(); }, 3000);
-                console.log('🚀 3D 桌面已就绪');
-            }
-
-            init();
-        })();
-    </script>
+            $.timeViewZoom = computeTimeViewZoom();
+            $.zoom = $.defaultZoom;
+            anim.applyZoom();
+        }
+        $.settingsOverlay.style.display = 'none';
+        $.canvas.style.pointerEvents = 'auto';
+        saveBtn.textContent = '已保存 ✓';
+        saveBtn.style.background = '#2ecc71';
+        setTimeout(() => { saveBtn.textContent = '保存'; saveBtn.style.background = '#4a90d9'; }, 1500);
+    });
+};
+
+// ================================================================
+// BATTERY DISPLAY
+// ================================================================
+const updateBattery = () => {
+    if (!$.bridgeReady) return;
+    try {
+        const level = NativeBridge.getBatteryLevel();
+        const charging = NativeBridge.isCharging();
+        $.timeBattery.textContent = (charging ? '⚡ ' : '🔋 ') + level + '%';
+    } catch (e) {}
+};
+
+// Visibility / resume handler
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        timeView._hidePage();
+    } else if (!document.hidden && $.zoom < $.defaultZoom - 0.1 && !$.inTimeView && $.zTarget === null) {
+        anim.startZoom($.defaultZoom, 300, () => { $.zoom = $.defaultZoom; anim.applyZoom(); });
+    }
+});
+
+// ================================================================
+// INIT
+// ================================================================
+const init = () => {
+    initScene();
+    initBridge();
+    initSettings();
+
+    // Event listeners
+    $.canvas.addEventListener('pointerdown', onPointerDown);
+    $.canvas.addEventListener('pointermove', onPointerMove);
+    $.canvas.addEventListener('pointerup', onPointerUp);
+    $.canvas.addEventListener('pointerleave', onPointerLeave);
+    $.canvas.addEventListener('pointercancel', onPointerCancel);
+    $.canvas.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('resize', () => {
+        $.camera.aspect = window.innerWidth / window.innerHeight;
+        $.camera.updateProjectionMatrix();
+        $.renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Context menu
+    document.getElementById('ctx-app-info').addEventListener('click', () => {
+        const pkg = $.ctxMenu.getAttribute('data-pkg');
+        if (pkg && $.bridgeReady) NativeBridge.openAppDetails(pkg);
+        hideContextMenu();
+    });
+    document.getElementById('ctx-uninstall').addEventListener('click', () => {
+        const pkg = $.ctxMenu.getAttribute('data-pkg');
+        if (pkg && $.bridgeReady) NativeBridge.uninstallApp(pkg);
+        hideContextMenu();
+    });
+    // Tap canvas to close menu
+    $.canvas.addEventListener('pointerdown', (e) => {
+        if ($.menuOpen) { hideContextMenu(); e.stopPropagation(); }
+    }, true);
+
+    // Load apps
+    setTimeout(loadApps, 100);
+
+    // Start loop
+    const loop = (ts) => { anim.update(ts); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+
+    // Battery
+    setInterval(updateBattery, 60000);
+    setTimeout(updateBattery, 3000);
+
+    console.log('🚀 Vibe Launcher ready (class-based)');
+};
+
+init();
+
+})();
+</script>
 </body>
 </html>
