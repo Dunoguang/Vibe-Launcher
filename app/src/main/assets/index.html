@@ -821,6 +821,15 @@ let zoomComplete = false, rotationComplete = false;
             // ========== 精灵管理 ==========
 let apps = [], sprites = [];
 
+            const updateSphereMinHint = () => {
+                const iconCount = window._totalItems ? window._totalItems.length : (sprites.length || 100);
+                const iconVisRadius = BASE_SCALE * 0.44 * 1.1;
+                const minR = iconVisRadius / Math.sqrt(Math.PI / Math.max(1, iconCount));
+                const hint = document.getElementById('sphere-min-hint');
+                if (hint) hint.textContent = '最少 ' + minR.toFixed(2) + '（默认2.5）';
+                return minR;
+            };
+
             const clearAllSprites = () => {
                 stopTimeTextureUpdates();
                 for (let i = 0; i < sprites.length; i++) {
@@ -1043,21 +1052,7 @@ window._totalItems = totalItems;
                     camera.lookAt(tw);
                 }
 
-                // 更新最小球体半径提示
-                const minR = (BASE_SCALE * 0.44 * 1.1) / Math.sqrt(Math.PI / Math.max(1, sprites.length));
-                const hint = null;
-                if (hint) hint.textContent = '最少 ' + minR.toFixed(2) + '（默认2.5）';
-
-                const updateSphereMinHint = () => {
-                    const iconCount = window._totalItems ? window._totalItems.length : (sprites.length || 100);
-                    const iconVisRadius = BASE_SCALE * 0.44 * 1.1;
-                    const minR = iconVisRadius / Math.sqrt(Math.PI / Math.max(1, iconCount));
-                    const hint = document.getElementById('sphere-min-hint');
-                    if (hint) hint.textContent = '最少 ' + minR.toFixed(2) + '（默认2.5）';
-                    return minR;
-                };
-
-                updateSphereMinHint();
+updateSphereMinHint();
                 // 启动时应用已保存的球体大小
                 try {
                     let saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
