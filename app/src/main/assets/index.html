@@ -340,7 +340,7 @@ let renderer = null, rendererType = 'unknown';
             const FOV_RAD = THREE.MathUtils.degToRad(50);
             const MIN_ZOOM = 0.1;
             
-            const ROTATION_ANIM_DURATION = 400; // 旋转动画时长
+            const ROTATION_ANIM_DURATION = 250; // 旋转动画时长
             const exitThresholdRatio = 0.35;
             let cancelableAction = null;
             let bottomSwipeData = null, topSwipeData = null;
@@ -440,7 +440,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 cancelableAction.cancelled = true;
                 try { NativeBridge.log('cancel:' + reason); } catch(e) {}
                 cancelZoomAnimation();
-                startZoomAnimation(defaultZoom, 175, function() {
+                startZoomAnimation(defaultZoom, 250, function() {
                     zoomLevel = defaultZoom; applyZoom();
                 });
                 cancelableAction = null;
@@ -449,7 +449,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
 
             function startZoomAnimation(targetVal, duration, callback) {
                 zoomAnimStart = performance.now();
-                zoomAnimDuration = duration || 500;
+                zoomAnimDuration = duration || 250;
                 zoomAnimStartVal = zoomLevel;
                 zoomAnimEndVal = targetVal;
                 zoomAnimElapsed = 0;
@@ -605,7 +605,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 const targetZoom = computeTimeViewZoom();
                 timeViewZoom = targetZoom;
                 if (animate) {
-                    startZoomAnimation(targetZoom, 300, function() {
+                    startZoomAnimation(targetZoom, 250, function() {
                         zoomLevel = targetZoom;
                         applyZoom();
                         if (onComplete) onComplete();
@@ -1431,7 +1431,7 @@ updateMouse(e.clientX, e.clientY);
                     if (sd.confirmed && zoomLevel <= sd.startTimeViewZoom + (defaultZoom - sd.startTimeViewZoom) * 0.5) {
                         returnToTimeView();
                     } else {
-                        startZoomAnimation(defaultZoom, 175, function() { zoomLevel = defaultZoom; applyZoom(); });
+                        startZoomAnimation(defaultZoom, 250, function() { zoomLevel = defaultZoom; applyZoom(); });
                     }
                     return;
                 }
@@ -1456,7 +1456,7 @@ updateMouse(e.clientX, e.clientY);
                                 inertiaQ.copy(smallQ);
                             });
                         } else {
-                            startZoomAnimation(timeViewZoom, 175, function() {
+                            startZoomAnimation(timeViewZoom, 250, function() {
                                 zoomLevel = timeViewZoom;
                                 applyZoom();
                                 // 恢复原生时间覆盖层
@@ -1466,7 +1466,7 @@ updateMouse(e.clientX, e.clientY);
                         }
                     } else {
                         if (Math.abs(zoomLevel - timeViewZoom) > 0.02) {
-                            startZoomAnimation(timeViewZoom, 150, function() {
+                            startZoomAnimation(timeViewZoom, 250, function() {
                                 zoomLevel = timeViewZoom;
                                 applyZoom();
                                 const tp = document.getElementById('time-page');
@@ -1553,10 +1553,10 @@ updateMouse(e.clientX, e.clientY);
                         if (currentZoom >= thresholdZoom) {
                             exitTimeView(true);
                         } else {
-                            startZoomAnimation(timeViewZoom, 175);
+                            startZoomAnimation(timeViewZoom, 250);
                         }
                     } else {
-                        startZoomAnimation(timeViewZoom, 150);
+                        startZoomAnimation(timeViewZoom, 250);
                     }
                     document.body.style.cursor = 'default';
                 }
@@ -1575,10 +1575,10 @@ updateMouse(e.clientX, e.clientY);
                         if (currentZoom >= thresholdZoom) {
                             exitTimeView(true);
                         } else {
-                            startZoomAnimation(timeViewZoom, 175);
+                            startZoomAnimation(timeViewZoom, 250);
                         }
                     } else {
-                        startZoomAnimation(timeViewZoom, 150);
+                        startZoomAnimation(timeViewZoom, 250);
                     }
                 }
                 if (activePointerIds.size === 0) {
@@ -1646,7 +1646,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                         if (zoomLevel >= thresholdZoom) {
                             exitTimeView(true);
                         } else {
-                            startZoomAnimation(timeViewZoom, 175);
+                            startZoomAnimation(timeViewZoom, 250);
                         }
                     }
                     pinchStartDist = 0;
@@ -1803,7 +1803,7 @@ const updateBatteryDisplay = () => {
                     const tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
                 } else if (!document.hidden && zoomLevel < defaultZoom - 0.1 && !isInTimeView && zoomTarget === null) {
-                    startZoomAnimation(defaultZoom, 300, function() {
+                    startZoomAnimation(defaultZoom, 250, function() {
                         zoomLevel = defaultZoom;
                         applyZoom();
                     });
@@ -1881,7 +1881,7 @@ const updateBatteryDisplay = () => {
                 backBtn.addEventListener('click', function() {
                     overlay.style.display = 'none';
                     canvas.style.pointerEvents = 'auto';
-                    startZoomAnimation(defaultZoom, 175, function() {
+                    startZoomAnimation(defaultZoom, 250, function() {
                         zoomLevel = defaultZoom;
                         applyZoom();
                     });
