@@ -8,9 +8,6 @@ on:
     branches: ['**']
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -73,11 +70,3 @@ jobs:
           path: ${{ env.RELEASE_APK }}
           if-no-files-found: error
           retention-days: 7
-
-      - name: Upload to Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: ${{ env.RELEASE_APK }}
-          fail_on_unmatched_files: true
