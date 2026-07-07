@@ -71,6 +71,12 @@ window.THREE = THREE;
 (function() {
 "use strict";
 console.log("IIFE starting, THREE:", typeof THREE);
+// Redirect console to NativeBridge
+const _origLog = console.log;
+console.log = (...args) => {
+    _origLog.apply(console, args);
+    try { if ($.bridgeReady) NativeBridge.log(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')); } catch(e) {}
+};
 
 // ================================================================
 // CONSTANTS
@@ -607,11 +613,24 @@ class TimeView {
 
     _updateTex() {
         if (!$.timeSprite || !$.timeSprite.material) return;
-        const t = createTimeTexture();
-        if ($.timeSprite.material.map) $.timeSprite.material.map.dispose();
-        $.timeSprite.material.map = t;
-        $.timeSprite.material.needsUpdate = true;
         this._updateClock();
+        // Render DOM clock to canvas via html2canvas
+        $.timePage.style.visibility = 'visible';
+        $.timePage.style.zIndex = '100';
+        html2canvas($.timePage, { backgroundColor: '#0a0e18', scale: 1, logging: false }).then(canvas => {
+            $.timePage.style.visibility = 'hidden';
+            $.timePage.style.zIndex = '-1';
+            const tex = new THREE.CanvasTexture(canvas);
+            if ($.timeSprite.material.map) $.timeSprite.material.map.dispose();
+            $.timeSprite.material.map = tex;
+            $.timeSprite.material.needsUpdate = true;
+        }).catch(() => {
+            // Fallback to simple texture
+            const t = createTimeTexture();
+            if ($.timeSprite.material.map) $.timeSprite.material.map.dispose();
+            $.timeSprite.material.map = t;
+            $.timeSprite.material.needsUpdate = true;
+        });
     }
 
     _updateClock() {
@@ -652,6 +671,12 @@ class Gestures {
             $.iStrength = Math.min(1.5, Math.max(0.3, sum / $.speeds.length * 80));
         } else $.iStrength = 0.6;
         $.speeds = [];
+    }
+    pinchDist(touches) {
+        if (touches.length < 2) return 0;
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx*dx + dy*dy);
     }
 }
 const G = new Gestures();
@@ -907,13 +932,43 @@ const onPointerLeave = (e) => {
 };
 const onPointerCancel = (e) => { onPointerLeave(e); };
 
-// Touch / wheel stubs for pinch zoom
+// Wheel zoom
 const onWheel = (e) => {
     if ($.inTimeView) return;
-    const dz = e.deltaY > 0 ? 0.3 : -0.3;
-    $.zoom = Math.max(MIN_ZOOM, Math.min($.defaultZoom * 2, $.zoom + dz));
+    $.zoom = Math.max(MIN_ZOOM, Math.min($.defaultZoom * 2, $.zoom + (e.deltaY > 0 ? 0.5 : -0.5)));
     anim.applyZoom();
 };
+
+// Pinch zoom via touch events
+let pinchStart = 0, pinchZ = 0;
+const onTouchStart = (e) => {
+    if (e.touches.length === 2) {
+        $.wasPinching = true;
+        pinchStart = G.pinchDist(e.touches);
+        pinchZ = $.zoom;
+        $.iInfinite = false; $.iStrength = 0;
+    }
+};
+const onTouchMove = (e) => {
+    if (!$.wasPinching || e.touches.length !== 2) return;
+    const dist = G.pinchDist(e.touches);
+    const scale = pinchStart / Math.max(dist, 1);
+    $.zoom = Math.max(MIN_ZOOM, Math.min($.defaultZoom * 2, pinchZ * scale));
+    anim.applyZoom();
+};
+const onTouchEnd = (e) => {
+    if (e.touches.length < 2) $.wasPinching = false;
+};
+
+// App list change detection on resume
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && $.zoom < $.defaultZoom - 0.1 && !$.inTimeView && $.zTarget === null) {
+        anim.startZoom($.defaultZoom, 300, () => { $.zoom = $.defaultZoom; anim.applyZoom(); });
+    }
+    if (!document.hidden && $.bridgeReady && $.apps.length > 0) {
+        NativeBridge.requestInstalledApps(); // Check for app changes
+    }
+});
 
 console.log("Events ready");
 
@@ -934,31 +989,53 @@ const initBridge = () => {
     }
 };
 
+// App list callback (called by NativeBridge)
+window._onAppsLoaded = (data) => {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    const apps = (parsed.apps || []).filter(a => a.packageName !== 'com.dng.launcher');
+    $.apps = apps;
+    $.totalItems = [
+        { type: 'time', app: null },
+        ...apps.map(a => ({ type: 'app', app: a })),
+        { type: 'settings', app: { packageName: '__settings__', appName: '设置', isSystem: true } },
+    ];
+    createSprites(apps, null);
+    $.loadingEl.style.opacity = '0';
+    setTimeout(() => { if ($.loadingEl.parentNode) $.loadingEl.remove(); }, 500);
+    if ($.bridgeReady) {
+        NativeBridge.requestAppIcons(JSON.stringify(apps.map(a => a.packageName)), $.iconRes);
+    }
+};
+
+// Icon callback (called by NativeBridge)
+window._onIconsLoaded = (iconData) => {
+    const data = typeof iconData === 'string' ? JSON.parse(iconData) : iconData;
+    const map = {};
+    (data || []).forEach(r => { map[r.packageName] = r.iconUrl; });
+    $.sprites.forEach(spr => {
+        const app = spr.userData.app;
+        if (app && map[app.packageName] && !spr.userData.hasRealIcon) {
+            const img = new Image();
+            img.onload = () => {
+                spr.material.map = createIconTextureFromImage(img);
+                spr.material.needsUpdate = true;
+                spr.userData.hasRealIcon = true;
+            };
+            img.src = map[app.packageName];
+        }
+    });
+};
+
 const loadApps = () => {
     if (!$.bridgeReady) { setTimeout(loadApps, 500); return; }
     try {
-        const raw = NativeBridge.getInstalledApps();
-        const data = JSON.parse(raw);
-        $.apps = (data.apps || []).filter(a => a.packageName !== 'com.dng.launcher');
-        $.totalItems = [
-            { type: 'time', app: null },
-            ...$.apps.map(a => ({ type: 'app', app: a })),
-            { type: 'settings', app: { packageName: '__settings__', appName: '设置', isSystem: true } },
-        ];
-        createSprites($.apps, null);
-        $.loadingEl.style.opacity = '0';
-        setTimeout(() => { if ($.loadingEl.parentNode) $.loadingEl.remove(); }, 500);
-        // Load real icons
-        $.apps.forEach(app => loadRealIcon(app.packageName));
+        NativeBridge.requestInstalledApps();
     } catch (e) {
         console.error('loadApps error:', e);
         setTimeout(loadApps, 1000);
     }
 };
 
-const loadRealIcon = (pkg) => {
-    // Stub: real icons loaded via NativeBridge.requestAppIcons
-};
 
 // ================================================================
 // SETTINGS PANEL
@@ -980,62 +1057,42 @@ const initSettings = () => {
     });
 
     saveBtn.addEventListener('click', () => {
-        const iconRes = Math.max(16, parseInt(iconInput.value) || 512);
+        const newIconRes = Math.max(16, parseInt(iconInput.value) || 512);
         const newRadius = parseFloat(sphereInput.value) || 2.5;
         const layoutVal = document.querySelector('input[name="layoutMode"]:checked').value;
-
-        localStorage.setItem('vibe-settings', JSON.stringify({
-            iconRes, sphereSize: newRadius, layoutMode: layoutVal
-        }));
-
+        localStorage.setItem('vibe-settings', JSON.stringify({ iconRes: newIconRes, sphereSize: newRadius, layoutMode: layoutVal }));
         if ($.layoutMode !== layoutVal) { location.reload(); return; }
-
-        $.iconRes = iconRes;
+        $.iconRes = newIconRes;
         if ($.radius !== newRadius) {
             $.radius = newRadius;
             $.diameter = newRadius * 2;
             createSprites($.apps, null);
-            $.defaultZoom = (() => {
-                const w = window.innerWidth, h = window.innerHeight;
-                const sef = Math.min(1, w / h);
-                return ($.diameter / (2 * Math.tan(FOV_RAD / 2) * sef)) * 1.15;
-            })();
+            const w = window.innerWidth, h = window.innerHeight;
+            const sef = Math.min(1, w / h);
+            $.defaultZoom = ($.diameter / (2 * Math.tan(FOV_RAD / 2) * sef)) * 1.15;
             $.timeViewZoom = computeTimeViewZoom();
             $.zoom = $.defaultZoom;
             anim.applyZoom();
         }
         $.settingsOverlay.style.display = 'none';
         $.canvas.style.pointerEvents = 'auto';
-        saveBtn.textContent = '已保存 ✓';
-        saveBtn.style.background = '#2ecc71';
+        saveBtn.textContent = '已保存 ✓'; saveBtn.style.background = '#2ecc71';
         setTimeout(() => { saveBtn.textContent = '保存'; saveBtn.style.background = '#4a90d9'; }, 1500);
     });
 };
 
 // ================================================================
-// BATTERY DISPLAY
+// INIT
 // ================================================================
 const updateBattery = () => {
     if (!$.bridgeReady) return;
     try {
         const b = JSON.parse(NativeBridge.getBatteryLevel());
         const c = JSON.parse(NativeBridge.isCharging());
-        $.timeBattery.textContent = (c.charging ? '⚡ ' : '🔋 ') + b.level + '%';
+        $.timeBattery.textContent = (c.charging ? "⚡ " : "🔋 ") + b.level + "%";
     } catch (e) {}
 };
 
-// Visibility / resume handler
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        timeView._hidePage();
-    } else if (!document.hidden && $.zoom < $.defaultZoom - 0.1 && !$.inTimeView && $.zTarget === null) {
-        anim.startZoom($.defaultZoom, 300, () => { $.zoom = $.defaultZoom; anim.applyZoom(); });
-    }
-});
-
-// ================================================================
-// INIT
-// ================================================================
 const init = async () => {
     await initScene();
     initBridge();
@@ -1048,6 +1105,9 @@ const init = async () => {
     $.canvas.addEventListener('pointerleave', onPointerLeave);
     $.canvas.addEventListener('pointercancel', onPointerCancel);
     $.canvas.addEventListener('wheel', onWheel, { passive: true });
+    $.canvas.addEventListener('touchstart', onTouchStart, { passive: true });
+    $.canvas.addEventListener('touchmove', onTouchMove, { passive: true });
+    $.canvas.addEventListener('touchend', onTouchEnd);
     window.addEventListener('resize', () => {
         $.camera.aspect = window.innerWidth / window.innerHeight;
         $.camera.updateProjectionMatrix();
