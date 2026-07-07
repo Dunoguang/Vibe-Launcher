@@ -1358,7 +1358,7 @@ updateMouse(e.clientX, e.clientY);
                 if (contextMenuOpen) { activePointerIds.delete(e.pointerId); return; }
                 // 可取消动作进行中 + 拖动 = 取消
                 if (cancelableAction && cancelableAction.phase === 'animating' && isDragging && hasMoved) {
-                    cancelCurrentAction('drag'); recentSpeeds = []; hasMoved = false; isDragging = false; return;
+                    try{NativeBridge.log("CANCEL-DRAG before: drag="+isDragging+" move="+hasMoved+" speeds="+recentSpeeds.length+" act="+(cancelableAction?"Y":"N"));}catch(e){} cancelCurrentAction('drag'); recentSpeeds = []; hasMoved = false; isDragging = false; try{NativeBridge.log("CANCEL-DRAG after: drag="+isDragging+" move="+hasMoved+" speeds="+recentSpeeds.length);}catch(e){} return;
                 }
                 updateMouse(e.clientX, e.clientY);
                 if (!isInTimeView && topSwipeData && topSwipeData.active && topSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
@@ -1553,7 +1553,7 @@ updateMouse(e.clientX, e.clientY);
                             });
                         }
                     }
-                    if (isDragging && hasMoved && !isInTimeView) startInertiaFromSpeeds();
+                    try{NativeBridge.log("PU-END drag:"+isDragging+" move:"+hasMoved+" tv:"+isInTimeView);}catch(e){} if (isDragging && hasMoved && !isInTimeView) { try{NativeBridge.log("PU-INERTIA-FIRE");}catch(e){} startInertiaFromSpeeds(); }
                     isDragging = false;
                     hasMoved = false;
                     document.body.style.cursor = hoveredSprite ? 'pointer' : 'grab';
