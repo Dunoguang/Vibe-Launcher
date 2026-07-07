@@ -641,12 +641,16 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             const scheduleMinuteUpdate = () => {
                 if (timeTextureUpdateInterval) clearTimeout(timeTextureUpdateInterval);
                 const now = new Date();
-                const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+                const sec = now.getSeconds();
+                const ms = now.getMilliseconds();
+                const wait = (60 - sec) * 1000 - ms + 50;
+                console.log('SCHEDULE: next update in ' + (wait/1000).toFixed(1) + 's (now ' + sec + 's ' + ms + 'ms)');
                 timeTextureUpdateInterval = setTimeout(() => {
-                    renderTimePageToTexture();
+                    console.log('SCHEDULE: firing! ' + new Date().toTimeString().split(' ')[0]);
+                    try { renderTimePageToTexture(); } catch(e) { console.log('SCHEDULE render error: ' + e); }
                     try { updateBatteryFromNative(); } catch(e) {}
                     scheduleMinuteUpdate();
-                }, msToNextMinute + 50); // +50ms 确保跨过分钟边界
+                }, wait);
             };
 
             const startTimeTextureUpdates = () => {
@@ -1102,8 +1106,12 @@ updateSphereMinHint();
                 timeViewZoom = computeTimeViewZoom();
 
                 console.log('createSprites DONE, calling hideLoadingIfReady');
-                // 初始化时间精灵纹理
-                setTimeout(() => renderTimePageToTexture(), 500);
+                // 初始化时间精灵纹理 + 启动分钟调度
+                setTimeout(() => {
+                    console.log('INIT-TIME: starting time sprite updates');
+                    renderTimePageToTexture();
+                    scheduleMinuteUpdate();
+                }, 500);
                 hideLoadingIfReady();  // 先隐藏loading
                 enterTimeView(true, function() {
                     enterAnimationComplete = true;
@@ -1914,7 +1922,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     ctx.drawImage(domCanvas, cx - rectW/2, cy - rectH/2, rectW, rectH);
                     ctx.restore();
 
-                    console.log('html2canvas OK: ' + domCanvas.width + 'x' + domCanvas.height);
+                    const ts = new Date(); console.log('TIME-UPDATE ' + ts.getHours().toString().padStart(2,'0') + ':' + ts.getMinutes().toString().padStart(2,'0') + ':' + ts.getSeconds().toString().padStart(2,'0') + ' html2canvas ' + domCanvas.width + 'x' + domCanvas.height);
                     const oldMap = timeSprite.material.map;
                     const tex = new THREE.CanvasTexture(texCanvas);
                     tex.minFilter = THREE.LinearFilter;
