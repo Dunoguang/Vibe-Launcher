@@ -20,7 +20,7 @@ A minimalist Android launcher that renders your apps as a rotatable 3D sphere. B
 
 ## Download
 
-[📥 v1.0.5 Release](https://github.com/Dunoguang/Vibe-Launcher/releases)
+[📥 📥 下载最新版本](https://github.com/Dunoguang/Vibe-Launcher/releases)
 
 ## Tech Stack
 
