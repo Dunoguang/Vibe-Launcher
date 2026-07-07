@@ -890,17 +890,28 @@ window._totalItems = totalItems;
                     });
                 }
                 const rotatedPoints = allRotated;
-
-                // Sort by z descending so time[0]&settings[1] get closest-to-camera positions
+                // 确保 time 和 settings 始终占据最靠近摄像机的两个位置
                 {
                     const indexed = rotatedPoints.map((p, i) => ({ p, i }));
                     indexed.sort((a, b) => b.p.z - a.p.z);
                     const newPts = indexed.map(x => x.p);
                     const newItems = indexed.map(x => totalItems[x.i]);
-                    for (let zi = 0; zi < rotatedPoints.length; zi++) {
-                        rotatedPoints[zi] = newPts[zi];
-                        totalItems[zi] = newItems[zi];
+                    // 把 time 和 settings 强制提到最前面
+                    const front = [], rest = [];
+                    for (let zi = 0; zi < newItems.length; zi++) {
+                        if (newItems[zi].type === 'time' || newItems[zi].type === 'settings') {
+                            front.push({ pt: newPts[zi], item: newItems[zi] });
+                        } else {
+                            rest.push({ pt: newPts[zi], item: newItems[zi] });
+                        }
                     }
+                    front.sort((a, b) => (a.item.type === 'time' ? -1 : 1));
+                    const merged = front.concat(rest);
+                    for (let zi = 0; zi < rotatedPoints.length; zi++) {
+                        rotatedPoints[zi] = merged[zi].pt;
+                        totalItems[zi] = merged[zi].item;
+                    }
+                }
                 }
 
                 for (let j = 0; j < N; j++) {
