@@ -950,7 +950,11 @@ window._totalItems = totalItems;
                 timeViewZoom = computeTimeViewZoom();
 
                 console.log('createSprites DONE, calling hideLoadingIfReady');
-                enterAnimationComplete = true; hideLoadingIfReady(); checkAllIconsLoaded();
+                hideLoadingIfReady();  // 先隐藏loading
+                enterTimeView(true, function() {
+                    enterAnimationComplete = true;
+                    checkAllIconsLoaded();
+                });
             }
 
             function loadRealIcon(sprite, iconUrl) {
