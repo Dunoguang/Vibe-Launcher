@@ -77,7 +77,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         onBackPressedDispatcher.addCallback {
-            // 禁用返回键，防止退出桌面或WebView回退
+            webView?.evaluateJavascript("window._onBackPressed();", null)
+            // 定向到 JS 导航，不执行默认返回
         }
     }
 
