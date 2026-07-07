@@ -63,27 +63,27 @@ jobs:
           echo "RELEASE_APK=$SIGNED" >> "$GITHUB_ENV"
           ls -lh "$SIGNED"
 
-      - name: Upload release APK to uguu.se
+      - name: Upload release APK to tempfile.org
         run: |
           echo "Uploading release APK..."
-          RESP=$(curl -sS -F "files[]=@${{ env.RELEASE_APK }}" https://uguu.se/upload)
+          RESP=$(curl -sS -X POST https://tempfile.org/api/upload/local -F "files=@${{ env.RELEASE_APK }}" -F "expiryHours=72")
           URL=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('files',[{}])[0].get('url','FAIL'))")
           echo "Release: $URL"
-          echo "$URL" > /tmp/release-uguu-url.txt
+          echo "$URL" > /tmp/release-tempfile-url.txt
 
-      - name: Upload debug APK to uguu.se
+      - name: Upload debug APK to tempfile.org
         run: |
           echo "Uploading debug APK..."
-          RESP=$(curl -sS -F "files[]=@app/build/outputs/apk/debug/app-debug.apk" https://uguu.se/upload)
+          RESP=$(curl -sS -X POST https://tempfile.org/api/upload/local -F "files=@app/build/outputs/apk/debug/app-debug.apk" -F "expiryHours=72")
           URL=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('files',[{}])[0].get('url','FAIL'))")
           echo "Debug: $URL"
-          echo "$URL" > /tmp/debug-uguu-url.txt
+          echo "$URL" > /tmp/debug-tempfile-url.txt
 
-      - name: Upload uguu.se links
+      - name: Upload tempfile.org links
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: uguu-links
-          path: /tmp/*-uguu-url.txt
+          name: tempfile-links
+          path: /tmp/*-tempfile-url.txt
           if-no-files-found: error
           retention-days: 7
 
