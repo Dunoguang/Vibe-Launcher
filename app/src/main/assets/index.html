@@ -176,8 +176,11 @@
                     <input type="range" id="s-icon" min="64" max="1024" step="16" value="512">
                 </div>
                 <div class="setting-group">
-                    <div class="setting-label">球体大小 <span class="setting-val" id="s-sphere-val">2.5</span></div>
-                    <input type="range" id="s-sphere" min="1" max="10" step="0.1" value="2.5">
+                    <div class="setting-label">3D球体大小</div>
+                    <div id="settings-sphere-size" style="display:flex;align-items:center;gap:8px;">
+                        <input id="settings-sphere-input" type="number" value="2.5" min="0" step="0.1" style="flex:1;padding:12px;font-size:15px;background:#1a1a2e;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;outline:none;">
+                        <span id="sphere-min-hint" style="font-size:13px;color:rgba(255,255,255,0.4);white-space:nowrap;">最少 —</span>
+                    </div>
                 </div>
                 <div class="setting-group">
                     <div class="setting-label">布局模式</div>
@@ -1045,6 +1048,16 @@ window._totalItems = totalItems;
                 const hint = null;
                 if (hint) hint.textContent = '最少 ' + minR.toFixed(2) + '（默认2.5）';
 
+                const updateSphereMinHint = () => {
+                    const iconCount = window._totalItems ? window._totalItems.length : (sprites.length || 100);
+                    const iconVisRadius = BASE_SCALE * 0.44 * 1.1;
+                    const minR = iconVisRadius / Math.sqrt(Math.PI / Math.max(1, iconCount));
+                    const hint = document.getElementById('sphere-min-hint');
+                    if (hint) hint.textContent = '最少 ' + minR.toFixed(2) + '（默认2.5）';
+                    return minR;
+                };
+
+                updateSphereMinHint();
                 // 启动时应用已保存的球体大小
                 try {
                     let saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
@@ -1633,8 +1646,8 @@ updateMouse(e.clientX, e.clientY);
                                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
                                 const iconInput = document.getElementById('s-icon');
                                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
-                                const sphereInput = document.getElementById('s-sphere');
-                                if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
+                                const sphereInput = document.getElementById('settings-sphere-input');
+                                if (saved.sphereSize && sphereInput) sphereInput.value = parseFloat(saved.sphereSize);
                                 const hotreloadCb = document.getElementById('s-hotreload');
                                 if (hotreloadCb) hotreloadCb.checked = !!(saved.hotReload);
                                 if (saved.layoutMode) {
@@ -1993,8 +2006,8 @@ const updateBatteryDisplay = () => {
                 // Apply saved values
                 const iconInput = document.getElementById('s-icon');
                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
-                const sphereInput = document.getElementById('s-sphere');
-                if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
+                const sphereInput = document.getElementById('settings-sphere-input');
+                if (saved.sphereSize && sphereInput) sphereInput.value = parseFloat(saved.sphereSize);
                 if (saved.layoutMode) {
                     const radios = document.getElementsByName('layoutMode');
                     for (let ri = 0; ri < radios.length; ri++) {
@@ -2028,7 +2041,23 @@ const updateBatteryDisplay = () => {
 
                 saveBtn.addEventListener('click', function() {
                     const iconRes = document.getElementById('s-icon');
-                    const sphereSize = document.getElementById('s-sphere').value;
+                    const sphereSizeInput = document.getElementById('settings-sphere-input');
+                    let sphereSize = sphereSizeInput ? sphereSizeInput.value : '2.5';
+                    // 最小半径校验
+                    const minR = updateSphereMinHint();
+                    let inputR = parseFloat(sphereSize);
+                    if (isNaN(inputR) || inputR <= 0) inputR = 2.5;
+                    if (inputR < minR) {
+                        inputR = minR;
+                        if (sphereSizeInput) sphereSizeInput.value = Math.ceil(minR * 100) / 100;
+                        saveBtn.textContent = '已自动调整至最小 ✓';
+                        saveBtn.style.background = '#e67e22';
+                        setTimeout(function() {
+                            saveBtn.textContent = '保存';
+                            saveBtn.style.background = '#8ab4f8';
+                        }, 2000);
+                    }
+                    sphereSize = '' + inputR;
                     const layoutRadios = document.getElementsByName('layoutMode');
                     let layoutVal = 'sphere';
                     for (let lr = 0; lr < layoutRadios.length; lr++) {
@@ -2084,24 +2113,8 @@ const updateBatteryDisplay = () => {
                     saveBtn.style.background = '#2ecc71';
                     setTimeout(function() {
                         saveBtn.textContent = '保存';
-                        saveBtn.style.background = '#4a90d9';
+                        saveBtn.style.background = '#8ab4f8';
                     }, 1500);
-                    // 计算最小不碰撞半径
-                    const iconCount = window._totalItems ? window._totalItems.length : 100;
-                    const iconVisRadius = BASE_SCALE * 0.44 * 1.1; // 留10%余量
-                    const minRadius = iconVisRadius / Math.sqrt(Math.PI / iconCount);
-                    let inputR = parseFloat(settings.sphereSize);
-                    if (inputR < minRadius) {
-                        inputR = minRadius;
-                        document.getElementById("settings-sphere-input").value = Math.ceil(minRadius * 100) / 100;
-                        saveBtn.textContent = '已自动调整至最小 ✓';
-                        saveBtn.style.background = '#e67e22';
-                        setTimeout(function() {
-                            saveBtn.textContent = '保存';
-                            saveBtn.style.background = '#4a90d9';
-                        }, 2000);
-                    }
-                    settings.sphereSize = '' + inputR;
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
 
                     if (sphereGroup && inputR > 0) {
