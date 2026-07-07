@@ -1300,7 +1300,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                 // 菜单打开时：点击画布关闭菜单，不触发拖动
                 if (contextMenuOpen) {
                     const menu = document.getElementById('context-menu');
-                    if (menu && menu.style.display === 'block') {
+                    if (menu && menu.style.display !== 'none') {
                         const rect = menu.getBoundingClientRect();
                         if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
                             hideContextMenu();
@@ -1535,7 +1535,7 @@ updateMouse(e.clientX, e.clientY);
                 clearLongPressTimer();
                 // 点击菜单外部时关闭
                 const menu = document.getElementById('context-menu');
-                if (menu && menu.style.display === 'block' && e.target !== menu && !menu.contains(e.target)) {
+                if (menu && menu.style.display !== 'none' && e.target !== menu && !menu.contains(e.target)) {
                     hideContextMenu();
                 }
                 if (activePointerIds.size === 0) {
