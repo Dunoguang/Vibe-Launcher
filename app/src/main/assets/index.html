@@ -373,6 +373,50 @@ console.log("IIFE starting, THREE:", typeof THREE);
             var timeTextureUpdateInterval = null;
             var exitThresholdRatio = 0.35;
 
+            // ========== 可取消动作状态机 ==========
+            var cancelableAction = null;
+
+            function startCancelableAction(sprite, rotTarget, zoomTarget, onCommit) {
+                if (cancelableAction) cancelCurrentAction('superseded');
+                cancelableAction = {
+                    sprite: sprite, onCommit: onCommit, phase: 'animating',
+                    rotDone: false, zoomDone: false, cancelled: false
+                };
+                inertiaQ.identity(); inertiaStrength = 0; infiniteInertia = false;
+                startRotationAnimation(rotTarget, 350, function() {
+                    if (cancelableAction && !cancelableAction.cancelled) {
+                        cancelableAction.rotDone = true; tryCommitCancelable();
+                    }
+                });
+                startZoomAnimation(zoomTarget, 350, function() {
+                    zoomLevel = zoomTarget; applyZoom();
+                    if (cancelableAction && !cancelableAction.cancelled) {
+                        cancelableAction.zoomDone = true; tryCommitCancelable();
+                    }
+                });
+            }
+
+            function tryCommitCancelable() {
+                var a = cancelableAction;
+                if (!a || a.cancelled || a.phase !== 'animating') return;
+                if (a.rotDone && a.zoomDone) {
+                    a.phase = 'committed';
+                    var cb = a.onCommit; cancelableAction = null;
+                    if (cb) cb();
+                }
+            }
+
+            function cancelCurrentAction(reason) {
+                if (!cancelableAction || cancelableAction.cancelled) return;
+                cancelableAction.cancelled = true;
+                try { NativeBridge.log('cancel:' + reason); } catch(e) {}
+                cancelZoomAnimation(); rotationAnimData = null;
+                startZoomAnimation(defaultZoom, 250, function() {
+                    zoomLevel = defaultZoom; applyZoom();
+                });
+                cancelableAction = null;
+            }
+
             var bottomSwipeData = null;
                 topSwipeData = null;
             var topSwipeData = null;
@@ -1224,6 +1268,10 @@ window._totalItems = totalItems;
             }
 
             function onPointerDown(e) { try{NativeBridge.log('PDOWN');}catch(e){}
+                // 可取消动作进行中：任意新触摸取消
+                if (cancelableAction && cancelableAction.phase === 'animating') {
+                    cancelCurrentAction('new-touch');
+                }
                 // 菜单打开时：点击画布关闭菜单，不触发拖动
                 if (contextMenuOpen) {
                     var menu = document.getElementById('context-menu');
@@ -1308,6 +1356,10 @@ updateMouse(e.clientX, e.clientY);
 
             function onPointerMove(e) {
                 if (contextMenuOpen) { activePointerIds.delete(e.pointerId); return; }
+                // 可取消动作进行中 + 拖动 = 取消
+                if (cancelableAction && cancelableAction.phase === 'animating' && isDragging && hasMoved) {
+                    cancelCurrentAction('drag'); return;
+                }
                 updateMouse(e.clientX, e.clientY);
                 if (!isInTimeView && topSwipeData && topSwipeData.active && topSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
                     var dY = e.clientY - topSwipeData.startY;
@@ -1466,71 +1518,39 @@ updateMouse(e.clientX, e.clientY);
                         try { NativeBridge.log('click-detect:' + (getAppBySprite(hoveredSprite)||{}).packageName); } catch(e) {}
                         var a=getAppBySprite(hoveredSprite); try{NativeBridge.log("CLICK:"+(a?a.packageName:"null"));}catch(e){}
                         var app = getAppBySprite(hoveredSprite);
+                        var targetDir = hoveredSprite.position.clone().normalize();
+                        var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
+                        var appZoom = computeTimeViewZoom();
                         if (app && app.packageName === '__settings__') {
                             window._lastSettingsClick = Date.now();
                             try { NativeBridge.log('settings clicked'); } catch(e) {}
-                            // 旋转+拉近
-                            var targetDir = hoveredSprite.position.clone().normalize();
-                            var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
-                            inertiaQ.identity();
-                            inertiaStrength = 0;
-                            infiniteInertia = false;
-                            var appZoom = computeTimeViewZoom();
-                            var rotDone = false, zoomDone = false;
-                            function showSettingsPanel() {
-                                if (rotDone && zoomDone) {
-                                    var saved = {};
-                                    try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
-                                    var iconInput = document.getElementById('settings-icon-input');
-                if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
-                                    var sphereInput = document.getElementById('settings-sphere-input');
-                if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
-                if (saved.layoutMode) {
-                    var radios = document.getElementsByName('layoutMode');
-                    for (var ri = 0; ri < radios.length; ri++) {
-                        if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
-                    }
-                }
-                                    document.getElementById('settings-overlay').style.display = 'block';
-                                    console.log("canvas pointerEvents none, canvas:", typeof canvas); canvas.style.pointerEvents = "none";
+                            startCancelableAction(hoveredSprite, targetQuat, appZoom, function() {
+                                var saved = {};
+                                try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
+                                var iconInput = document.getElementById('settings-icon-input');
+                                if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
+                                var sphereInput = document.getElementById('settings-sphere-input');
+                                if (saved.sphereSize && sphereInput) sphereInput.value = saved.sphereSize;
+                                if (saved.layoutMode) {
+                                    var radios = document.getElementsByName('layoutMode');
+                                    for (var ri = 0; ri < radios.length; ri++) {
+                                        if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
+                                    }
                                 }
-                            }
-startRotationAnimation(targetQuat, 350, function() { console.log('ROT done'); rotDone = true; showSettingsPanel(); });
-                            startZoomAnimation(appZoom, 350, function() { console.log('ZOOM done');
-                                zoomLevel = appZoom;
-                                applyZoom();
-                                zoomDone = true;
-                                showSettingsPanel();
+                                document.getElementById('settings-overlay').style.display = 'block';
+                                canvas.style.pointerEvents = "none";
                             });
                         } else if (app && app.packageName === '__time__') {
                             returnToTimeView();
                         } else if (app && !isInTimeView) {
-                            // 旋转+拉近 → 启动应用
-                            var targetDir = hoveredSprite.position.clone().normalize();
-                            var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
-                            inertiaQ.identity();
-                            inertiaStrength = 0;
-                            infiniteInertia = false;
-                            
-                            var bothDone = false;
-                            function tryLaunch() {
-                                if (bothDone) return;
-                                bothDone = true;
+                            startCancelableAction(hoveredSprite, targetQuat, appZoom, function() {
                                 if (app && nativeBridgeReady) {
                                     try {
                                         var result = NativeBridge.launchApp(app.packageName);
                                         if (result && !result.success) console.warn('启动失败:', result.error);
                                     } catch (err) { console.error('启动应用异常:', err); }
                                 }
-                            }
-                            startRotationAnimation(targetQuat, 350, function() { tryLaunch(); });
-                            var appZoom = computeTimeViewZoom();
-                            startZoomAnimation(appZoom, 350, function() {
-                                zoomLevel = appZoom;
-                                applyZoom();
-                                tryLaunch();
                             });
-                            // scale feedback only for non-launch clicks
                         }
                     }
                     if (isDragging && hasMoved && !isInTimeView) startInertiaFromSpeeds();
