@@ -383,12 +383,12 @@ console.log("IIFE starting, THREE:", typeof THREE);
                     rotDone: false, zoomDone: false, cancelled: false
                 };
                 inertiaQ.identity(); inertiaStrength = 0; infiniteInertia = false;
-                startRotationAnimation(rotTarget, 350, function() {
+                startRotationAnimation(rotTarget, ROTATION_ANIM_DURATION, function() {
                     if (cancelableAction && !cancelableAction.cancelled) {
                         cancelableAction.rotDone = true; tryCommitCancelable();
                     }
                 });
-                startZoomAnimation(zoomTarget, 350, function() {
+                startZoomAnimation(zoomTarget, ROTATION_ANIM_DURATION, function() {
                     zoomLevel = zoomTarget; applyZoom();
                     if (cancelableAction && !cancelableAction.cancelled) {
                         cancelableAction.zoomDone = true; tryCommitCancelable();
@@ -411,7 +411,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
                 cancelableAction.cancelled = true;
                 try { NativeBridge.log('cancel:' + reason); } catch(e) {}
                 cancelZoomAnimation();
-                startZoomAnimation(defaultZoom, 250, function() {
+                startZoomAnimation(defaultZoom, 350, function() {
                     zoomLevel = defaultZoom; applyZoom();
                 });
                 cancelableAction = null;
