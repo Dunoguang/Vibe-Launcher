@@ -1885,7 +1885,7 @@ const updateBatteryDisplay = () => {
                 if (document.hidden) {
                     const tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
-                } else if (!document.hidden && zoomLevel < defaultZoom - 0.1 && !isInTimeView && zoomTarget === null) {
+                } else if (!document.hidden && !isInTimeView && zoomTarget === null) {
                     startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
                         zoomLevel = defaultZoom;
                         applyZoom();
