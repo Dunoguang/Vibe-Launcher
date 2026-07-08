@@ -24,6 +24,22 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "VibeLauncher"
+        private const val FILE_CHOOSER_REQUEST = 100
+    }
+
+    private var mFilePathCallback: android.webkit.ValueCallback<Array<Uri>>? = null
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == FILE_CHOOSER_REQUEST) {
+            if (mFilePathCallback == null) return
+            val results = if (resultCode == RESULT_OK && data != null) {
+                val uri = data.data
+                if (uri != null) arrayOf(uri) else null
+            } else null
+            mFilePathCallback?.onReceiveValue(results)
+            mFilePathCallback = null
+        }
     }
 
     private var webView: WebView? = null
@@ -82,6 +98,25 @@ class MainActivity : AppCompatActivity() {
                 override fun onJsAlert(view: WebView, url: String, message: String, result: android.webkit.JsResult): Boolean {
                     Log.d(TAG, "[ALERT] $message")
                     result.confirm()
+                    return true
+                }
+
+                override fun onShowFileChooser(
+                    webView: WebView,
+                    filePathCallback: android.webkit.ValueCallback<Array<Uri>>,
+                    fileChooserParams: FileChooserParams
+                ): Boolean {
+                    if (mFilePathCallback != null) {
+                        mFilePathCallback?.onReceiveValue(null)
+                    }
+                    mFilePathCallback = filePathCallback
+                    val intent = fileChooserParams.createIntent()
+                    try {
+                        startActivityForResult(intent, FILE_CHOOSER_REQUEST)
+                    } catch (e: Exception) {
+                        mFilePathCallback = null
+                        return false
+                    }
                     return true
                 }
             }
