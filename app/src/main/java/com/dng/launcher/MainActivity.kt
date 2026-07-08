@@ -16,10 +16,12 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.content.SharedPreferences
-import androidx.activity.addCallback
+import android.os.Build
 import android.window.BackEvent
-import androidx.activity.OnBackAnimationCallback
+import android.window.OnBackAnimationCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
@@ -147,7 +149,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Predictive back gesture (Android 14+)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             onBackInvokedDispatcher.registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_DEFAULT,
                 object : OnBackAnimationCallback {
