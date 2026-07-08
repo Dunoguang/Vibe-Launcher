@@ -17,6 +17,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.content.SharedPreferences
 import androidx.activity.addCallback
+import androidx.activity.BackEvent
+import androidx.activity.OnBackAnimationCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
@@ -144,8 +146,29 @@ class MainActivity : AppCompatActivity() {
             wv.loadUrl(loadPath)
         }
 
-        onBackPressedDispatcher.addCallback {
-            webView?.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
+        // Predictive back gesture (Android 14+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                object : OnBackAnimationCallback {
+                    override fun onBackStarted(backEvent: BackEvent) {
+                        wv.evaluateJavascript("if(window._onBackStarted)window._onBackStarted();", null)
+                    }
+                    override fun onBackProgressed(backEvent: BackEvent) {
+                        wv.evaluateJavascript("if(window._onBackProgress)window._onProgress(${backEvent.progress});", null)
+                    }
+                    override fun onBackInvoked() {
+                        wv.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
+                    }
+                    override fun onBackCancelled() {
+                        wv.evaluateJavascript("if(window._onBackCancelled)window._onBackCancelled();", null)
+                    }
+                }
+            )
+        } else {
+            onBackPressedDispatcher.addCallback {
+                wv.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
+            }
         }
     }
 
