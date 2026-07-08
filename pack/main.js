@@ -455,7 +455,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             };
 
             const drawCircleBackground = function(ctx, cx, cy, r, s) {
-                var bg = _timeBgImg || _wallpaperImg;
+                var bg = _timeBgImg;
                 if (bg) {
                     ctx.save();
                     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
