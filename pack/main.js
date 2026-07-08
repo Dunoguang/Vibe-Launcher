@@ -1801,6 +1801,29 @@ let _lastBatteryLevel = -1;
             }
 
             const initSettingsPanel = () => {
+// ========== 壁纸 ==========
+            const wallpaperPickBtn = document.getElementById('s-wallpaper-pick');
+            const wallpaperRemoveBtn = document.getElementById('s-wallpaper-remove');
+            window._onWallpaperPicked = function(json) {
+                try { var r = typeof json === 'string' ? JSON.parse(json) : json;
+                    if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + ')'; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; }
+                } catch(e) {}
+            };
+            (function initWallpaper() {
+                if (typeof NativeBridge !== 'undefined') {
+                    try { var raw = NativeBridge.getWallpaperPath(); var r = JSON.parse(raw);
+                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + ')'; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; }
+                    } catch(e) {}
+                }
+            })();
+            wallpaperPickBtn.onclick = function() {
+                console.log('[wallpaper] click');
+                if (typeof NativeBridge !== 'undefined') NativeBridge.pickWallpaper();
+            };
+            wallpaperRemoveBtn.onclick = function() {
+                document.body.style.backgroundImage = '';
+                if (typeof NativeBridge !== 'undefined') NativeBridge.removeWallpaper();
+            };
                 const overlay = document.getElementById('settings-overlay');
                 const backBtn = document.getElementById('settings-close-btn');
                 const saveBtn = document.getElementById('s-save');
