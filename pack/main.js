@@ -364,6 +364,24 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
             };
 
+            const updateTimeSpriteBgOnly = function() {
+                if (!timeSprite || !timeSprite.material) return;
+                var s = Math.max(window.innerWidth, window.innerHeight);
+                var c = document.createElement('canvas');
+                c.width = s; c.height = s;
+                var ctx = c.getContext('2d');
+                var cx = s/2, cy = s/2, r = s * 0.44;
+                drawCircleBackground(ctx, cx, cy, r, s);
+                var oldMap = timeSprite.material.map;
+                var tex = new THREE.CanvasTexture(c);
+                tex.minFilter = THREE.LinearFilter;
+                tex.magFilter = THREE.LinearFilter;
+                if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
+                timeSprite.material.map = tex;
+                timeSprite.material.needsUpdate = true;
+                if (oldMap && oldMap !== tex) oldMap.dispose();
+            };
+
             const drawCircleBackground = function(ctx, cx, cy, r, s) {
                 var bg = _timeBgImg || _wallpaperImg;
                 if (bg) {
@@ -449,8 +467,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 recentSpeeds = [];
                 clearHover();
                 document.body.style.cursor = 'default';
-                updateTimeSpriteTexture();
-                startTimeTextureUpdates();
+                updateTimeSpriteBgOnly();
                 const targetZoom = computeTimeViewZoom();
                 timeViewZoom = targetZoom;
                 if (animate) {
@@ -474,6 +491,8 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             const exitTimeView = (animate, callback) => {
                 if (!isInTimeView) return;
                 isInTimeView = false;
+                // 立即恢复完整时间纹理
+                renderTimePageToTexture();
                 // 隐藏原生时间页面
                 const tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
@@ -1296,7 +1315,8 @@ updateMouse(e.clientX, e.clientY);
                     }
                     if (bottomSwipeData.confirmed || deltaY > 8) {
                         bottomSwipeData.confirmed = true;
-                        // 有上滑意图立即隐藏原生时间覆盖层
+                        // 有上滑意图：立即隐藏原生DOM并恢复完整纹理
+                        renderTimePageToTexture();
                         const tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; }
                         const screenH = window.innerHeight;
