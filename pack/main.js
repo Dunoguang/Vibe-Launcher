@@ -1314,8 +1314,7 @@ updateMouse(e.clientX, e.clientY);
                     }
                     if (bottomSwipeData.confirmed || deltaY > 8) {
                         bottomSwipeData.confirmed = true;
-                        // 有上滑意图：立即隐藏原生DOM并恢复完整纹理
-                        renderTimePageToTexture();
+                        // 有上滑意图：立即隐藏原生DOM
                         const tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; }
                         const screenH = window.innerHeight;
