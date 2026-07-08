@@ -11,3 +11,5 @@ app/src/main/assets/index.html
 vibe-launcher.p12.b64
 *.p12
 *.jks
+pack/dist/
+pack/node_modules/
