@@ -156,7 +156,7 @@ class MainActivity : AppCompatActivity() {
                             wv.evaluateJavascript("if(window._onBackStarted)window._onBackStarted();", null)
                         }
                         override fun onBackProgressed(backEvent: BackEvent) {
-                            wv.evaluateJavascript("if(window._onBackProgress)window._onProgress(${backEvent.progress});", null)
+                            wv.evaluateJavascript("if(window._onBackProgress)window._onBackProgress(${backEvent.progress});", null)
                         }
                         override fun onBackInvoked() {
                             wv.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
