@@ -196,6 +196,15 @@
                         <label class="layout-card" onclick="setRadio('layoutMode','hbar')"><input type="radio" name="layoutMode" value="hbar"><span>↔ 横环</span></label>
                     </div>
                 </div>
+
+                <div class="setting-group">
+                    <div class="setting-label">壁纸</div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button id="s-wallpaper-pick" style="flex:1;padding:12px;font-size:14px;background:#2a2a4a;color:#ccc;border:1px solid rgba(255,255,255,0.15);border-radius:8px;cursor:pointer;">选择图片</button>
+                        <button id="s-wallpaper-remove" style="padding:12px 16px;font-size:14px;background:rgba(255,80,80,0.15);color:#ff6b6b;border:1px solid rgba(255,80,80,0.3);border-radius:8px;cursor:pointer;">移除</button>
+                    </div>
+                    <input type="file" id="s-wallpaper-input" accept="image/*" style="display:none;">
+                </div>
                 <div class="setting-group">
                     <div id="setting-hotreload">
                         <div>

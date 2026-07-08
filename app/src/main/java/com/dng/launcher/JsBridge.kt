@@ -239,4 +239,42 @@ class JsBridge(context: Context, webView: WebView) {
             logFile.appendText(java.time.Instant.now().toString() + " " + msg + "\n")
         } catch (_: Exception) {}
     }
+
+    @JavascriptInterface
+    fun saveWallpaper(base64Data: String): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val bytes = android.util.Base64.decode(base64Data.substringAfter("base64,"), android.util.Base64.DEFAULT)
+            val file = java.io.File(ctx.filesDir, "wallpaper.png")
+            java.io.FileOutputStream(file).use { it.write(bytes) }
+            """{"success":true,"path":"file://${file.absolutePath}"}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getWallpaperPath(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val file = java.io.File(ctx.filesDir, "wallpaper.png")
+            if (file.exists()) """{"success":true,"path":"file://${file.absolutePath}"}"""
+            else """{"success":false,"error":"no wallpaper"}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun removeWallpaper(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val file = java.io.File(ctx.filesDir, "wallpaper.png")
+            if (file.exists()) file.delete()
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
 }
