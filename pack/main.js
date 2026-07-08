@@ -735,7 +735,7 @@ let apps = [], sprites = [];
 
 let pendingIconLoads = 0, enterAnimationComplete = false;
 
-            const createSprites = (appList, iconMap) => {
+            const createSprites = (appList, iconMap, skipEnter) => {
                 clearAllSprites();
 
                 const totalItems = [];
@@ -982,10 +982,15 @@ updateSphereMinHint();
                     scheduleMinuteUpdate();
                 }, 500);
                 hideLoadingIfReady();  // 先隐藏loading
-                enterTimeView(true, function() {
+                if (!skipEnter) {
+                    enterTimeView(true, function() {
+                        enterAnimationComplete = true;
+                        checkAllIconsLoaded();
+                    });
+                } else {
                     enterAnimationComplete = true;
                     checkAllIconsLoaded();
-                });
+                }
             }
 
             function loadRealIcon(sprite, iconUrl) {
@@ -2360,7 +2365,10 @@ let _lastBatteryLevel = -1;
 
                     if (layoutChanged || sphereChanged) {
                         // 变更布局/球体大小 → 重建所有精灵（球体大小兜底在createSprites内自动计算）
-                        createSprites(apps, null);
+                        createSprites(apps, null, true);
+                        // 重建后重置到默认视角
+                        zoomLevel = defaultZoom;
+                        applyZoom();
                         // 重建后重新加载图标
                         if (nativeBridgeReady) NativeBridge.clearIconCache();
                         if (window._allPkgs && nativeBridgeReady) {
