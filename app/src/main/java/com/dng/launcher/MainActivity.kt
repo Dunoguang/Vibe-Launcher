@@ -146,30 +146,30 @@ class MainActivity : AppCompatActivity() {
                 "file:///android_asset/index.html"
             }
             wv.loadUrl(loadPath)
-        }
 
-        // Predictive back gesture (Android 14+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            onBackInvokedDispatcher.registerOnBackInvokedCallback(
-                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-                object : OnBackAnimationCallback {
-                    override fun onBackStarted(backEvent: BackEvent) {
-                        wv.evaluateJavascript("if(window._onBackStarted)window._onBackStarted();", null)
+            // Predictive back gesture (Android 14+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                    object : OnBackAnimationCallback {
+                        override fun onBackStarted(backEvent: BackEvent) {
+                            wv.evaluateJavascript("if(window._onBackStarted)window._onBackStarted();", null)
+                        }
+                        override fun onBackProgressed(backEvent: BackEvent) {
+                            wv.evaluateJavascript("if(window._onBackProgress)window._onProgress(${backEvent.progress});", null)
+                        }
+                        override fun onBackInvoked() {
+                            wv.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
+                        }
+                        override fun onBackCancelled() {
+                            wv.evaluateJavascript("if(window._onBackCancelled)window._onBackCancelled();", null)
+                        }
                     }
-                    override fun onBackProgressed(backEvent: BackEvent) {
-                        wv.evaluateJavascript("if(window._onBackProgress)window._onProgress(${backEvent.progress});", null)
-                    }
-                    override fun onBackInvoked() {
-                        wv.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
-                    }
-                    override fun onBackCancelled() {
-                        wv.evaluateJavascript("if(window._onBackCancelled)window._onBackCancelled();", null)
-                    }
+                )
+            } else {
+                onBackPressedDispatcher.addCallback {
+                    wv.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
                 }
-            )
-        } else {
-            onBackPressedDispatcher.addCallback {
-                wv.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
             }
         }
     }
