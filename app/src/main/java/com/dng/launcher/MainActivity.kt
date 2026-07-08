@@ -113,7 +113,7 @@ class MainActivity : AppCompatActivity() {
                     if (!errorDialogShown) showErrorExportDialog()
                 }
             }
-            jsBridge = JsBridge(this, wv); wv.addJavascriptInterface(jsBridge, "NativeBridge")
+            val bridge = JsBridge(this, wv); jsBridge = bridge; wv.addJavascriptInterface(bridge, "NativeBridge")
             val hotReload = prefs.getBoolean("hot_reload_enabled", false)
             val externalHtml = java.io.File(filesDir, "index.html")
             val loadPath = if (hotReload && externalHtml.exists()) {
