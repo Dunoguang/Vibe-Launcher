@@ -243,7 +243,10 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun pickWallpaper() {
         val ctx = contextRef.get() ?: return
-        (ctx as? MainActivity)?.pickWallpaper()
+        val activity = ctx as? MainActivity ?: return
+        webViewRef.get()?.post {
+            activity.pickWallpaper()
+        }
     }
 
     @JavascriptInterface
