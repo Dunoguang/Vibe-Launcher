@@ -2248,7 +2248,7 @@ let _lastBatteryLevel = -1;
             window._onTimeBgPicked = function(json) {
                 try { var r = typeof json === 'string' ? JSON.parse(json) : json;
                     if (r.success) {
-                        var img = new Image(); img.onload = function() { _timeBgImg = img; }; img.src = r.path;
+                        var img = new Image(); img.onload = function() { _timeBgImg = img; syncTimeSpriteTexture(); }; img.src = r.path;
                         timeBgPickBtn.textContent = '重新选择';
                     }
                 } catch(e) {}
@@ -2258,6 +2258,7 @@ let _lastBatteryLevel = -1;
             };
             timeBgRemoveBtn.onclick = function() {
                 _timeBgImg = null;
+                syncTimeSpriteTexture();
                 timeBgPickBtn.textContent = '选择图片';
                 if (typeof NativeBridge !== 'undefined') NativeBridge.removeTimeBg();
             };
