@@ -130,6 +130,17 @@
 .toggle-slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.25s}
 .toggle-switch input:checked+.toggle-slider{background:#8ab4f8}
 .toggle-switch input:checked+.toggle-slider:before{transform:translateX(22px)}
+
+/* Settings panel refactor */
+.settings-input{width:100%;padding:12px;font-size:15px;background:#1a1a2e;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;outline:none}
+.settings-input:focus{border-color:#8ab4f8}
+.settings-btn{flex:1;padding:12px;font-size:14px;background:#2a2a4a;color:#ccc;border:1px solid rgba(255,255,255,0.15);border-radius:8px;cursor:pointer;transition:all 0.2s}
+.settings-btn:hover{background:#3a3a5a;color:#fff}
+.settings-btn-danger{padding:12px 16px;font-size:14px;background:rgba(255,80,80,0.15);color:#ff6b6b;border:1px solid rgba(255,80,80,0.3);border-radius:8px;cursor:pointer;transition:all 0.2s}
+.settings-btn-danger:hover{background:rgba(255,80,80,0.25)}
+.settings-row{display:flex;gap:8px;align-items:center}
+.settings-sphere{display:flex;align-items:center;gap:8px}
+.settings-hint{font-size:13px;color:rgba(255,255,255,0.4);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -180,18 +191,18 @@
             <div id="settings-body">
                 <div class="setting-group">
                     <div class="setting-label">图标分辨率 <span class="setting-val" id="s-icon-val">512px</span></div>
-                    <input id="s-icon" type="number" value="512" min="64" max="1024" step="16" style="width:100%;padding:12px;font-size:15px;background:#1a1a2e;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;outline:none;">
+                    <input id="s-icon" type="number" value="512" min="64" max="1024" step="16" class="settings-input">
                 </div>
                 <div class="setting-group">
                     <div class="setting-label">3D球体大小</div>
-                    <div id="settings-sphere-size" style="display:flex;align-items:center;gap:8px;">
-                        <input id="settings-sphere-input" type="number" value="2.5" min="0" step="0.1" style="flex:1;padding:12px;font-size:15px;background:#1a1a2e;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;outline:none;">
-                        <span id="sphere-min-hint" style="font-size:13px;color:rgba(255,255,255,0.4);white-space:nowrap;">最少 —</span>
+                    <div id="settings-sphere-size" class="settings-sphere">
+                        <input id="settings-sphere-input" type="number" value="2.5" min="0" step="0.1" class="settings-input" style="flex:1">
+                        <span id="sphere-min-hint" class="settings-hint">最少 —</span>
                     </div>
                 </div>
                 <div class="setting-group">
                     <div class="setting-label">动画速度 <span style="font-size:12px;color:rgba(255,255,255,0.4);">(ms)</span></div>
-                    <input id="settings-anim-input" type="number" value="250" min="10" max="5000" step="10" style="width:100%;padding:12px;font-size:15px;background:#1a1a2e;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;outline:none;">
+                    <input id="settings-anim-input" type="number" value="250" min="10" max="5000" step="10" class="settings-input">
                 </div>
                 <div class="setting-group">
                     <div class="setting-label">布局模式</div>
@@ -207,16 +218,16 @@
                 <div class="setting-group">
                     <div class="setting-label">时间页面背景</div>
                     <div class="toggle-desc" style="margin-bottom:8px;">建议使用正方形高清图片获得最佳体验</div>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <button id="s-timebg-pick" style="flex:1;padding:12px;font-size:14px;background:#2a2a4a;color:#ccc;border:1px solid rgba(255,255,255,0.15);border-radius:8px;cursor:pointer;">选择图片</button>
-                        <button id="s-timebg-remove" style="padding:12px 16px;font-size:14px;background:rgba(255,80,80,0.15);color:#ff6b6b;border:1px solid rgba(255,80,80,0.3);border-radius:8px;cursor:pointer;">移除</button>
+                    <div class="settings-row">
+                        <button id="s-timebg-pick" class="settings-btn">选择图片</button>
+                        <button id="s-timebg-remove" class="settings-btn-danger">移除</button>
                     </div>
                 </div>
                 <div class="setting-group">
                     <div class="setting-label">壁纸</div>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <button id="s-wallpaper-pick" style="flex:1;padding:12px;font-size:14px;background:#2a2a4a;color:#ccc;border:1px solid rgba(255,255,255,0.15);border-radius:8px;cursor:pointer;">选择图片</button>
-                        <button id="s-wallpaper-remove" style="padding:12px 16px;font-size:14px;background:rgba(255,80,80,0.15);color:#ff6b6b;border:1px solid rgba(255,80,80,0.3);border-radius:8px;cursor:pointer;">移除</button>
+                    <div class="settings-row">
+                        <button id="s-wallpaper-pick" class="settings-btn">选择图片</button>
+                        <button id="s-wallpaper-remove" class="settings-btn-danger">移除</button>
                     </div>
                 </div>
                 <div class="setting-group">
