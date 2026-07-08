@@ -1874,7 +1874,7 @@ let _lastBatteryLevel = -1;
             (function initWallpaper() {
                 if (typeof NativeBridge !== 'undefined') {
                     try { var raw = NativeBridge.getWallpaperPath(); var r = JSON.parse(raw);
-                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + ')'; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; }
+                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + ')'; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; wallpaperPickBtn.textContent = '重新选择'; }
                     } catch(e) {}
                 }
             })();
@@ -1884,6 +1884,7 @@ let _lastBatteryLevel = -1;
             };
             wallpaperRemoveBtn.onclick = function() {
                 document.body.style.backgroundImage = '';
+                wallpaperPickBtn.textContent = '选择图片';
                 if (typeof NativeBridge !== 'undefined') NativeBridge.removeWallpaper();
             };
 
