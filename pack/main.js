@@ -385,7 +385,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             const syncTimeSpriteTexture = function() {
                 var tp = document.getElementById('time-page');
                 if (tp && tp.style.visibility === 'visible') {
-                    updateTimeSpriteBgOnly();
+                    syncTimeSpriteTexture();
                 } else {
                     renderTimePageToTexture();
                 }
@@ -476,7 +476,6 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 recentSpeeds = [];
                 clearHover();
                 document.body.style.cursor = 'default';
-                updateTimeSpriteBgOnly();
                 const targetZoom = computeTimeViewZoom();
                 timeViewZoom = targetZoom;
                 if (animate) {
@@ -487,6 +486,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                         // 显示原生时间页面覆盖层（最高分辨率）
                         const tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
+                        syncTimeSpriteTexture();
                     });
                 } else {
                     zoomLevel = targetZoom;
@@ -494,6 +494,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     if (onComplete) onComplete();
                     const tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
+                    syncTimeSpriteTexture();
                 }
             }
 
@@ -555,7 +556,7 @@ let zoomComplete = false, rotationComplete = false;
                     if (zoomComplete && rotationComplete) {
                         const tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                        updateTimeSpriteBgOnly();
+                        syncTimeSpriteTexture();
                     }
                 }
 
@@ -1419,10 +1420,10 @@ updateMouse(e.clientX, e.clientY);
                             startZoomAnimation(timeViewZoom, ANIM_DURATION, function() {
                                 zoomLevel = timeViewZoom;
                                 applyZoom();
-                                // 恢复原生时间覆盖层 + bg-only纹理
-                                updateTimeSpriteBgOnly();
+                                // 恢复原生时间覆盖层
                                 const tp = document.getElementById('time-page');
                                 if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
+                                syncTimeSpriteTexture();
                             });
                         }
                     } else {
@@ -1430,12 +1431,11 @@ updateMouse(e.clientX, e.clientY);
                             startZoomAnimation(timeViewZoom, ANIM_DURATION, function() {
                                 zoomLevel = timeViewZoom;
                                 applyZoom();
-                                updateTimeSpriteBgOnly();
                                 const tp = document.getElementById('time-page');
                                 if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
+                                syncTimeSpriteTexture();
                             });
                         } else {
-                            updateTimeSpriteBgOnly();
                             const tp = document.getElementById('time-page');
                             if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
                         }
