@@ -85,7 +85,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
 
             // ========== 场景 ==========
             const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000);
+            // scene background controlled by CSS (wallpaper support)
             const FAR_PLANE = 1e8;
             const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, FAR_PLANE);
 let renderer = null, rendererType = 'unknown';
@@ -93,7 +93,7 @@ let renderer = null, rendererType = 'unknown';
 // WebGPURenderer has built-in WebGL fallback (WebGLBackend)
 if (typeof THREE.WebGPURenderer !== 'undefined') {
     try {
-        renderer = new THREE.WebGPURenderer({ antialias: true });
+        renderer = new THREE.WebGPURenderer({ antialias: true, alpha: true });
         await renderer.init();
         rendererType = 'WebGPU';
         console.log('✅ WebGPU renderer');
