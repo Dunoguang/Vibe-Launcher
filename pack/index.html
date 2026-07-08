@@ -130,7 +130,7 @@
     <div id="time-page" style="
         position:fixed; top:0; left:0; width:100vw; height:100vh;
         visibility:hidden; z-index:-1;
-        background:#0a0e18; color:#fff;
+        background:transparent; color:#fff;
         font-family:'SF Pro Display','Segoe UI','PingFang SC','Helvetica Neue',sans-serif;
     ">
         <div id="time-page-clock" style="
@@ -197,6 +197,15 @@
                     </div>
                 </div>
 
+
+                <div class="setting-group">
+                    <div class="setting-label">时间页面背景</div>
+                    <div class="toggle-desc" style="margin-bottom:8px;">建议使用正方形高清图片获得最佳体验</div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button id="s-timebg-pick" style="flex:1;padding:12px;font-size:14px;background:#2a2a4a;color:#ccc;border:1px solid rgba(255,255,255,0.15);border-radius:8px;cursor:pointer;">选择图片</button>
+                        <button id="s-timebg-remove" style="padding:12px 16px;font-size:14px;background:rgba(255,80,80,0.15);color:#ff6b6b;border:1px solid rgba(255,80,80,0.3);border-radius:8px;cursor:pointer;">移除</button>
+                    </div>
+                </div>
                 <div class="setting-group">
                     <div class="setting-label">壁纸</div>
                     <div style="display:flex;gap:8px;align-items:center;">

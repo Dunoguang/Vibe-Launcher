@@ -345,6 +345,44 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             }
 
             // ========== 时间纹理 ==========
+            // 壁纸缓存
+            let _wallpaperImg = null, _wallpaperReady = false;
+            (function preloadWallpaper() {
+                if (typeof NativeBridge !== 'undefined') {
+                    try {
+                        var raw = NativeBridge.getWallpaperPath();
+                        var r = JSON.parse(raw);
+                        if (r.success) {
+                            var img = new Image();
+                            img.onload = function() { _wallpaperImg = img; _wallpaperReady = true; };
+                            img.onerror = function() { _wallpaperReady = true; };
+                            img.src = r.path;
+                        }
+                    } catch(e) { _wallpaperReady = true; }
+                }
+            })();
+
+            const drawCircleFrame = function(ctx, cx, cy, r, s) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+                ctx.lineWidth = s * 0.012;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.stroke();
+            };
+
+            const drawCircleBackground = function(ctx, cx, cy, r, s) {
+                if (_wallpaperImg) {
+                    ctx.save();
+                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
+                    ctx.drawImage(_wallpaperImg, cx-r, cy-r, r*2, r*2);
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = '#0a0e18';
+                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+                }
+                drawCircleFrame(ctx, cx, cy, r, s);
+            };
+
             const createTimeTexture = () => {
                 const s = Math.max(window.innerWidth, window.innerHeight);
                 let c = document.createElement('canvas');
@@ -352,19 +390,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 c.height = s;
                 const ctx = c.getContext('2d');
 let cx = s / 2, cy = s / 2, r = s * 0.44;
-
-                // 背景圆
-                ctx.fillStyle = '#0a0e18';
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.fill();
-
-                // 外圈
-                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-                ctx.lineWidth = s * 0.012;
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.stroke();
+                drawCircleBackground(ctx, cx, cy, r, s);
 
                 const tex = new THREE.CanvasTexture(c);
                 tex.minFilter = THREE.LinearFilter;
@@ -1676,13 +1702,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     const ctx = texCanvas.getContext('2d');
                     let cx = s/2, cy = s/2, r = s * 0.44;
 
-                    // 背景圆
-                    ctx.fillStyle = '#0a0e18';
-                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-                    // 外圈
-                    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-                    ctx.lineWidth = s * 0.012;
-                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
+                    drawCircleBackground(ctx, cx, cy, r, s);
 
                     // 裁切圆内，绘制 DOM 截图
                     ctx.save();
@@ -1806,7 +1826,15 @@ let _lastBatteryLevel = -1;
             const wallpaperRemoveBtn = document.getElementById('s-wallpaper-remove');
             window._onWallpaperPicked = function(json) {
                 try { var r = typeof json === 'string' ? JSON.parse(json) : json;
-                    if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + ')'; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; }
+                    if (r.success) {
+                        document.body.style.backgroundImage = 'url(' + r.path + ')';
+                        document.body.style.backgroundSize = 'cover';
+                        document.body.style.backgroundPosition = 'center';
+                        // 更新壁纸缓存用于时间精灵
+                        var img = new Image();
+                        img.onload = function() { _wallpaperImg = img; _wallpaperReady = true; };
+                        img.src = r.path;
+                    }
                 } catch(e) {}
             };
             (function initWallpaper() {

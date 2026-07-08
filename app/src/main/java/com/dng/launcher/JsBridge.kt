@@ -305,4 +305,56 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
+
+    @JavascriptInterface
+    fun pickTimeBg() {
+        Log.d("VibeLauncher", "[timebg] pickTimeBg called")
+        val ctx = contextRef.get() ?: return
+        val activity = ctx as? MainActivity ?: return
+        webViewRef.get()?.post {
+            activity.pickTimeBg()
+        }
+    }
+
+    @JavascriptInterface
+    fun getTimeBgPath(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val file = java.io.File(ctx.filesDir, "time_bg.png")
+            if (file.exists()) """{"success":true,"path":"file://${file.absolutePath}"}"""
+            else """{"success":false,"error":"no time bg"}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun removeTimeBg(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val file = java.io.File(ctx.filesDir, "time_bg.png")
+            if (file.exists()) file.delete()
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    fun onTimeBgPicked(uri: android.net.Uri?) {
+        if (uri == null) {
+            callback("_onTimeBgPicked", """{"success":false,"error":"cancelled"}""")
+            return
+        }
+        try {
+            val ctx = contextRef.get() ?: return
+            val input = ctx.contentResolver.openInputStream(uri)
+            val file = java.io.File(ctx.filesDir, "time_bg.png")
+            java.io.FileOutputStream(file).use { out -> input?.copyTo(out) }
+            input?.close()
+            callback("_onTimeBgPicked", """{"success":true,"path":"file://${file.absolutePath}"}""")
+        } catch (e: Exception) {
+            callback("_onTimeBgPicked", """{"success":false,"error":"${e.message}"}""")
+        }
+    }
+
 }

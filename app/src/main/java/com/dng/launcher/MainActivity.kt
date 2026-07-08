@@ -34,6 +34,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private lateinit var timeBgPickerLauncher: androidx.activity.result.ActivityResultLauncher<String>
+
+    fun pickTimeBg() {
+        if (::timeBgPickerLauncher.isInitialized) {
+            timeBgPickerLauncher.launch("image/*")
+        }
+    }
+
     private var webView: WebView? = null
     private var jsBridge: JsBridge? = null
     private var errorDialogShown = false  // 每次启动重置
@@ -66,6 +74,12 @@ class MainActivity : AppCompatActivity() {
             ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
             jsBridge?.onWallpaperPicked(uri)
+        }
+
+        timeBgPickerLauncher = registerForActivityResult(
+            ActivityResultContracts.GetContent()
+        ) { uri: Uri? ->
+            jsBridge?.onTimeBgPicked(uri)
         }
 
         val prefs = getSharedPreferences("vibe_prefs", MODE_PRIVATE)
