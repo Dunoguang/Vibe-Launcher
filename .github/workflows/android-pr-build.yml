@@ -1,9 +1,8 @@
-name: Android Release Build
+name: 🐾 Android 构建流水线 喵～
 
 on:
   push:
     branches: ['**']
-
   pull_request:
     branches: ['**']
   workflow_dispatch:
@@ -13,31 +12,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: 📥 叼取代码 喵～
         uses: actions/checkout@v7.0.0
 
-      - name: Set up Node.js
+      - name: 📦 准备 Node.js 环境 喵～
         uses: actions/setup-node@v6
         with:
           node-version: '24'
 
-      - name: Vite build
+      - name: 🏗️ Vite 构建前端 喵～
         run: |
           cd pack
           npm ci
           npm run build
           mkdir -p ../app/src/main/assets && cp dist/index.html ../app/src/main/assets/index.html
 
-      - name: Set up JDK 25
+      - name: ☕ 准备 JDK 25 喵～
         uses: actions/setup-java@v5.4.0
         with:
           distribution: temurin
           java-version: '25'
 
-      - name: Set up Gradle
+      - name: 🐘 配置 Gradle 喵～
         uses: gradle/actions/setup-gradle@v6.2.0
 
-      - name: Prepare release signing config
+      - name: 🔐 准备签名配置 喵～
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
@@ -50,18 +49,18 @@ jobs:
             echo "ANDROID_SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
             echo "ANDROID_SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
             echo "ANDROID_SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
-            echo "✅ Release signing configured"
+            echo "✅ 签名配置完成 喵～"
           else
-            echo "⚠️ Signing secrets not configured, using debug signing"
+            echo "⚠️ 未检测到签名密钥，使用 Debug 签名 喵～"
           fi
 
-      - name: Build debug APK
+      - name: 🔨 构建 Debug APK 喵～
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Build release APK
+      - name: 🔨 构建 Release APK 喵～
         run: gradle --no-daemon :app:assembleRelease
 
-      - name: Upload debug APK artifact
+      - name: ⬆️ 上传 Debug APK 喵～
         uses: actions/upload-artifact@v7.0.1
         with:
           name: app-debug-apk
@@ -69,29 +68,29 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Resolve signed release APK
+      - name: 🔍 定位签名 Release APK 喵～
         run: |
           SIGNED=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" ! -name "*-unsigned.apk" | head -n 1)
           echo "RELEASE_APK=$SIGNED" >> "$GITHUB_ENV"
           ls -lh "$SIGNED"
 
-      - name: Upload release APK to tempfile.org
+      - name: ☁️ 上传 Release APK 到临时文件 喵～
         run: |
-          echo "Uploading release APK..."
+          echo "正在上传 Release APK 喵～"
           RESP=$(curl -sS -X POST https://tempfile.org/api/upload/local -F "files=@${{ env.RELEASE_APK }}" -F "expiryHours=72")
           URL=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('files',[{}])[0].get('url','FAIL'))")
           echo "Release: $URL"
           echo "$URL" > /tmp/release-tempfile-url.txt
 
-      - name: Upload debug APK to tempfile.org
+      - name: ☁️ 上传 Debug APK 到临时文件 喵～
         run: |
-          echo "Uploading debug APK..."
+          echo "正在上传 Debug APK 喵～"
           RESP=$(curl -sS -X POST https://tempfile.org/api/upload/local -F "files=@app/build/outputs/apk/debug/app-debug.apk" -F "expiryHours=72")
           URL=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('files',[{}])[0].get('url','FAIL'))")
           echo "Debug: $URL"
           echo "$URL" > /tmp/debug-tempfile-url.txt
 
-      - name: Upload tempfile.org links
+      - name: 📎 保存临时文件链接 喵～
         uses: actions/upload-artifact@v7.0.1
         with:
           name: tempfile-links
@@ -99,10 +98,19 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Upload release APK artifact
+      - name: ⬆️ 上传 Release APK 喵～
         uses: actions/upload-artifact@v7.0.1
         with:
           name: app-release-apk
           path: ${{ env.RELEASE_APK }}
           if-no-files-found: error
           retention-days: 7
+
+      - name: 🐾 喵呜～
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "好喵！✨ 全部完成啦～"
+          else
+            echo "坏掉了呜...😿 主人快来～"
+          fi
