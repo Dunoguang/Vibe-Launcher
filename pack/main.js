@@ -386,9 +386,11 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             const syncTimeSpriteTexture = function() {
                 var tp = document.getElementById('time-page');
                 if (tp && tp.style.visibility === 'visible') {
-                    syncTimeSpriteTexture();
+                    console.log('[TIME-TEX] bg-only');
+                    updateTimeSpriteBgOnly();
                 } else {
-                    console.log('[TIME-TEX] full'); renderTimePageToTexture();
+                    console.log('[TIME-TEX] full');
+                    renderTimePageToTexture();
                 }
             };
 
