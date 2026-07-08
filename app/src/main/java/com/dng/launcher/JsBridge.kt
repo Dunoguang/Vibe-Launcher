@@ -241,16 +241,9 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun saveWallpaper(base64Data: String): String {
-        return try {
-            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val bytes = android.util.Base64.decode(base64Data.substringAfter("base64,"), android.util.Base64.DEFAULT)
-            val file = java.io.File(ctx.filesDir, "wallpaper.png")
-            java.io.FileOutputStream(file).use { it.write(bytes) }
-            """{"success":true,"path":"file://${file.absolutePath}"}"""
-        } catch (e: Exception) {
-            """{"success":false,"error":"${e.message}"}"""
-        }
+    fun pickWallpaper() {
+        val ctx = contextRef.get() ?: return
+        (ctx as? MainActivity)?.pickWallpaper()
     }
 
     @JavascriptInterface
@@ -274,6 +267,23 @@ class JsBridge(context: Context, webView: WebView) {
             """{"success":true}"""
         } catch (e: Exception) {
             """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    fun onWallpaperPicked(uri: android.net.Uri?) {
+        if (uri == null) {
+            callback("_onWallpaperPicked", """{"success":false,"error":"cancelled"}""")
+            return
+        }
+        try {
+            val ctx = contextRef.get() ?: return
+            val input = ctx.contentResolver.openInputStream(uri)
+            val file = java.io.File(ctx.filesDir, "wallpaper.png")
+            java.io.FileOutputStream(file).use { out -> input?.copyTo(out) }
+            input?.close()
+            callback("_onWallpaperPicked", """{"success":true,"path":"file://${file.absolutePath}"}""")
+        } catch (e: Exception) {
+            callback("_onWallpaperPicked", """{"success":false,"error":"${e.message}"}""")
         }
     }
 

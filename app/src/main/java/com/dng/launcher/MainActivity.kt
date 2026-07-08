@@ -24,25 +24,20 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "VibeLauncher"
-        private const val FILE_CHOOSER_REQUEST = 100
     }
 
-    private var mFilePathCallback: android.webkit.ValueCallback<Array<Uri>>? = null
+    private val wallpaperPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        jsBridge?.onWallpaperPicked(uri)
+    }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == FILE_CHOOSER_REQUEST) {
-            if (mFilePathCallback == null) return
-            val results = if (resultCode == RESULT_OK && data != null) {
-                val uri = data.data
-                if (uri != null) arrayOf(uri) else null
-            } else null
-            mFilePathCallback?.onReceiveValue(results)
-            mFilePathCallback = null
-        }
+    fun pickWallpaper() {
+        wallpaperPickerLauncher.launch("image/*")
     }
 
     private var webView: WebView? = null
+    private var jsBridge: JsBridge? = null
     private var errorDialogShown = false  // 每次启动重置
 
     private val exportLogLauncher = registerForActivityResult(
@@ -101,24 +96,7 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
 
-                override fun onShowFileChooser(
-                    webView: WebView,
-                    filePathCallback: android.webkit.ValueCallback<Array<Uri>>,
-                    fileChooserParams: FileChooserParams
-                ): Boolean {
-                    if (mFilePathCallback != null) {
-                        mFilePathCallback?.onReceiveValue(null)
-                    }
-                    mFilePathCallback = filePathCallback
-                    val intent = fileChooserParams.createIntent()
-                    try {
-                        startActivityForResult(intent, FILE_CHOOSER_REQUEST)
-                    } catch (e: Exception) {
-                        mFilePathCallback = null
-                        return false
-                    }
-                    return true
-                }
+
             }
             wv.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) {
@@ -135,7 +113,7 @@ class MainActivity : AppCompatActivity() {
                     if (!errorDialogShown) showErrorExportDialog()
                 }
             }
-            wv.addJavascriptInterface(JsBridge(this, wv), "NativeBridge")
+            jsBridge = JsBridge(this, wv); wv.addJavascriptInterface(jsBridge, "NativeBridge")
             val hotReload = prefs.getBoolean("hot_reload_enabled", false)
             val externalHtml = java.io.File(filesDir, "index.html")
             val loadPath = if (hotReload && externalHtml.exists()) {
