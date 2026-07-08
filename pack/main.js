@@ -2348,40 +2348,82 @@ let _lastBatteryLevel = -1;
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
                     ANIM_DURATION = animSpeedVal;
                     try { NativeBridge.setHotReload(hotreloadEnabled); } catch(e) {}
-                    if (layoutMode !== layoutVal) { location.reload(); return; }
+
+                    // 统一：应用所有更改，无需刷新页面
                     const prevIconRes = ICON_RES;
                     ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
+                    const layoutChanged = layoutMode !== layoutVal;
+                    const sphereChanged = Math.abs(SPHERE_RADIUS - inputR) > 0.001;
+                    layoutMode = layoutVal;
+                    SPHERE_RADIUS = inputR;
 
-                    // 第一步：用现有缓存文件按新分辨率重建纹理
-                    if (ICON_RES !== prevIconRes) {
-                        console.log('Rebuilding textures at ICON_RES:', ICON_RES);
-                        sprites.forEach(function(spr) {
-                            if (spr.userData.isTimeSprite) {
-                                spr.material.map = createTimeTexture();
-                            } else if (spr.userData.app && spr.userData.app.packageName === '__settings__') {
-                                spr.material.map = createGearTexture();
-                            } else if (spr.userData._iconUrl) {
-                                // 从旧缓存文件重新加载（先用新分辨率canvas渲染）
-                                (function(s) {
-                                    const img = new Image();
-                                    img.onload = function() {
-                                        s.material.map = createIconTextureFromImage(img);
-                                        s.material.needsUpdate = true;
-                                    };
-                                    img.src = s.userData._iconUrl;
-                                })(spr);
-                            } else if (spr.userData.color) {
-                                spr.material.map = createPlaceholderTexture(spr.userData.app.appName, spr.userData.color);
+                    if (layoutChanged || sphereChanged) {
+                        // 变更布局/球体大小 → 重建所有精灵（球体大小兜底在createSprites内自动计算）
+                        createSprites(apps, null);
+                        // 重建后重新加载图标
+                        if (nativeBridgeReady) NativeBridge.clearIconCache();
+                        if (window._allPkgs && nativeBridgeReady) {
+                            NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
+                        }
+                    } else {
+                        // 仅分辨率/速度等变化，原地重建纹理
+                        if (ICON_RES !== prevIconRes) {
+                            console.log('Rebuilding textures at ICON_RES:', ICON_RES);
+                            sprites.forEach(function(spr) {
+                                if (spr.userData.isTimeSprite) {
+                                    spr.material.map = createTimeTexture();
+                                } else if (spr.userData.app && spr.userData.app.packageName === '__settings__') {
+                                    spr.material.map = createGearTexture();
+                                } else if (spr.userData._iconUrl) {
+                                    (function(s) {
+                                        const img = new Image();
+                                        img.onload = function() {
+                                            s.material.map = createIconTextureFromImage(img);
+                                            s.material.needsUpdate = true;
+                                        };
+                                        img.src = s.userData._iconUrl;
+                                    })(spr);
+                                } else if (spr.userData.color) {
+                                    spr.material.map = createPlaceholderTexture(spr.userData.app.appName, spr.userData.color);
+                                }
+                                spr.material.needsUpdate = true;
+                            });
+                        }
+                        if (sphereGroup && inputR > 0) {
+                            // 仅球体大小变化（布局不变），重新分布位置
+                            let rawPoints = sphereCoulomb(window._totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
+                            const timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
+                            if (timeIdx >= 0) {
+                                const timePos = new THREE.Vector3(rawPoints[timeIdx][0], rawPoints[timeIdx][1], rawPoints[timeIdx][2]);
+                                const alignQ = new THREE.Quaternion().setFromUnitVectors(timePos.clone().normalize(), new THREE.Vector3(0,0,1));
+                                rawPoints = rawPoints.map(function(p) {
+                                    let v = new THREE.Vector3(p[0],p[1],p[2]);
+                                    v.applyQuaternion(alignQ);
+                                    return v;
+                                });
+                                rawPoints.sort(function(a, b) { return b.z - a.z; });
                             }
-                            spr.material.needsUpdate = true;
-                        });
+                            for (let k = 0; k < sprites.length; k++) {
+                                if (k < rawPoints.length) {
+                                    sprites[k].position.copy(rawPoints[k]);
+                                }
+                            }
+                            sphereGroup.quaternion.copy(rotationQuat);
+                            SPHERE_DIAMETER = SPHERE_RADIUS * 2;
+                            defaultZoom = computeInitDistance();
+                            timeViewZoom = computeTimeViewZoom();
+                            zoomLevel = defaultZoom;
+                            applyZoom();
+                        }
                     }
 
-                    // 第二步：清除旧缓存，强制重新加载
-                    if (nativeBridgeReady) NativeBridge.clearIconCache();
-                    sprites.forEach(function(spr) { spr.userData.hasRealIcon = false; });
-                    if (window._allPkgs && nativeBridgeReady) {
-                        NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
+                    // 纹理重建（布局变更时createSprites已经做了，不需要重复）
+                    if (!layoutChanged && !sphereChanged && ICON_RES !== prevIconRes) {
+                        if (nativeBridgeReady) NativeBridge.clearIconCache();
+                        sprites.forEach(function(spr) { spr.userData.hasRealIcon = false; });
+                        if (window._allPkgs && nativeBridgeReady) {
+                            NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
+                        }
                     }
 
                     saveBtn.textContent = '已保存 ✓';
@@ -2390,35 +2432,6 @@ let _lastBatteryLevel = -1;
                         saveBtn.textContent = '保存';
                         saveBtn.style.background = '#8ab4f8';
                     }, 1500);
-                    localStorage.setItem('vibe-settings', JSON.stringify(settings));
-
-                    if (sphereGroup && inputR > 0) {
-                        SPHERE_RADIUS = parseFloat(settings.sphereSize);
-                        // 重新分布所有sprite位置
-                        let rawPoints = sphereCoulomb(window._totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
-                        const timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
-                        if (timeIdx >= 0) {
-                            const timePos = new THREE.Vector3(rawPoints[timeIdx][0], rawPoints[timeIdx][1], rawPoints[timeIdx][2]);
-                            const alignQ = new THREE.Quaternion().setFromUnitVectors(timePos.clone().normalize(), new THREE.Vector3(0,0,1));
-                            rawPoints = rawPoints.map(function(p) {
-                                let v = new THREE.Vector3(p[0],p[1],p[2]);
-                                v.applyQuaternion(alignQ);
-                                return v;
-                            });
-                            rawPoints.sort(function(a, b) { return b.z - a.z; });
-                        }
-                        for (let k = 0; k < sprites.length; k++) {
-                            if (k < rawPoints.length) {
-                                sprites[k].position.copy(rawPoints[k]);
-                            }
-                        }
-                        sphereGroup.quaternion.copy(rotationQuat);
-                        SPHERE_DIAMETER = SPHERE_RADIUS * 2;
-                        defaultZoom = computeInitDistance();
-                        timeViewZoom = computeTimeViewZoom();
-                        zoomLevel = defaultZoom;
-                        applyZoom();
-                    }
                 });
             }
 
