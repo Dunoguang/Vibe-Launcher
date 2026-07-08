@@ -355,6 +355,11 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                     try { var raw2 = NativeBridge.getTimeBgPath(); var r2 = JSON.parse(raw2);
                         if (r2.success) { var img2 = new Image(); img2.onload = function() { _timeBgImg = img2; }; img2.src = r2.path; }
                     } catch(e) {}
+                    // Update time bg button text after DOM ready
+                    setTimeout(function() {
+                        var tbb = document.getElementById('s-timebg-pick');
+                        if (tbb && _timeBgImg) tbb.textContent = '重新选择';
+                    }, 100);
                 }
             })();
 
@@ -1887,7 +1892,10 @@ let _lastBatteryLevel = -1;
             var timeBgRemoveBtn = document.getElementById('s-timebg-remove');
             window._onTimeBgPicked = function(json) {
                 try { var r = typeof json === 'string' ? JSON.parse(json) : json;
-                    if (r.success) { var img = new Image(); img.onload = function() { _timeBgImg = img; }; img.src = r.path; }
+                    if (r.success) {
+                        var img = new Image(); img.onload = function() { _timeBgImg = img; }; img.src = r.path;
+                        timeBgPickBtn.textContent = '重新选择';
+                    }
                 } catch(e) {}
             };
             timeBgPickBtn.onclick = function() {
@@ -1895,6 +1903,7 @@ let _lastBatteryLevel = -1;
             };
             timeBgRemoveBtn.onclick = function() {
                 _timeBgImg = null;
+                timeBgPickBtn.textContent = '选择图片';
                 if (typeof NativeBridge !== 'undefined') NativeBridge.removeTimeBg();
             };
                 const overlay = document.getElementById('settings-overlay');
