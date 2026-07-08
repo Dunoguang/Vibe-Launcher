@@ -346,35 +346,30 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
 
             // ========== 时间纹理 ==========
             // 壁纸缓存
-            let _wallpaperImg = null, _wallpaperReady = false;
+            let _wallpaperImg = null, _timeBgImg = null;
             (function preloadWallpaper() {
                 if (typeof NativeBridge !== 'undefined') {
-                    try {
-                        var raw = NativeBridge.getWallpaperPath();
-                        var r = JSON.parse(raw);
-                        if (r.success) {
-                            var img = new Image();
-                            img.onload = function() { _wallpaperImg = img; _wallpaperReady = true; };
-                            img.onerror = function() { _wallpaperReady = true; };
-                            img.src = r.path;
-                        }
-                    } catch(e) { _wallpaperReady = true; }
+                    try { var raw = NativeBridge.getWallpaperPath(); var r = JSON.parse(raw);
+                        if (r.success) { var img = new Image(); img.onload = function() { _wallpaperImg = img; }; img.src = r.path; }
+                    } catch(e) {}
+                    try { var raw2 = NativeBridge.getTimeBgPath(); var r2 = JSON.parse(raw2);
+                        if (r2.success) { var img2 = new Image(); img2.onload = function() { _timeBgImg = img2; }; img2.src = r2.path; }
+                    } catch(e) {}
                 }
             })();
 
             const drawCircleFrame = function(ctx, cx, cy, r, s) {
                 ctx.strokeStyle = 'rgba(255,255,255,0.25)';
                 ctx.lineWidth = s * 0.012;
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.stroke();
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
             };
 
             const drawCircleBackground = function(ctx, cx, cy, r, s) {
-                if (_wallpaperImg) {
+                var bg = _timeBgImg || _wallpaperImg;
+                if (bg) {
                     ctx.save();
                     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
-                    ctx.drawImage(_wallpaperImg, cx-r, cy-r, r*2, r*2);
+                    ctx.drawImage(bg, cx-r, cy-r, r*2, r*2);
                     ctx.restore();
                 } else {
                     ctx.fillStyle = '#0a0e18';
@@ -1830,9 +1825,8 @@ let _lastBatteryLevel = -1;
                         document.body.style.backgroundImage = 'url(' + r.path + ')';
                         document.body.style.backgroundSize = 'cover';
                         document.body.style.backgroundPosition = 'center';
-                        // 更新壁纸缓存用于时间精灵
                         var img = new Image();
-                        img.onload = function() { _wallpaperImg = img; _wallpaperReady = true; };
+                        img.onload = function() { _wallpaperImg = img; };
                         img.src = r.path;
                     }
                 } catch(e) {}
@@ -1851,6 +1845,22 @@ let _lastBatteryLevel = -1;
             wallpaperRemoveBtn.onclick = function() {
                 document.body.style.backgroundImage = '';
                 if (typeof NativeBridge !== 'undefined') NativeBridge.removeWallpaper();
+            };
+
+            // 时间页面背景
+            var timeBgPickBtn = document.getElementById('s-timebg-pick');
+            var timeBgRemoveBtn = document.getElementById('s-timebg-remove');
+            window._onTimeBgPicked = function(json) {
+                try { var r = typeof json === 'string' ? JSON.parse(json) : json;
+                    if (r.success) { var img = new Image(); img.onload = function() { _timeBgImg = img; }; img.src = r.path; }
+                } catch(e) {}
+            };
+            timeBgPickBtn.onclick = function() {
+                if (typeof NativeBridge !== 'undefined') NativeBridge.pickTimeBg();
+            };
+            timeBgRemoveBtn.onclick = function() {
+                _timeBgImg = null;
+                if (typeof NativeBridge !== 'undefined') NativeBridge.removeTimeBg();
             };
                 const overlay = document.getElementById('settings-overlay');
                 const backBtn = document.getElementById('settings-close-btn');
