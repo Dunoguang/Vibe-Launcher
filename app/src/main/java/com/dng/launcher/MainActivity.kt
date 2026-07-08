@@ -26,14 +26,12 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "VibeLauncher"
     }
 
-    private val wallpaperPickerLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        jsBridge?.onWallpaperPicked(uri)
-    }
+    private lateinit var wallpaperPickerLauncher: androidx.activity.result.ActivityResultLauncher<String>
 
     fun pickWallpaper() {
-        wallpaperPickerLauncher.launch("image/*")
+        if (::wallpaperPickerLauncher.isInitialized) {
+            wallpaperPickerLauncher.launch("image/*")
+        }
     }
 
     private var webView: WebView? = null
@@ -63,6 +61,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setTitle(R.string.in_app_title)
         setContentView(R.layout.activity_main)
+
+        wallpaperPickerLauncher = registerForActivityResult(
+            ActivityResultContracts.GetContent()
+        ) { uri: Uri? ->
+            jsBridge?.onWallpaperPicked(uri)
+        }
 
         val prefs = getSharedPreferences("vibe_prefs", MODE_PRIVATE)
 

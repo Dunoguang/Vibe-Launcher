@@ -242,9 +242,24 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
     fun pickWallpaper() {
-        val ctx = contextRef.get() ?: return
-        val activity = ctx as? MainActivity ?: return
-        webViewRef.get()?.post {
+        Log.d("VibeLauncher", "[wallpaper] pickWallpaper called from JS")
+        val ctx = contextRef.get()
+        if (ctx == null) {
+            Log.e("VibeLauncher", "[wallpaper] context lost")
+            return
+        }
+        val activity = ctx as? MainActivity
+        if (activity == null) {
+            Log.e("VibeLauncher", "[wallpaper] not MainActivity: ${ctx.javaClass.name}")
+            return
+        }
+        val wv = webViewRef.get()
+        if (wv == null) {
+            Log.e("VibeLauncher", "[wallpaper] webView lost")
+            return
+        }
+        wv.post {
+            Log.d("VibeLauncher", "[wallpaper] launching picker on main thread")
             activity.pickWallpaper()
         }
     }
