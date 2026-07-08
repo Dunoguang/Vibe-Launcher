@@ -148,7 +148,7 @@ if (!renderer) {
     })();
             const exitThresholdRatio = 0.35;
             let cancelableAction = null;
-            let bottomSwipeData = null, topSwipeData = null;
+            let bottomSwipeData = null, topSwipeData = null, cancelSwipeData = null;
             const TOP_ZONE_RATIO = 0.15, BOTTOM_ZONE_RATIO = 0.15;
 
             // 缩放动画
@@ -181,7 +181,7 @@ if (!renderer) {
             const mouse = new THREE.Vector2();
             let hoveredSprite = null, longPressTimer = null, longPressFired = false, contextMenuOpen = false;
             const LONG_PRESS_MS = 600;
-            let lastTap = 0;
+            let lastTap = 0, lastTapX = 0, lastTapY = 0, lastTapOnIcon = false, _prevTapOnIcon = false;
             let _timePageTimer = null;
 
             const computeInitDistance = () => {
@@ -211,10 +211,11 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             // ========== 可取消动作状态机 ==========
 
             const startCancelableAction = (sprite, rotTarget, zoomTarget, onCommit) => {
-                if (cancelableAction) cancelCurrentAction('superseded');
+                cancelSwipeData = null; if (cancelableAction) cancelCurrentAction('superseded');
                 cancelableAction = {
                     sprite: sprite, onCommit: onCommit, phase: 'animating',
-                    rotDone: false, zoomDone: false, cancelled: false
+                    rotDone: false, zoomDone: false, cancelled: false,
+                    zoomTarget: zoomTarget
                 };
                 inertiaQ.identity(); inertiaStrength = 0; infiniteInertia = false;
                 startRotationAnimation(rotTarget, ANIM_DURATION, function() {
@@ -240,7 +241,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 }
             }
 
-            function cancelCurrentAction(reason) {
+            function cancelCurrentAction(reason) { cancelSwipeData = null;
                 if (!cancelableAction || cancelableAction.cancelled) return;
                 cancelableAction.cancelled = true;
                 try { NativeBridge.log('cancel:' + reason); } catch(e) {}
@@ -270,6 +271,59 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 zoomAnimCallback = null;
             }
 
+            // ====== 三次贝塞尔求解器 ======
+            function cubicBezier(x1, y1, x2, y2) {
+              const ZERO = 1e-6;
+              function sampleCurveX(t) {
+                return ((1 - t) ** 3) * 0 + 3 * ((1 - t) ** 2) * t * x1 + 3 * (1 - t) * (t ** 2) * x2 + (t ** 3) * 1;
+              }
+              function sampleCurveY(t) {
+                return ((1 - t) ** 3) * 0 + 3 * ((1 - t) ** 2) * t * y1 + 3 * (1 - t) * (t ** 2) * y2 + (t ** 3) * 1;
+              }
+              function sampleDerivX(t) {
+                return 3 * ((1 - t) ** 2) * x1 + 6 * (1 - t) * t * (x2 - x1) + 3 * (t ** 2) * (1 - x2);
+              }
+              function solveX(x) {
+                let t2 = x;
+                for (let i = 0; i < 8; i++) {
+                  const x2 = sampleCurveX(t2) - x;
+                  if (Math.abs(x2) < ZERO) return t2;
+                  const d2 = sampleDerivX(t2);
+                  if (Math.abs(d2) < ZERO) break;
+                  t2 -= x2 / d2;
+                }
+                let t0 = 0, t1 = 1;
+                t2 = x;
+                for (let i = 0; i < 8; i++) {
+                  const x2 = sampleCurveX(t2) - x;
+                  if (Math.abs(x2) < ZERO) return t2;
+                  t2 = x2 > 0 ? (t0 = t0, t1 = t2, (t0 + t2) / 2) : (t0 = t2, t1 = t1, (t2 + t1) / 2);
+                }
+                return t2;
+              }
+              return function (t) {
+                if (t <= 0) return 0;
+                if (t >= 1) return 1;
+                return sampleCurveY(solveX(t));
+              };
+            }
+            // ★ Material Design 标准曲线
+            const materialEasing = cubicBezier(0.4, 0.0, 0.2, 1);
+
+            // ====== 通用动画函数 ======
+            function animateValue({ from, to, duration, easing, onUpdate, onComplete }) {
+              const start = performance.now();
+              function frame(now) {
+                const t = Math.min((now - start) / duration, 1);
+                const progress = easing(t);
+                const value = from + (to - from) * progress;
+                onUpdate(value);
+                if (t < 1) requestAnimationFrame(frame);
+                else onComplete?.();
+              }
+              requestAnimationFrame(frame);
+            }
+
             const easeOutCubic = (t) => {
                 return 1 - Math.pow(1 - t, 3);
             }
@@ -278,7 +332,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 if (zoomTarget === null) return;
                 zoomAnimElapsed = now - zoomAnimStart;
                 let t = Math.min(1, zoomAnimElapsed / zoomAnimDuration);
-                const eased = easeOutCubic(t);
+                const eased = materialEasing(t);
                 zoomLevel = zoomAnimStartVal + (zoomAnimEndVal - zoomAnimStartVal) * eased;
                 applyZoom();
                 if (t >= 1) {
@@ -294,7 +348,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 if (!rotationAnimData) return;
                 const elapsed = now - rotationAnimData.startTime;
                 let t = Math.min(1, elapsed / rotationAnimData.duration);
-                const eased = easeOutCubic(t);
+                const eased = materialEasing(t);
                 rotationQuat.copy(rotationAnimData.from).slerp(rotationAnimData.to, eased);
                 sphereGroup.quaternion.copy(rotationQuat);
                 if (t >= 1) {
@@ -389,6 +443,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             };
             // 状态机：DOM可见 → bg-only，DOM隐藏 → full
             const syncTimeSpriteTexture = function() {
+                console.log('[TEX-SYNC] called isInTimeView=' + isInTimeView + ' _backProgress=' + _backProgress);
                 var tp = document.getElementById('time-page');
                 if (tp && tp.style.visibility === 'visible') {
                     console.log('[TIME-TEX] bg-only');
@@ -522,6 +577,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 if (timeSprite) {
                     timeSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
                 }
+                _pointerDownCount = 0;
                 const targetZoom = defaultZoom;
                 if (animate) {
                     startZoomAnimation(targetZoom, ANIM_DURATION, function() {
@@ -538,7 +594,8 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
 
             // 点击时间图标返回时间视图
             const returnToTimeView = () => {
-                if (isInTimeView || !timeSprite) return;
+                if (isInTimeView || !timeSprite) { console.log('[TIME-ENTRY] skipped, already in time view or no sprite'); return; }
+                console.log('[TIME-ENTRY] starting returnToTimeView');
                 isInTimeView = true;
                 // 取消当前所有动画
                 cancelZoomAnimation();
@@ -561,7 +618,9 @@ let zoomComplete = false, rotationComplete = false;
                 timeViewZoom = targetZoom;
 
                 const checkBothComplete = () => {
+                    console.log('[TIME-ENTRY] checkBothComplete zoom=' + zoomComplete + ' rot=' + rotationComplete);
                     if (zoomComplete && rotationComplete) {
+                        console.log('[TIME-ENTRY] BOTH COMPLETE - showing DOM');
                         const tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; console.log('[TIME-DOM] SHOW'); tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] SHOW'); }
                         syncTimeSpriteTexture();
@@ -569,11 +628,13 @@ let zoomComplete = false, rotationComplete = false;
                 }
 
                 startRotationAnimation(targetQuat, ANIM_DURATION, function() {
+                    console.log('[TIME-ENTRY] rotation done');
                     rotationComplete = true;
                     checkBothComplete();
                 });
 
                 startZoomAnimation(targetZoom, ANIM_DURATION, function() {
+                    console.log('[TIME-ENTRY] zoom done');
                     zoomLevel = targetZoom;
                     applyZoom();
                     zoomComplete = true;
@@ -998,13 +1059,195 @@ updateSphereMinHint();
             }
 
 
+            // Predictive back gesture for time page exit
+            var _backProgress = -1; // back gesture progress, -1=inactive
+            var _backType = ''; // 'time' or 'settings'
+            var _backStartZoom = 0;
+            var _backSavedQuat = null;
+            window._onBackStarted = function() {
+                console.log('[BACK] onBackStarted isInTimeView=' + isInTimeView);
+                var overlay = document.getElementById('settings-overlay');
+                if (overlay && overlay.style.display === 'flex') {
+                    _backType = 'settings';
+                    _backProgress = 0;
+                    _backStartZoom = zoomLevel;
+                    if (!animFrameId) animFrameId = requestAnimationFrame(animate);
+                    return;
+                }
+                if (cancelableAction && cancelableAction.phase === 'animating') {
+                    _backType = 'cancelable';
+                    _backProgress = 0;
+                    _backStartZoom = zoomLevel;
+                    _backSavedQuat = sphereGroup.quaternion.clone();
+                    cancelZoomAnimation();
+                    rotationAnimData = null;
+                    if (!animFrameId) animFrameId = requestAnimationFrame(animate);
+                    return;
+                }
+                if (!isInTimeView) {
+                    _backProgress = -1;
+                    _backType = '';
+                    return;
+                }
+                _backType = 'time';
+                _backProgress = 0;
+                _backStartZoom = zoomLevel;
+                // Cancel in-progress returnToTimeView animations
+                cancelZoomAnimation();
+                rotationAnimData = null;
+                if (!animFrameId) animFrameId = requestAnimationFrame(animate);
+                var tp = document.getElementById('time-page');
+                if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
+                syncTimeSpriteTexture();
+            };
+            window._onBackProgress = function(p) {
+                console.log('[BACK] onBackProgress p=' + p + ' _backProgress=' + _backProgress);
+                if (_backProgress < 0) return;
+                _backProgress = p;
+                if (_backType === 'settings') {
+                    var overlay = document.getElementById('settings-overlay');
+                    if (overlay) overlay.style.opacity = 1 - materialEasing(p);
+                    var card = document.getElementById('settings-card');
+                    if (card) {
+                        var s = Math.max(0.01, 1 - materialEasing(p) * 2);
+                        card.style.transform = 'scale(' + s + ')';
+                    }
+                    zoomLevel = _backStartZoom + (defaultZoom - _backStartZoom) * materialEasing(p);
+                    applyZoom();
+                } else if (_backType === 'cancelable') {
+                    if (cancelableAction && !cancelableAction.cancelled) {
+                        cancelableAction.cancelled = true;
+                    }
+                    zoomLevel = _backStartZoom + (defaultZoom - _backStartZoom) * materialEasing(p);
+                    applyZoom();
+                } else {
+                    var t = materialEasing(p);
+                    var z = _backStartZoom + (defaultZoom - _backStartZoom) * t;
+                    zoomLevel = z;
+                    applyZoom();
+                }
+                if (!animFrameId) animFrameId = requestAnimationFrame(animate);
+            };
+            // Installed APK has bug: calls _onProgress instead of _onBackProgress
+            window._onProgress = window._onBackProgress;
+            window._onBackCancelled = function() {
+                console.log('[BACK] onBackCancelled _backProgress=' + _backProgress);
+                if (_backProgress < 0) return;
+                var _cancelP = _backProgress;
+                _backProgress = -1;
+                if (_backType === 'settings') {
+                    var overlay = document.getElementById('settings-overlay');
+                    if (overlay) overlay.style.opacity = '1';
+                    var card = document.getElementById('settings-card');
+                    if (card) card.style.transform = 'scale(1)';
+                    zoomLevel = _backStartZoom;
+                    applyZoom();
+                } else if (_backType === 'cancelable') {
+                    if (_cancelP < 0.3 && cancelableAction) {
+                        // Resume opening from saved state
+                        cancelableAction.cancelled = false;
+                        var targetSprite = cancelableAction.sprite;
+                        var targetDir = targetSprite.position.clone().normalize();
+                        var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
+                        startRotationAnimation(targetQuat, ANIM_DURATION, function() {
+                            if (cancelableAction && !cancelableAction.cancelled) {
+                                cancelableAction.rotDone = true; tryCommitCancelable();
+                            }
+                        });
+                        startZoomAnimation(cancelableAction.zoomTarget, ANIM_DURATION, function() {
+                            if (cancelableAction && !cancelableAction.cancelled) {
+                                zoomLevel = cancelableAction.zoomTarget; applyZoom();
+                                cancelableAction.zoomDone = true; tryCommitCancelable();
+                            }
+                        });
+                    } else {
+                        cancelableAction = null;
+                        startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
+                            zoomLevel = defaultZoom; applyZoom();
+                        });
+                    }
+                } else {
+                    var tp = document.getElementById('time-page');
+                    if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
+                    zoomLevel = _backStartZoom;
+                    applyZoom();
+                    // Restart entry animation if was in progress (DOM wasn't shown before gesture)
+                    var timePos = timeSprite ? timeSprite.position.clone() : null;
+                    if (timePos) {
+                        var td = timePos.clone().normalize();
+                        var tq = new THREE.Quaternion().setFromUnitVectors(td, new THREE.Vector3(0, 0, 1));
+                        startRotationAnimation(tq, ANIM_DURATION, function() {});
+                        startZoomAnimation(timeViewZoom || computeTimeViewZoom(), ANIM_DURATION, function() {
+                            zoomLevel = timeViewZoom; applyZoom();
+                        });
+                    }
+                    syncTimeSpriteTexture();
+                }
+                _backType = '';
+            };
             window._onBackPressed = function() {
+                if (_backProgress >= 0 && _backType === 'settings') {
+                    _backProgress = -1;
+                    _backType = '';
+                    var overlay = document.getElementById('settings-overlay');
+                    if (overlay) { overlay.style.display = 'none'; overlay.style.opacity = '1'; }
+                    var card = document.getElementById('settings-card');
+                    if (card) card.style.transform = 'scale(1)';
+                    canvas.style.pointerEvents = 'auto';
+                    startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
+                        zoomLevel = defaultZoom;
+                        applyZoom();
+                    });
+                    return;
+                }
+                if (_backProgress >= 0 && _backType === 'cancelable') {
+                    _backProgress = -1;
+                    _backType = '';
+                    cancelableAction = null;
+                    startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
+                        zoomLevel = defaultZoom;
+                        applyZoom();
+                    });
+                    return;
+                }
+                if (_backProgress >= 0 && isInTimeView) {
+                    var finalP = _backProgress;
+                    _backProgress = -1;
+                    _backType = '';
+                    var curZ = zoomLevel;
+                    var remain = (defaultZoom - curZ);
+                    if (remain > 0.001) {
+                        var dur = Math.min(ANIM_DURATION * 0.6, ANIM_DURATION * (1 - finalP) * 1.2);
+                        startZoomAnimation(defaultZoom, dur, function() {
+                            zoomLevel = defaultZoom;
+                            applyZoom();
+                            exitTimeView(false);
+                            inertiaStrength = 0.4;
+                            infiniteInertia = true;
+                            let spinAxis;
+                            if (layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
+                            else spinAxis = new THREE.Vector3(1, 0, 0);
+                            const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
+                            inertiaQ.copy(smallQ);
+                        });
+                    } else {
+                        exitTimeView(false);
+                        inertiaStrength = 0.4;
+                        infiniteInertia = true;
+                        let spinAxis;
+                        if (layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
+                        else spinAxis = new THREE.Vector3(1, 0, 0);
+                        const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
+                        inertiaQ.copy(smallQ);
+                    }
+                    return;
+                }
                 // 优先级：菜单 > 设置 > 动画 > 时间视图 > 重置摄像头
                 if (contextMenuOpen) {
                     hideContextMenu();
                     return;
                 }
-                const overlay = document.getElementById("settings-overlay");
+                var overlay = document.getElementById("settings-overlay");
                 if (overlay && overlay.style.display === "flex") {
                     overlay.style.display = "none";
                     canvas.style.pointerEvents = "auto";
@@ -1214,9 +1457,21 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
             }
 
             function onPointerDown(e) { try{NativeBridge.log('PDOWN');}catch(e){}
-                // 可取消动作进行中：任意新触摸取消
+                // Touch down in time view: hide DOM, start full texture render
+                if (isInTimeView) {
+                    var tp = document.getElementById('time-page');
+                    if (tp && tp.style.visibility === 'visible' && tp.style.zIndex === '100') {
+                        tp.style.visibility = 'hidden'; tp.style.zIndex = '-1';
+                        _pointerDownCount++;
+                        syncTimeSpriteTexture();
+                    }
+                }
+                // 可取消动作进行中：上滑跟手取消
                 if (cancelableAction && cancelableAction.phase === 'animating') {
-                    cancelCurrentAction('new-touch'); recentSpeeds = []; hasMoved = false; isDragging = false; return;
+                    cancelSwipeData = { pointerId: e.pointerId, startY: e.clientY, startZoom: zoomLevel, active: true, confirmed: false, startRot: sphereGroup.quaternion.clone() };
+                    activePointerIds.add(e.pointerId);
+                    cancelZoomAnimation();
+                    return;
                 }
                 // 菜单打开时：点击画布关闭菜单，不触发拖动
                 if (contextMenuOpen) {
@@ -1334,6 +1589,7 @@ updateMouse(e.clientX, e.clientY);
                         // 有上滑意图: 立即隐藏原生DOM
                         console.log('[TIME-SWIPE] exit intent'); const tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; }
+                        syncTimeSpriteTexture();
                         const screenH = window.innerHeight;
                         const maxDelta = screenH * 0.7;
                         const clampedDelta = Math.max(0, Math.min(maxDelta, deltaY));
@@ -1346,6 +1602,29 @@ updateMouse(e.clientX, e.clientY);
                     if (e.clientY < bottomSwipeData.minY) {
                         bottomSwipeData.minY = e.clientY;
                     }
+                    return;
+                }
+                // 取消上滑手势：跟手拉远
+                if (cancelSwipeData && cancelSwipeData.active &&
+                    cancelSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
+                    cancelSwipeData.confirmed = true;
+                    const dy = cancelSwipeData.startY - e.clientY;  // positive = swipe up (zoom out)
+                    const maxD = window.innerHeight * 0.6;
+                    const cd = Math.max(-maxD, Math.min(maxD, dy));
+                    const targetZoom = cancelableAction ? cancelableAction.zoomTarget : defaultZoom;
+                    const zrUp = Math.max(1, defaultZoom - targetZoom);  // zoom-out range
+                    const zrDown = Math.max(0.01, cancelSwipeData.startZoom - targetZoom);  // zoom-in range
+                    var newZ;
+                    if (cd >= 0) {
+                        // 上滑无上限
+                        newZ = cancelSwipeData.startZoom + (cd/maxD) * zrUp * 2;
+                    } else {
+                        // 下滑无下限
+                        newZ = cancelSwipeData.startZoom + (cd/maxD) * zrDown * 2;
+                        newZ = Math.max(MIN_ZOOM, newZ);
+                    }
+                    zoomLevel = newZ;
+                    applyZoom();
                     return;
                 }
 
@@ -1394,6 +1673,54 @@ updateMouse(e.clientX, e.clientY);
             const onPointerUp = (e) => {
                 if (contextMenuOpen) { activePointerIds.delete(e.pointerId); if (activePointerIds.size===0) document.body.style.cursor='default'; return; }
                 try{NativeBridge.log("PU drag:"+isDragging+" move:"+hasMoved+" hov:"+!!hoveredSprite+" tv:"+isInTimeView);}catch(e){}
+                if (cancelSwipeData && cancelSwipeData.pointerId === e.pointerId && cancelSwipeData.active) {
+                    activePointerIds.delete(e.pointerId);
+                    const sd = cancelSwipeData; cancelSwipeData = null;
+                    if (sd.confirmed && cancelableAction && !cancelableAction.cancelled) {
+                        // 上滑超过35% → 取消展开；下滑超过35% → 直接打开
+                        var progressUp = (zoomLevel - sd.startZoom) / Math.max(0.001, defaultZoom - sd.startZoom);
+                        var progressDown = (sd.startZoom - zoomLevel) / Math.max(0.001, sd.startZoom - (cancelableAction.zoomTarget || defaultZoom));
+                        if (zoomLevel >= sd.startZoom && progressUp > 0.35) {
+                            // 上滑超过阈值：取消
+                            cancelCurrentAction('swipe');
+                        } else if (zoomLevel < sd.startZoom && progressDown > 0.35) {
+                            // 下滑超过阈值：直接完成展开
+                            cancelZoomAnimation();
+                            startZoomAnimation(cancelableAction.zoomTarget, 150, function() {
+                                zoomLevel = cancelableAction.zoomTarget; applyZoom();
+                                if (cancelableAction && !cancelableAction.cancelled) {
+                                    cancelableAction.zoomDone = true; tryCommitCancelable();
+                                }
+                            });
+                            var targetSprite = cancelableAction.sprite;
+                            var targetDir = targetSprite.position.clone().normalize();
+                            var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
+                            startRotationAnimation(targetQuat, 150, function() {
+                                if (cancelableAction && !cancelableAction.cancelled) {
+                                    cancelableAction.rotDone = true; tryCommitCancelable();
+                                }
+                            });
+                        } else {
+                            // 没超过阈值：弹回继续展开
+                            if (!animFrameId) animFrameId = requestAnimationFrame(animate);
+                            startZoomAnimation(cancelableAction.zoomTarget, ANIM_DURATION, function() {
+                                zoomLevel = cancelableAction.zoomTarget; applyZoom();
+                                if (cancelableAction && !cancelableAction.cancelled) {
+                                    cancelableAction.zoomDone = true; tryCommitCancelable();
+                                }
+                            });
+                            var targetSprite = cancelableAction.sprite;
+                            var targetDir = targetSprite.position.clone().normalize();
+                            var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
+                            startRotationAnimation(targetQuat, ANIM_DURATION, function() {
+                                if (cancelableAction && !cancelableAction.cancelled) {
+                                    cancelableAction.rotDone = true; tryCommitCancelable();
+                                }
+                            });
+                        }
+                    }
+                    return;
+                }
                 if (!isInTimeView && topSwipeData && topSwipeData.pointerId === e.pointerId && topSwipeData.active) {
                     activePointerIds.delete(e.pointerId);
                     const sd = topSwipeData; topSwipeData = null;
@@ -1463,6 +1790,7 @@ updateMouse(e.clientX, e.clientY);
                 }
                 if (activePointerIds.size === 0) {
                     if (isDragging && !hasMoved && hoveredSprite && !isInTimeView && !longPressFired) {
+                        lastTapOnIcon = true;
                         try { NativeBridge.log('click-detect:' + (getAppBySprite(hoveredSprite)||{}).packageName); } catch(e) {}
                         const a=getAppBySprite(hoveredSprite); try{NativeBridge.log("CLICK:"+(a?a.packageName:"null"));}catch(e){}
                         const app = getAppBySprite(hoveredSprite);
@@ -1634,6 +1962,17 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             canvas.addEventListener('pointerdown', onPointerDown);
             window.addEventListener('pointermove', onPointerMove);
             window.addEventListener('pointerup', onPointerUp);
+            // Restore DOM when finger lifts in time view (no exit happened)
+            var _pointerDownCount = 0;
+            window.addEventListener('pointerup', function onPointerUpTimeView() {
+                if (isInTimeView && !isDragging && activePointerIds.size === 0 && !bottomSwipeData && !topSwipeData) {
+                    var tp = document.getElementById('time-page');
+                    if (tp && _pointerDownCount > 0) {
+                        tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none';
+                        syncTimeSpriteTexture();
+                    }
+                }
+            });
             canvas.addEventListener('pointerleave', onPointerLeave);
             window.addEventListener('pointercancel', onPointerCancel);
             canvas.addEventListener('wheel', onWheel, { passive: false });
@@ -1649,7 +1988,18 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 if (isInTimeView) return;
                 if (wasPinching || e.touches.length > 0) return;
                 const now = Date.now();
-                if (now - lastTap < 300 && !isDragging) {
+                if (now - lastTap < 300 && !isDragging && !lastTapOnIcon && !_prevTapOnIcon) {
+                    // Check distance: if taps are far apart, it's not a double-tap
+                    if (e && 'clientX' in e) {
+                        var dx = e.clientX - lastTapX, dy = e.clientY - lastTapY;
+                        if (dx * dx + dy * dy > 2500) { // > 50px = not double-tap
+                            lastTap = now;
+                            lastTapX = e.clientX;
+                            lastTapY = e.clientY;
+                            lastTapOnIcon = true;
+                            return;
+                        }
+                    }
                     rotationQuat.identity();
                     sphereGroup.quaternion.identity();
                     inertiaQ.identity();
@@ -1659,7 +2009,10 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     lastTap = 0;
                     return;
                 }
+                _prevTapOnIcon = lastTapOnIcon;
                 lastTap = now;
+                if (e && 'clientX' in e) { lastTapX = e.clientX; lastTapY = e.clientY; }
+                lastTapOnIcon = false;  // Reset for next tap
             });
 
             window.addEventListener('resize', function() {
@@ -1679,7 +2032,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             // ========== 动画循环 ==========
             let animFrameId = null;
             const isBusy = () => {
-                return !!zoomAnimStart || !!rotationAnimData || inertiaStrength > INERTIA_MIN || isDragging;
+                return !!zoomAnimStart || !!rotationAnimData || inertiaStrength > INERTIA_MIN || isDragging || _backProgress >= 0;
             };
             const wakeUp = () => {
                 if (!animFrameId) {
@@ -1727,10 +2080,11 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 const s = Math.max(window.innerWidth, window.innerHeight);
                 var ver = ++_texVersion;
 
+                var _wasHidden = page.style.visibility === 'hidden';
                 page.style.visibility = 'visible';
                 html2canvas(page, { scale: 1, useCORS: true, backgroundColor: null }).then(function(domCanvas) {
                     // 只有当不是原生覆盖模式时才隐藏页面
-                    if (page.style.zIndex !== '100') page.style.visibility = 'hidden';
+                    if (_wasHidden) page.style.visibility = 'hidden';
                     const texCanvas = document.createElement('canvas');
                     texCanvas.width = s; texCanvas.height = s;
                     const ctx = texCanvas.getContext('2d');
@@ -1758,7 +2112,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     timeSprite.material.needsUpdate = true;
                     if (oldMap && oldMap !== tex) oldMap.dispose();
                     if (ver !== _texVersion) { console.log('[TIME-TEX] skip stale (ver=' + ver + ' current=' + _texVersion + ')'); return; }
-                }).catch(function(e) { console.warn('html2canvas error:', e); if (page.style.zIndex !== '100') page.style.visibility = 'hidden'; });
+                }).catch(function(e) { console.warn('html2canvas error:', e); if (_wasHidden) page.style.visibility = 'hidden'; });
             }
 let _lastBatteryLevel = -1;
             const updateBatteryFromNative = () => {
