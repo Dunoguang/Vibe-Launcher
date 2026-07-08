@@ -450,14 +450,14 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                             de.textContent = (n.getMonth()+1) + '月' + n.getDate() + '日 ' + wd[n.getDay()];
                         }
                     }
-                    renderTimePageToTexture();
+                    syncTimeSpriteTexture();
                     try { updateBatteryFromNative(); } catch(e) {}
                     scheduleMinuteUpdate();
                 }, wait);
             };
 
             const startTimeTextureUpdates = () => {
-                renderTimePageToTexture();
+                syncTimeSpriteTexture();
                 scheduleMinuteUpdate();
             };
 
@@ -909,7 +909,7 @@ updateSphereMinHint();
                 // 初始化时间精灵纹理 + 启动分钟调度
                 setTimeout(() => {
                     console.log('INIT-TIME: starting time sprite updates');
-                    renderTimePageToTexture();
+                    syncTimeSpriteTexture();
                     scheduleMinuteUpdate();
                 }, 500);
                 hideLoadingIfReady();  // 先隐藏loading
@@ -1758,7 +1758,7 @@ let _lastBatteryLevel = -1;
                         _lastBatteryLevel = level;
                         updateBatteryDisplay();
                         // 电量变化触发纹理更新
-                        renderTimePageToTexture();
+                        syncTimeSpriteTexture();
                     }
                 } catch(e) {}
             };
