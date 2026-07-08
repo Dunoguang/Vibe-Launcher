@@ -6,6 +6,6 @@ export default defineConfig({
   plugins: [viteSingleFile()],
   build: {
     minify: 'terser',
-    target: 'es2020'
+    target: 'es2017'
   }
 });
