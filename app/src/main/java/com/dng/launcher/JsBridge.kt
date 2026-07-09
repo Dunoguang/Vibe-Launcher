@@ -36,6 +36,26 @@ class JsBridge(context: Context, webView: WebView) {
 
     @Volatile private var appListCache: List<AppInfo>? = null
 
+    companion object {
+        private var webViewRefStatic: WeakReference<WebView>? = null
+
+        fun setWebView(wv: WebView) {
+            webViewRefStatic = WeakReference(wv)
+        }
+
+        fun notifyNewNotification(info: VibeNotificationListener.NotifInfo) {
+            val wv = webViewRefStatic?.get() ?: return
+            try {
+                val json = Gson().toJson(info)
+                wv.post {
+                    wv.evaluateJavascript("window._onNotificationPosted(${json});", null)
+                }
+            } catch (e: Exception) {
+                Log.e("JsBridge", "notifyNewNotification error: ${e.message}")
+            }
+        }
+    }
+
     @JavascriptInterface
     fun crashTest() {
         throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
@@ -70,7 +90,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun requestAppIcons(packageNamesJson: String, iconRes: Int) {
         val targetSize = iconRes.coerceIn(16, 4096)
         executor.execute {
@@ -112,7 +131,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun launchApp(packageName: String): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -127,7 +145,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun uninstallApp(packageName: String): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -141,7 +158,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun openAppDetails(packageName: String): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -156,7 +172,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun getBatteryLevel(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -169,7 +184,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun isCharging(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -195,7 +209,6 @@ class JsBridge(context: Context, webView: WebView) {
     data class IconResult(val packageName: String, val iconUrl: String)
 
     @JavascriptInterface
-
     fun goBack(): String {
         return try {
             webViewRef.get()?.post {
@@ -208,7 +221,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun clearIconCache(): String {
         return try {
             iconCacheDir.listFiles()?.forEach { it.delete() }
@@ -219,7 +231,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun setHotReload(enabled: Boolean): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -233,7 +244,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun getHotReload() {
         executor.execute {
             try {
@@ -260,7 +270,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun log(msg: String) {
         Log.d("VibeLauncher", "[JS] $msg")
         val ctx = contextRef.get() ?: return
@@ -271,7 +280,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun pickWallpaper() {
         Log.d("VibeLauncher", "[wallpaper] pickWallpaper called from JS")
         val ctx = contextRef.get()
@@ -296,7 +304,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun getWallpaperPath(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -309,7 +316,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun removeWallpaper(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -340,7 +346,6 @@ class JsBridge(context: Context, webView: WebView) {
 
 
     @JavascriptInterface
-
     fun pickTimeBg() {
         Log.d("VibeLauncher", "[timebg] pickTimeBg called")
         val ctx = contextRef.get() ?: return
@@ -351,7 +356,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun getTimeBgPath(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -364,7 +368,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun removeTimeBg(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -393,4 +396,407 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
+    // ==================== 通知相关 ====================
+
+    @JavascriptInterface
+    fun getActiveNotifications(): String {
+        return try {
+            val notifications = VibeNotificationListener.getActiveNotifications()
+            gson.toJson(mapOf("success" to true, "notifications" to notifications))
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}","notifications":[]}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun clearNotification(packageName: String): String {
+        return try {
+            val listener = VibeNotificationListener.getInstance()
+            if (listener != null) {
+                val active = listener.activeNotifications ?: arrayOf()
+                active.filter { it.packageName == packageName }.forEach {
+                    try { listener.cancelNotification(it.key) } catch (_: Exception) {}
+                }
+                """{"success":true}"""
+            } else {
+                """{"success":false,"error":"NotificationListener not active"}"""
+            }
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun openNotificationSettings(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(intent)
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun isNotificationListenerEnabled(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val flat = android.provider.Settings.Secure.getString(
+                ctx.contentResolver,
+                "enabled_notification_listeners"
+            ) ?: ""
+            val enabled = flat.contains("com.dng.launcher/VibeNotificationListener")
+            """{"success":true,"enabled":$enabled}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    // ==================== 快捷方式管理 ====================
+
+    @JavascriptInterface
+    fun getPinnedShortcuts(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val prefs = ctx.getSharedPreferences("vibe_prefs", Context.MODE_PRIVATE)
+            val json = prefs.getString("pinned_shortcuts", "[]") ?: "[]"
+            """{"success":true,"shortcuts":$json}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}","shortcuts":[]}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun setPinnedShortcuts(shortcutsJson: String): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val prefs = ctx.getSharedPreferences("vibe_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("pinned_shortcuts", shortcutsJson).apply()
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    // ==================== 主题设置 ====================
+
+    @JavascriptInterface
+    fun getThemeColor(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val prefs = ctx.getSharedPreferences("vibe_prefs", Context.MODE_PRIVATE)
+            val color = prefs.getString("theme_color", "#8ab4f8") ?: "#8ab4f8"
+            """{"success":true,"color":"$color"}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun setThemeColor(color: String): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val prefs = ctx.getSharedPreferences("vibe_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("theme_color", color).apply()
+            callback("_onThemeColorChanged", """{"success":true,"color":"$color"}""")
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    // ==================== 快捷设置 ====================
+
+    @JavascriptInterface
+    fun getWifiEnabled(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            """{"success":true,"enabled":${wm.isWifiEnabled}}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun setWifiEnabled(enabled: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            // Android 10+ 不能直接开关WiFi，打开WiFi设置面板
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val intent = android.content.Intent(android.provider.Settings.Panel.ACTION_WIFI)
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+                """{"success":true,"method":"panel"}"""
+            } else {
+                val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+                @Suppress("DEPRECATION")
+                wm.isWifiEnabled = enabled
+                """{"success":true}"""
+            }
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun getBluetoothEnabled(): String {
+        return try {
+            val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            """{"success":true,"enabled":${adapter?.isEnabled ?: false}}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun setBluetoothEnabled(enabled: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            // Android 12+ 需要 BLUETOOTH_CONNECT 权限
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                if (ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    // 没权限，打开蓝牙设置页
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
+                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    ctx.startActivity(intent)
+                    return """{"success":false,"error":"need_permission","action":"bluetooth_settings"}"""
+                }
+            }
+            val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (adapter == null) return """{"success":false,"error":"no bluetooth"}"""
+            @Suppress("DEPRECATION")
+            if (enabled) adapter.enable() else adapter.disable()
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun getAutoRotate(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val on = android.provider.Settings.System.getInt(
+                ctx.contentResolver, "accelerometer_rotation", 0
+            ) == 1
+            """{"success":true,"enabled":$on}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun setAutoRotate(enabled: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            if (!android.provider.Settings.System.canWrite(ctx)) {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)
+                intent.data = android.net.Uri.parse("package:${ctx.packageName}")
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+                return """{"success":false,"error":"need_write_settings"}"""
+            }
+            android.provider.Settings.System.putInt(
+                ctx.contentResolver, "accelerometer_rotation", if (enabled) 1 else 0
+            )
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun getDataUsage(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val tm = ctx.getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+            val carrier = tm.networkOperatorName ?: "未知"
+            val signalLevel = when (tm.dataState) {
+                android.telephony.TelephonyManager.DATA_CONNECTED -> "已连接"
+                android.telephony.TelephonyManager.DATA_CONNECTING -> "连接中"
+                android.telephony.TelephonyManager.DATA_DISCONNECTED -> "未连接"
+                android.telephony.TelephonyManager.DATA_SUSPENDED -> "暂停"
+                else -> "未知"
+            }
+            """{"success":true,"carrier":"$carrier","state":"$signalLevel"}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun openWifiSettings(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            ctx.startActivity(Intent(android.provider.Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun openBluetoothSettings(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            ctx.startActivity(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    // ==================== 媒体控制 ====================
+
+    @JavascriptInterface
+    fun getMediaInfo(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val am = ctx.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            val vol = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+            val maxVol = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+            val muted = am.isStreamMute(android.media.AudioManager.STREAM_MUSIC)
+            """{"success":true,"volume":$vol,"maxVolume":$maxVol,"muted":$muted}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun setMediaVolume(vol: Int): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val am = ctx.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, vol, android.media.AudioManager.FLAG_SHOW_UI)
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun sendMediaButton(keyCode: Int): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val down = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode)
+            val up = android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode)
+            ctx.sendBroadcast(Intent(Intent.ACTION_MEDIA_BUTTON).putExtra(Intent.EXTRA_KEY_EVENT, down))
+            ctx.sendBroadcast(Intent(Intent.ACTION_MEDIA_BUTTON).putExtra(Intent.EXTRA_KEY_EVENT, up))
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    // ==================== 亮度控制 ====================
+
+    @JavascriptInterface
+    fun getBrightness(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val brightness = android.provider.Settings.System.getInt(
+                ctx.contentResolver,
+                android.provider.Settings.System.SCREEN_BRIGHTNESS,
+                128
+            )
+            """{"success":true,"brightness":$brightness,"max":255}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}","brightness":128,"max":255}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun setBrightness(value: Int): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            // 检查 WRITE_SETTINGS 权限
+            if (!android.provider.Settings.System.canWrite(ctx)) {
+                // 没有权限，打开设置页
+                val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)
+                intent.data = android.net.Uri.parse("package:${ctx.packageName}")
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+                return """{"success":false,"error":"need_write_settings"}"""
+            }
+            val clamped = value.coerceIn(0, 255)
+            android.provider.Settings.System.putInt(
+                ctx.contentResolver,
+                android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE,
+                android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+            )
+            android.provider.Settings.System.putInt(
+                ctx.contentResolver,
+                android.provider.Settings.System.SCREEN_BRIGHTNESS,
+                clamped
+            )
+            """{"success":true,"brightness":$clamped}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun canWriteSettings(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val canWrite = android.provider.Settings.System.canWrite(ctx)
+            """{"success":true,"canWrite":$canWrite}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun openWriteSettings(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val intent = Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)
+            intent.data = Uri.parse("package:com.dng.launcher")
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(intent)
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    // ==================== 权限管理 ====================
+
+    @JavascriptInterface
+    fun checkAllPermissions(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val perms = mutableListOf<Map<String, Any>>()
+            perms.add(mapOf("id" to "write_settings", "name" to "修改系统设置", "granted" to android.provider.Settings.System.canWrite(ctx), "desc" to "亮度/音量/旋转", "action" to android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS))
+            val flat = android.provider.Settings.Secure.getString(ctx.contentResolver, "enabled_notification_listeners") ?: ""
+            perms.add(mapOf("id" to "notification", "name" to "通知读取", "granted" to flat.contains("com.dng.launcher/VibeNotificationListener"), "desc" to "显示通知", "action" to android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            val btGranted = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) == android.content.pm.PackageManager.PERMISSION_GRANTED else true
+            perms.add(mapOf("id" to "bluetooth", "name" to "蓝牙", "granted" to btGranted, "desc" to "开关蓝牙", "action" to android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
+            val locGranted = ctx.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            perms.add(mapOf("id" to "location", "name" to "位置", "granted" to locGranted, "desc" to "WiFi/网络", "action" to android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            gson.toJson(mapOf("success" to true, "permissions" to perms))
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun requestPermission(action: String): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val intent = Intent(action)
+            if (action == android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS) {
+                intent.data = Uri.parse("package:${ctx.packageName}")
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(intent)
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    // ==================== 搜索功能 ====================
+
+    @JavascriptInterface
+    fun searchApps(query: String): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val pm = ctx.packageManager
+            val apps = appListCache ?: run {
+                val loaded = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                    .filter { pm.getLaunchIntentForPackage(it.packageName) != null && it.packageName != "com.dng.launcher" }
+                    .map {
+                        AppInfo(
+                            it.packageName,
+                            pm.getApplicationLabel(it).toString(),
+                            (it.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                        )
+                    }
+                    .sortedWith(compareBy(collator) { it.appName })
+                appListCache = loaded
+                loaded
+            }
+            val results = if (query.isBlank()) apps
+            else apps.filter { it.appName.contains(query, ignoreCase = true) || it.packageName.contains(query, ignoreCase = true) }
+            gson.toJson(mapOf("success" to true, "apps" to results))
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}","apps":[]}"""
+        }
+    }
 }

@@ -52,6 +52,41 @@
         .app-label.visible {
             opacity: 1;
         }
+        /* ===== 独立状态栏 ===== */
+        #status-bar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+            display: none; align-items: center; justify-content: space-between;
+            padding: 6px 16px; height: 36px;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            pointer-events: auto;
+        }
+        .sb-left { display: flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,0.8) }
+        .sb-right { display: flex; align-items: center; gap: 10px; font-size: 12px; color: rgba(255,255,255,0.7) }
+        .sb-icon { font-size: 14px; cursor: pointer }
+        .sb-notif { position: relative; cursor: pointer }
+        .sb-notif-dot {
+            position: absolute; top: -3px; right: -5px; width: 8px; height: 8px;
+            border-radius: 50%; background: #ff4444; display: none;
+        }
+        #notif-perm-dialog {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 100; display: none;
+            background: rgba(22,22,36,0.96); border-radius: 20px;
+            padding: 28px 24px; width: min(80vw, 320px);
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            backdrop-filter: blur(12px);
+        }
+        #notif-perm-dialog h3 { font-size: 18px; color: #fff; margin-bottom: 12px }
+        #notif-perm-dialog p { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 20px; line-height: 1.5 }
+        .perm-btns { display: flex; gap: 10px }
+        .perm-btns button {
+            flex: 1; padding: 12px; border: none; border-radius: 12px;
+            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .perm-allow { background: #8ab4f8; color: #000 }
+        .perm-later { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5) }
         .loading-indicator {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -66,6 +101,260 @@
             pointer-events: none;
             transition: opacity 0.4s ease;
         }
+        /* ===== 权限管理面板 ===== */
+        #perm-panel {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 190; display: none; flex-direction: column;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        }
+        .perm-panel-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.06) }
+        .perm-panel-title { font-size: 18px; font-weight: 700; color: #fff }
+        .perm-panel-close { font-size: 20px; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px 8px }
+        .perm-list { flex: 1; overflow-y: auto; padding: 12px 16px }
+        .perm-item { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 14px; margin-bottom: 8px; background: rgba(255,255,255,0.04); cursor: pointer; transition: all 0.2s; border: 1px solid transparent }
+        .perm-item:active { background: rgba(255,255,255,0.08) }
+        .perm-item.granted { border-color: rgba(105,219,124,0.2) }
+        .perm-item.denied { border-color: rgba(255,107,107,0.15) }
+        .perm-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0 }
+        .perm-icon.granted { background: rgba(105,219,124,0.15) }
+        .perm-icon.denied { background: rgba(255,107,107,0.15) }
+        .perm-info { flex: 1; min-width: 0 }
+        .perm-name { font-size: 15px; font-weight: 600; color: #fff }
+        .perm-desc { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 2px }
+        .perm-status { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px }
+        .perm-status.granted { background: rgba(105,219,124,0.15); color: #69db7c }
+        .perm-status.denied { background: rgba(255,107,107,0.15); color: #ff6b6b }
+
+        /* ===== 通知面板 ===== */
+        #notification-panel {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 80; display: none; flex-direction: column;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            animation: slideDown 0.25s ease;
+        }
+        @keyframes slideDown { from { transform: translateY(-30px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        /* ===== 快捷设置 ===== */
+        #quick-settings {
+            padding: 16px 20px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .qs-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+            margin-bottom: 12px;
+        }
+        .qs-tile {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 12px 8px; border-radius: 14px;
+            background: rgba(255,255,255,0.05); cursor: pointer;
+            transition: all 0.2s; border: 1.5px solid transparent;
+        }
+        .qs-tile:active { transform: scale(0.95) }
+        .qs-tile.active { background: rgba(138,180,248,0.15); border-color: rgba(138,180,248,0.4) }
+        .qs-tile-icon { font-size: 22px; line-height: 1 }
+        .qs-tile-label { font-size: 11px; color: rgba(255,255,255,0.5) }
+        .qs-tile.active .qs-tile-label { color: #8ab4f8 }
+        .qs-brightness {
+            display: flex; align-items: center; gap: 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px; padding: 12px 16px;
+        }
+        .qs-icon { font-size: 18px; color: rgba(255,255,255,0.7); flex-shrink: 0 }
+        .qs-slider {
+            flex: 1; height: 4px; -webkit-appearance: none; appearance: none;
+            background: rgba(255,255,255,0.15); border-radius: 2px; outline: none;
+        }
+        .qs-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+            background: #ffd43b; cursor: pointer; box-shadow: 0 0 8px rgba(255,212,59,0.5);
+        }
+        .qs-val { font-size: 13px; color: rgba(255,255,255,0.5); min-width: 36px; text-align: right }
+        /* ===== 媒体控制 ===== */
+        #media-player {
+            display: none; padding: 12px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .media-info { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 8px; text-align: center }
+        .media-controls { display: flex; align-items: center; justify-content: center; gap: 20px }
+        .media-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255,255,255,0.08); border: none;
+            color: #fff; font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .media-btn:active { background: rgba(255,255,255,0.2); transform: scale(0.9) }
+        .media-vol { display: flex; align-items: center; gap: 8px; margin-top: 8px }
+        .media-vol .qs-slider::-webkit-slider-thumb { background: #8ab4f8; box-shadow: 0 0 8px rgba(138,180,248,0.5) }
+        .qs-data { font-size: 12px; color: rgba(255,255,255,0.3); text-align: center; padding: 4px 0 }
+        /* ===== 智能叠放（Smart Stack）===== */
+        #smart-stack {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+            display: none; flex-direction: column;
+            padding: 8px 16px 20px; gap: 8px;
+            pointer-events: auto;
+            max-height: 60vh; overflow-y: auto;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+        #smart-stack.expanded {
+            max-height: 75vh;
+            padding-bottom: 30px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px 20px 0 0;
+        }
+        #smart-stack::-webkit-scrollbar { width: 0 }
+        .stack-indicator {
+            text-align: center; font-size: 12px; color: rgba(255,255,255,0.3);
+            padding: 4px 0; cursor: pointer;
+        }
+        .stack-card {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 16px; border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            cursor: pointer; transition: all 0.25s ease;
+            animation: cardSlideUp 0.3s ease both;
+            min-height: 56px;
+        }
+        .stack-card:active { transform: scale(0.97) }
+        .stack-card.peek { min-height: 48px }
+        .stack-card.expanded { min-height: 52px }
+        @keyframes cardSlideUp {
+            from { transform: translateY(20px); opacity: 0 }
+            to { transform: translateY(0); opacity: 1 }
+        }
+        .card-icon {
+            width: 40px; height: 40px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; flex-shrink: 0;
+        }
+        .card-body { flex: 1; min-width: 0 }
+        .card-title { font-size: 15px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+        .card-subtitle { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px }
+        /* ===== 垂直分页 ===== */
+        #vertical-pages {
+            position: fixed; top: 36px; left: 0; right: 0; bottom: 80px;
+            z-index: 35; display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            pointer-events: auto;
+        }
+        .vp-card {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 40px 30px; border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.08);
+            min-height: 50vh; width: min(90vw, 400px);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .vp-title { font-size: 14px; color: rgba(255,255,255,0.4); margin-bottom: 16px; letter-spacing: 0.05em }
+        .vp-content {
+            font-size: min(18vw, 80px); font-weight: 700; line-height: 1;
+            letter-spacing: -0.02em;
+            font-family: 'SF Pro Display', 'PingFang SC', -apple-system, sans-serif;
+        }
+        .vp-subtitle { font-size: 15px; color: rgba(255,255,255,0.5); margin-top: 16px; letter-spacing: 0.02em }
+        .vp-ring-container { position: relative; display: flex; align-items: center; justify-content: center }
+        .vp-ring { width: 100%; height: 100% }
+        .vp-ring-text { position: absolute; display: flex; flex-direction: column; align-items: center }
+        .vp-ring-value { font-size: 48px; font-weight: 700; letter-spacing: -0.02em }
+        .vp-ring-label { font-size: 14px; color: rgba(255,255,255,0.5); margin-top: 4px }
+        .vp-dots { display: flex; gap: 6px; margin-top: 24px }
+        .vp-dot { width: 6px; height: 6px; border-radius: 50%; transition: all 0.3s }
+        .vp-dot.active { width: 18px; border-radius: 3px }
+        /* ===== SF Compact 排版优化 ===== */
+        * {
+            font-feature-settings: 'kern' 1, 'liga' 1;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        :root {
+            --mood-accent: #8ab4f8;
+            --mood-text: rgba(255,255,255,0.8);
+            --mood-card: rgba(30,30,50,0.7);
+            --mood-glow: rgba(138,180,248,0.15);
+        }
+        /* ===== 动态背景 ===== */
+        #dynamic-bg-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -2; pointer-events: none;
+            transition: background 2s ease;
+        }
+        #notif-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 20px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        #notif-title { font-size: 18px; font-weight: 700; color: #fff }
+        .notif-actions { display: flex; gap: 12px; align-items: center }
+        .notif-action-btn {
+            font-size: 13px; color: rgba(255,255,255,0.4); cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; transition: all 0.2s;
+        }
+        .notif-action-btn:hover { color: #fff; background: rgba(255,255,255,0.1) }
+        #notif-list {
+            flex: 1; overflow-y: auto; padding: 8px 16px;
+        }
+        #notif-list::-webkit-scrollbar { width: 3px }
+        #notif-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px }
+        .notif-item {
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px; padding: 14px 16px; margin-bottom: 8px;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .notif-item:active { background: rgba(255,255,255,0.08) }
+        .notif-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px }
+        .notif-title { font-size: 14px; font-weight: 600; color: #fff; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+        .notif-time { font-size: 11px; color: rgba(255,255,255,0.3); margin-left: 8px; white-space: nowrap }
+        .notif-text { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+        .notif-pkg { font-size: 11px; color: rgba(255,255,255,0.2); margin-top: 6px }
+
+        /* ===== 通知徽标 ===== */
+        #notif-badge { /* 旧徽标已禁用，改用状态栏铃铛 */
+            position: fixed; top: 38px; right: 12px; z-index: 29;
+            min-width: 20px; height: 20px; border-radius: 10px;
+            background: #ff4444; color: #fff; font-size: 11px; font-weight: 700;
+            display: none; align-items: center; justify-content: center;
+            padding: 0 6px; pointer-events: auto; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255,68,68,0.5);
+            animation: badgePop 0.3s ease;
+        }
+        @keyframes badgePop { from { transform: scale(0) } to { transform: scale(1) } }
+
+        /* ===== 搜索栏 ===== */
+        #search-bar {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 25; display: none; width: min(85vw, 400px);
+            background: rgba(30,30,50,0.9); border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 24px; padding: 0; overflow: hidden;
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp { from { transform: translate(-50%, 20px); opacity: 0 } to { transform: translate(-50%, 0); opacity: 1 } }
+        #search-input {
+            width: 100%; padding: 14px 20px; font-size: 15px;
+            background: transparent; color: #fff; border: none; outline: none;
+            font-family: inherit;
+        }
+        #search-input::placeholder { color: rgba(255,255,255,0.3) }
+        #search-results {
+            max-height: 300px; overflow-y: auto; border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        #search-results::-webkit-scrollbar { width: 3px }
+        #search-results::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px }
+        .search-result-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 20px; cursor: pointer; transition: background 0.15s;
+        }
+        .search-result-item:active { background: rgba(255,255,255,0.08) }
+        .search-result-icon {
+            width: 36px; height: 36px; border-radius: 8px;
+            background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: rgba(255,255,255,0.6); flex-shrink: 0;
+        }
+        .search-result-name { font-size: 14px; color: #fff }
+        .search-result-pkg { font-size: 11px; color: rgba(255,255,255,0.3) }
+
     #settings-overlay {
     position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;
     background:rgba(0,0,0,0.6);display:none;justify-content:center;align-items:center;
@@ -76,9 +365,9 @@
     width:min(88vw,88vh);aspect-ratio:1;
     display:flex;flex-direction:column;
     overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);
-    animation:slideUp 0.3s ease;
+    animation:slideUpSettings 0.3s ease;
 }
-@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes slideUpSettings{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
 #settings-header {
     display:flex;justify-content:space-between;align-items:center;
     padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.06);
@@ -102,7 +391,7 @@
     -webkit-appearance:none;width:22px;height:22px;border-radius:50%;
     background:#8ab4f8;cursor:pointer;box-shadow:0 2px 8px rgba(138,180,248,0.4);
 }
-.layout-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.layout-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .layout-card{
     padding:12px 10px;border-radius:10px;text-align:center;cursor:pointer;
     background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.06);
@@ -141,9 +430,58 @@
 .settings-row{display:flex;gap:8px;align-items:center}
 .settings-sphere{display:flex;align-items:center;gap:8px}
 .settings-hint{font-size:13px;color:rgba(255,255,255,0.4);white-space:nowrap}
+
+/* ===== 主题色选择器 ===== */
+.color-grid{display:flex;gap:8px;flex-wrap:wrap}
+.color-swatch{
+    width:32px;height:32px;border-radius:50%;cursor:pointer;
+    border:2px solid transparent;transition:all 0.2s;
+}
+.color-swatch.active{border-color:#fff;box-shadow:0 0 12px rgba(255,255,255,0.3)}
+
+/* ===== 快捷方式管理 ===== */
+.shortcut-list{max-height:200px;overflow-y:auto}
+.shortcut-item{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;
+    border-radius:8px;margin-bottom:4px;cursor:pointer;
+    background:rgba(255,255,255,0.03);transition:all 0.2s;
+}
+.shortcut-item:active{background:rgba(255,255,255,0.08)}
+.shortcut-item.pinned{background:rgba(138,180,248,0.08);border:1px solid rgba(138,180,248,0.2)}
+.shortcut-icon{
+    width:32px;height:32px;border-radius:8px;
+    background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;
+    font-size:16px;flex-shrink:0;
+}
+.shortcut-name{font-size:13px;color:rgba(255,255,255,0.8);flex:1}
+.shortcut-pin{
+    font-size:16px;color:rgba(255,255,255,0.3);padding:4px;
+}
+.shortcut-item.pinned .shortcut-pin{color:#8ab4f8}
 </style>
 </head>
 <body>
+    <!-- 独立状态栏 -->
+    <div id="status-bar">
+        <div class="sb-left"><span id="sb-time">12:00</span></div>
+        <div class="sb-right">
+            <span class="sb-icon" id="sb-wifi" onclick="window._qsToggle('wifi')">📶</span>
+            <span class="sb-icon" id="sb-battery">🔋</span>
+            <span class="sb-notif" onclick="window._toggleNotifications()">
+                <span class="sb-icon">🔔</span>
+                <span class="sb-notif-dot" id="sb-notif-dot"></span>
+            </span>
+        </div>
+    </div>
+    <!-- 通知权限弹窗 -->
+    <div id="notif-perm-dialog">
+        <h3>🔔 开启通知</h3>
+        <p>Vibe Launcher 需要通知权限才能在桌面显示通知</p>
+        <div class="perm-btns">
+            <button class="perm-later" onclick="window._dismissNotifPerm()">稍后</button>
+            <button class="perm-allow" onclick="window._grantNotifPerm()">授权</button>
+        </div>
+    </div>
     <div id="time-page" style="
         position:fixed; top:0; left:0; width:100vw; height:100vh;
         visibility:hidden; z-index:-1;
@@ -167,6 +505,63 @@
             color:rgba(255,255,255,0.5);
         ">🔋 --%</div>
     </div>
+
+    <!-- 通知徽标 -->
+    <div id="notif-badge" onclick="window._toggleNotifications && window._toggleNotifications()">0</div>
+
+    <!-- 通知面板 -->
+    <div id="notification-panel">
+        <!-- 快捷设置栏 -->
+        <div id="quick-settings">
+            <div class="qs-grid">
+                <div class="qs-tile" id="qs-wifi" onclick="window._qsToggle && window._qsToggle('wifi')">
+                    <span class="qs-tile-icon">📶</span>
+                    <span class="qs-tile-label">WiFi</span>
+                </div>
+                <div class="qs-tile" id="qs-bluetooth" onclick="window._qsToggle && window._qsToggle('bluetooth')">
+                    <span class="qs-tile-icon">🔵</span>
+                    <span class="qs-tile-label">蓝牙</span>
+                </div>
+                <div class="qs-tile" id="qs-rotate" onclick="window._qsToggle && window._qsToggle('rotate')">
+                    <span class="qs-tile-icon">🔄</span>
+                    <span class="qs-tile-label">旋转</span>
+                </div>
+                <div class="qs-tile" id="qs-settings" onclick="window._qsOpenSettings && window._qsOpenSettings()">
+                    <span class="qs-tile-icon">⚙</span>
+                    <span class="qs-tile-label">设置</span>
+                </div>
+            </div>
+            <div class="qs-brightness">
+                <span class="qs-icon">☀</span>
+                <input id="brightness-slider" type="range" min="0" max="255" value="128" class="qs-slider">
+                <span id="brightness-val" class="qs-val">50%</span>
+            </div>
+        </div>
+        <!-- 媒体控制 -->
+        <div id="media-player">
+            <div class="media-info">🎵 音量控制</div>
+            <div class="media-vol">
+                <span class="qs-icon" style="font-size:14px">🔈</span>
+                <input id="media-vol-slider" type="range" min="0" max="15" value="7" class="qs-slider">
+                <span id="media-vol-val" class="qs-val">7</span>
+            </div>
+        </div>
+        <div id="notif-header">
+            <span id="notif-title">🔔 通知</span>
+            <div class="notif-actions">
+                <span class="notif-action-btn" onclick="window._clearAllNotifications && window._clearAllNotifications()">清除全部</span>
+                <span class="notif-action-btn" onclick="window._closeNotifications && window._closeNotifications()" style="font-size:18px;padding:4px 8px">✕</span>
+            </div>
+        </div>
+        <div id="notif-list"></div>
+    </div>
+
+    <!-- 搜索栏 -->
+    <div id="search-bar">
+        <input id="search-input" type="text" placeholder="🔍 搜索应用..." autocomplete="off" />
+        <div id="search-results"></div>
+    </div>
+
     <div id="context-menu" style="
         position:fixed; z-index:90; display:none; pointer-events:auto;
         background:#1a1a2e; border:1px solid rgba(255,255,255,0.2);
@@ -210,9 +605,24 @@
                         <label class="layout-card" onclick="setRadio('layoutMode','hemisphere')"><input type="radio" name="layoutMode" value="hemisphere"><span>🌓 半球</span></label>
                         <label class="layout-card" onclick="setRadio('layoutMode','ring')"><input type="radio" name="layoutMode" value="ring"><span>🔄 竖环</span></label>
                         <label class="layout-card" onclick="setRadio('layoutMode','hbar')"><input type="radio" name="layoutMode" value="hbar"><span>↔ 横环</span></label>
+                        <label class="layout-card" onclick="setRadio('layoutMode','waterfall')"><input type="radio" name="layoutMode" value="waterfall"><span>🐝 蜂窝</span></label>
                     </div>
                 </div>
 
+                <!-- 主题色 -->
+                <div class="setting-group">
+                    <div class="setting-label">主题色</div>
+                    <div class="color-grid" id="color-grid">
+                        <div class="color-swatch active" data-color="#8ab4f8" style="background:#8ab4f8"></div>
+                        <div class="color-swatch" data-color="#ff6b6b" style="background:#ff6b6b"></div>
+                        <div class="color-swatch" data-color="#ffd43b" style="background:#ffd43b"></div>
+                        <div class="color-swatch" data-color="#69db7c" style="background:#69db7c"></div>
+                        <div class="color-swatch" data-color="#38d9a9" style="background:#38d9a9"></div>
+                        <div class="color-swatch" data-color="#da77f2" style="background:#da77f2"></div>
+                        <div class="color-swatch" data-color="#f783ac" style="background:#f783ac"></div>
+                        <div class="color-swatch" data-color="#ff922b" style="background:#ff922b"></div>
+                    </div>
+                </div>
 
                 <div class="setting-group">
                     <div class="setting-label">时间页面背景</div>
@@ -228,7 +638,29 @@
                         <button id="s-wallpaper-pick" class="settings-btn">选择图片</button>
                         <button id="s-wallpaper-remove" class="settings-btn-danger">移除</button>
                     </div>
+                    <div class="toggle-desc" style="margin-top:8px">壁纸模糊度</div>
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                        <input id="s-wallpaper-blur" type="range" min="0" max="20" value="0" step="1" class="qs-slider" style="flex:1">
+                        <span id="s-wallpaper-blur-val" class="setting-val">0px</span>
+                    </div>
+                    <div class="toggle-desc" style="margin-top:8px">壁纸暗度</div>
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                        <input id="s-wallpaper-dim" type="range" min="0" max="80" value="0" step="5" class="qs-slider" style="flex:1">
+                        <span id="s-wallpaper-dim-val" class="setting-val">0%</span>
+                    </div>
                 </div>
+
+                <!-- 通知设置 -->
+                <div class="setting-group">
+                    <div id="setting-notif-perm">
+                        <div>
+                            <div style="font-size:13px;color:rgba(255,255,255,0.8)">通知权限</div>
+                            <div class="toggle-desc">需要授权读取通知才能显示</div>
+                        </div>
+                        <button id="s-notif-grant" class="settings-btn" style="flex:none;padding:8px 16px;font-size:12px">授权</button>
+                    </div>
+                </div>
+
                 <div class="setting-group">
                     <div id="setting-fps">
                         <div>
@@ -251,8 +683,16 @@
                         </label>
                     </div>
                 </div>
+
+                <!-- 快捷方式管理 -->
+                <div class="setting-group">
+                    <div class="setting-label">快捷方式管理 <span class="setting-val" id="shortcut-count">0个已钉选</span></div>
+                    <div class="toggle-desc" style="margin-bottom:8px">钉选的应用会优先显示在球体前方</div>
+                    <div class="shortcut-list" id="shortcut-list"></div>
+                </div>
             </div>
             <div id="settings-footer">
+                <button id="s-permissions" onclick="window._openPermPanel && window._openPermPanel()" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:12px">🔐 权限</button>
                 <button id="s-clear-cache">清除图标缓存</button>
                 <button id="s-save">保存</button>
             </div>
@@ -261,6 +701,18 @@
     <div id="fps-counter" style="position:fixed;top:8px;left:8px;z-index:2147483647;color:#0f0;font-size:16px;font-family:monospace;background:rgba(0,0,0,0.8);padding:4px 8px;border-radius:4px;display:none;pointer-events:none;user-select:none;font-weight:bold">FPS: <span id="fps-value">0</span></div>
     <div class="app-label" id="appLabel"></div>
     <div class="loading-indicator" id="loadingIndicator"></div>
+    <!-- 权限管理面板 -->
+    <div id="perm-panel">
+        <div class="perm-panel-header">
+            <span class="perm-panel-title">🔐 权限管理</span>
+            <span class="perm-panel-close" onclick="document.getElementById('perm-panel').style.display='none'">✕</span>
+        </div>
+        <div class="perm-list" id="perm-list"></div>
+    </div>
+    <!-- 垂直分页 -->
+    <div id="vertical-pages"></div>
+    <!-- 智能叠放 -->
+    <div id="smart-stack"></div>
     <script type="module" src="/main.js"></script>
 </body>
 </html>

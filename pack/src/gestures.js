@@ -261,9 +261,16 @@ state.updateMouse(e.clientX, e.clientY);
                 }
                 if (!state.hasMoved || dist < 0.5) return;
                 let deltaQ;
-                if (state.layoutMode === 'flatring') {
+                if (state.layoutMode === 'flatring' || state.layoutMode === 'waterfall') {
                     let dx = curr.x - state.prevScreen.x;
+                    let dy = curr.y - state.prevScreen.y;
                     deltaQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -dx * 0.001);
+                    // 瀑布流支持平移（上下拖动）
+                    if (state.layoutMode === 'waterfall' && Math.abs(dy) > 1) {
+                        // 平移整个 sphereGroup
+                        state.sphereGroup.position.y += dy * 0.005 * state.zoomLevel;
+                        state.sphereGroup.position.x -= dx * 0.005 * state.zoomLevel;
+                    }
                 } else {
                     let p0 = state.screenToSphere(state.prevScreen.x, state.prevScreen.y);
                     let p1 = state.screenToSphere(curr.x, curr.y);
@@ -446,6 +453,8 @@ state.updateMouse(e.clientX, e.clientY);
                         } else if (app && !state.isInTimeView) {
                             state.startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
                                 if (app && state.nativeBridgeReady) {
+                                    try { if (window._trackAppLaunch) window._trackAppLaunch(app.packageName); } catch(_){}
+                                    try { if (window._flashAppColor) window._flashAppColor(app.packageName); } catch(_){}
                                     try {
                                         let result = JSON.parse(NativeBridge.launchApp(app.packageName));
                                         if (result && !result.success) console.warn('启动失败:', result.error);

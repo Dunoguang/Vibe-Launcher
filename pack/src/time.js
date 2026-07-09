@@ -96,6 +96,11 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             export let enterTimeView = (animate, onComplete) => {
                 if (state.isInTimeView || !state.timeSprite) return;
                 state.isInTimeView = true;
+                // 隐藏 Smart Stack（进入时间视图）
+                try { if (window._hideSmartStack) window._hideSmartStack(); } catch(e) {}
+                // 隐藏状态栏
+                let sb = document.getElementById('status-bar');
+                if (sb) sb.style.display = 'none';
                 state.cancelZoomAnimation();
                 state.rotationAnimData = null;
                 state.inertiaQ.identity();
@@ -127,6 +132,11 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             export let exitTimeView = (animate, callback) => {
                 if (!state.isInTimeView) { NativeBridge.log('EXIT skipped isInTimeView=' + state.isInTimeView); return; }
                 state.isInTimeView = false;
+                // 显示 Smart Stack（退出时间视图 = 进入应用视图）
+                try { if (window._showSmartStack) window._showSmartStack(); } catch(e) {}
+                // 显示状态栏
+                let sb = document.getElementById('status-bar');
+                if (sb) sb.style.display = 'flex';
                 // 隐藏原生时间页面
                 let tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }

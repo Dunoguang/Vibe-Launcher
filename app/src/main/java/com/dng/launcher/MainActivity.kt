@@ -75,7 +75,7 @@ class MainActivity : AppCompatActivity() {
 
     private var webView: WebView? = null
     private var jsBridge: JsBridge? = null
-    private var errorDialogShown = false  // 每次启动重置
+    private var errorDialogShown = false
     private var currentLogFileName: String? = null
 
     private fun getLogFile(): File {
@@ -111,7 +111,6 @@ class MainActivity : AppCompatActivity() {
         setTitle(R.string.in_app_title)
         setContentView(R.layout.activity_main)
 
-        // 沉浸模式：隐藏状态栏和导航栏
         window.setDecorFitsSystemWindows(false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -134,6 +133,9 @@ class MainActivity : AppCompatActivity() {
 
         webView = findViewById(R.id.webView)
         webView?.let { wv ->
+            // Set static reference for notification bridge
+            JsBridge.setWebView(wv)
+
             wv.settings.apply {
                 javaScriptEnabled = true
                 allowFileAccess = true
@@ -161,8 +163,6 @@ class MainActivity : AppCompatActivity() {
                     result.confirm()
                     return true
                 }
-
-
             }
             wv.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) {
@@ -180,37 +180,38 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             val bridge = JsBridge(this, wv); jsBridge = bridge; wv.addJavascriptInterface(bridge, "NativeBridge")
-            // 检查历史崩溃日志
-        filesDir.listFiles()?.filter { it.name.startsWith("crash_") }?.forEach { crashFile ->
-            try {
-                val text = crashFile.readText()
-                runOnUiThread {
-                    AlertDialog.Builder(this)
-                        .setTitle("应用上次异常退出❌")
-                        .setMessage("是否导出或分享崩溃日志？")
-                        .setPositiveButton("导出") { _, _ ->
-                            exportLogLauncher.launch(crashFile.name)
-                        }
-                        .setNeutralButton("分享") { _, _ ->
-                            try {
-                                val text = crashFile.readText()
-                                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Vibe Launcher 崩溃日志")
-                                    putExtra(android.content.Intent.EXTRA_TEXT, text)
-                                }
-                                startActivity(android.content.Intent.createChooser(intent, "分享日志"))
-                            } catch (_: Exception) {}
-                        }
-                        .setNegativeButton("删除") { _, _ ->
-                            crashFile.delete()
-                        }
-                        .show()
-                }
-            } catch (_: Exception) {}
-        }
 
-        val hotReload = prefs.getBoolean("hot_reload_enabled", false)
+            // Crash log check
+            filesDir.listFiles()?.filter { it.name.startsWith("crash_") }?.forEach { crashFile ->
+                try {
+                    val text = crashFile.readText()
+                    runOnUiThread {
+                        AlertDialog.Builder(this)
+                            .setTitle("应用上次异常退出❌")
+                            .setMessage("是否导出或分享崩溃日志？")
+                            .setPositiveButton("导出") { _, _ ->
+                                exportLogLauncher.launch(crashFile.name)
+                            }
+                            .setNeutralButton("分享") { _, _ ->
+                                try {
+                                    val text = crashFile.readText()
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Vibe Launcher 崩溃日志")
+                                        putExtra(android.content.Intent.EXTRA_TEXT, text)
+                                    }
+                                    startActivity(android.content.Intent.createChooser(intent, "分享日志"))
+                                } catch (_: Exception) {}
+                            }
+                            .setNegativeButton("删除") { _, _ ->
+                                crashFile.delete()
+                            }
+                            .show()
+                    }
+                } catch (_: Exception) {}
+            }
+
+            val hotReload = prefs.getBoolean("hot_reload_enabled", false)
             val externalHtml = java.io.File(filesDir, "index.html")
             val loadPath = if (hotReload && externalHtml.exists()) {
                 Log.d(TAG, "loading external index.html from $externalHtml (hot-reload ON)")

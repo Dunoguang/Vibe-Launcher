@@ -43,7 +43,6 @@ import { createSprites } from './sprites.js';
                 try { let r = typeof json === 'string' ? JSON.parse(json) : json;
                     if (r.success) {
                         state._timeBgPath = r.path;
-                        // 用XHR加载本地文件，绕过可能的file://限制
                         let xhr = new XMLHttpRequest();
                         xhr.open('GET', r.path, true);
                         xhr.responseType = 'blob';
@@ -61,7 +60,6 @@ import { createSprites } from './sprites.js';
                             }
                         };
                         xhr.onerror = function() {
-                            // fallback: 直接img.src
                             let img = new Image();
                             img.onload = function() { state._timeBgImg = img; state.updateTimeSpriteBgOnly(true); state.renderTimePageToTexture(); };
                             img.src = r.path;
@@ -81,13 +79,112 @@ import { createSprites } from './sprites.js';
                 timeBgPickBtn.textContent = '选择图片';
                 if (typeof NativeBridge !== 'undefined') NativeBridge.removeTimeBg();
             };
+
+            // ==================== 主题色 ====================
+            let currentThemeColor = '#8ab4f8';
+            try {
+                if (typeof NativeBridge !== 'undefined') {
+                    let tc = JSON.parse(NativeBridge.getThemeColor());
+                    if (tc.success && tc.color) currentThemeColor = tc.color;
+                }
+            } catch(e) {}
+
+            // Apply theme color to CSS variables
+            applyThemeColor(currentThemeColor);
+
+            let colorSwatches = document.querySelectorAll('.color-swatch');
+            colorSwatches.forEach(function(swatch) {
+                if (swatch.getAttribute('data-color') === currentThemeColor) {
+                    swatch.classList.add('active');
+                } else {
+                    swatch.classList.remove('active');
+                }
+                swatch.addEventListener('click', function() {
+                    colorSwatches.forEach(s => s.classList.remove('active'));
+                    swatch.classList.add('active');
+                    currentThemeColor = swatch.getAttribute('data-color');
+                    applyThemeColor(currentThemeColor);
+                });
+            });
+
+            function applyThemeColor(color) {
+                document.documentElement.style.setProperty('--theme-color', color);
+                // Update save button and slider thumbs
+                let saveBtn = document.getElementById('s-save');
+                if (saveBtn) saveBtn.style.background = color;
+            }
+
+            // ==================== 快捷方式管理 ====================
+            let pinnedShortcuts = [];
+            try {
+                if (typeof NativeBridge !== 'undefined') {
+                    let sc = JSON.parse(NativeBridge.getPinnedShortcuts());
+                    if (sc.success && sc.shortcuts) pinnedShortcuts = sc.shortcuts;
+                }
+            } catch(e) {}
+
+            function renderShortcutList() {
+                let listEl = document.getElementById('shortcut-list');
+                let countEl = document.getElementById('shortcut-count');
+                if (!listEl) return;
+
+                let allApps = state.apps || [];
+                // Show all apps with pin status
+                let sorted = allApps.slice().sort(function(a, b) {
+                    let aPinned = pinnedShortcuts.indexOf(a.packageName) >= 0 ? 0 : 1;
+                    let bPinned = pinnedShortcuts.indexOf(b.packageName) >= 0 ? 0 : 1;
+                    return aPinned - bPinned;
+                });
+
+                if (countEl) countEl.textContent = pinnedShortcuts.length + '个已钉选';
+
+                listEl.innerHTML = '';
+                sorted.slice(0, 30).forEach(function(app) {
+                    let isPinned = pinnedShortcuts.indexOf(app.packageName) >= 0;
+                    let item = document.createElement('div');
+                    item.className = 'shortcut-item' + (isPinned ? ' pinned' : '');
+                    let initial = (app.appName || '?').charAt(0).toUpperCase();
+                    item.innerHTML = `
+                        <div class="shortcut-icon">${initial}</div>
+                        <div class="shortcut-name">${app.appName}</div>
+                        <div class="shortcut-pin">${isPinned ? '📌' : '📍'}</div>
+                    `;
+                    item.addEventListener('click', function() {
+                        let idx = pinnedShortcuts.indexOf(app.packageName);
+                        if (idx >= 0) {
+                            pinnedShortcuts.splice(idx, 1);
+                        } else {
+                            pinnedShortcuts.push(app.packageName);
+                        }
+                        renderShortcutList();
+                    });
+                    listEl.appendChild(item);
+                });
+            }
+
+            // Render shortcut list when settings open
+            let _origOpenSettings = window._openSettings;
+            window._openSettings = function() {
+                renderShortcutList();
+                if (_origOpenSettings) _origOpenSettings();
+            };
+
+            // ==================== 通知权限 ====================
+            let notifGrantBtn = document.getElementById('s-notif-grant');
+            if (notifGrantBtn) {
+                notifGrantBtn.addEventListener('click', function() {
+                    if (typeof NativeBridge !== 'undefined') {
+                        NativeBridge.openNotificationSettings();
+                    }
+                });
+            }
+
                 let overlay = document.getElementById('settings-overlay');
                 let backBtn = document.getElementById('settings-close-btn');
                 let saveBtn = document.getElementById('s-save');
                 // Load from localStorage
                 let saved = {};
                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
-                // Setup radio button clicks
                 // Apply saved values
                 let iconInput = document.getElementById('s-icon');
                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
@@ -98,6 +195,8 @@ import { createSprites } from './sprites.js';
                     for (let ri = 0; ri < radios.length; ri++) {
                         if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
                     }
+                    // 应用保存的布局模式到 state
+                    state.layoutMode = saved.layoutMode;
                 }
                 // FPS显示开关
                 let fpsCb = document.getElementById('s-fps');
@@ -107,14 +206,12 @@ import { createSprites } from './sprites.js';
                         state._fpsShow = this.checked;
                         let fpsEl = document.getElementById('fps-counter');
                         if (fpsEl) fpsEl.style.display = this.checked ? 'block' : 'none';
-                        // 即时保存
                         try {
                             let s = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
                             s.showFps = this.checked;
                             localStorage.setItem('vibe-settings', JSON.stringify(s));
                         } catch(e) {}
                     };
-                    // 初始同步
                     if (fpsCb.checked) {
                         state._fpsShow = true;
                         document.getElementById('fps-counter').style.display = 'block';
@@ -125,7 +222,6 @@ import { createSprites } from './sprites.js';
                     state.canvas.style.pointerEvents = 'auto';
                     state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
                         state.zoomLevel = state.defaultZoom;
-                        state.zoomLevel = state.zoomLevel;
                         state.applyZoom();
                     });
                 });
@@ -158,7 +254,7 @@ import { createSprites } from './sprites.js';
                         saveBtn.style.background = '#e67e22';
                         setTimeout(function() {
                             saveBtn.textContent = '保存';
-                            saveBtn.style.background = '#8ab4f8';
+                            saveBtn.style.background = currentThemeColor;
                         }, 2000);
                     }
                     sphereSize = '' + inputR;
@@ -179,11 +275,19 @@ import { createSprites } from './sprites.js';
                         layoutMode: layoutVal,
                         hotReload: hotreloadEnabled,
                         animSpeed: animSpeedVal,
-                        showFps: !!(document.getElementById('s-fps') || {}).checked
+                        showFps: !!(document.getElementById('s-fps') || {}).checked,
+                        themeColor: currentThemeColor,
+                        pinnedShortcuts: pinnedShortcuts,
+                        wallpaperBlur: parseInt(document.getElementById('s-wallpaper-blur')?.value || 0),
+                        wallpaperDim: parseInt(document.getElementById('s-wallpaper-dim')?.value || 0)
                     };
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
                     state.ANIM_DURATION = animSpeedVal;
                     try { NativeBridge.setHotReload(hotreloadEnabled); } catch(e) {}
+                    // Save theme color to native
+                    try { NativeBridge.setThemeColor(currentThemeColor); } catch(e) {}
+                    // Save pinned shortcuts to native
+                    try { NativeBridge.setPinnedShortcuts(JSON.stringify(pinnedShortcuts)); } catch(e) {}
                     // 统一：应用所有更改，无需刷新页面
                     let prevIconRes = state.ICON_RES;
                     state.ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
@@ -192,19 +296,14 @@ import { createSprites } from './sprites.js';
                     state.layoutMode = layoutVal;
                     state.SPHERE_RADIUS = inputR;
                     if (layoutChanged || sphereChanged) {
-                        // 变更布局/球体大小 → 重建所有精灵（球体大小兜底在createSprites内自动计算）
                         createSprites(state.apps, null, true);
-                        // 重建后重置到默认视角
                         state.zoomLevel = state.defaultZoom;
-                        state.zoomLevel = state.zoomLevel;
                         state.applyZoom();
-                        // 重建后重新加载图标
                         if (state.nativeBridgeReady) NativeBridge.clearIconCache();
                         if (window._allPkgs && state.nativeBridgeReady) {
                             NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), state.ICON_RES);
                         }
                     } else {
-                        // 仅分辨率/速度等变化，原地重建纹理
                         if (state.ICON_RES !== prevIconRes) {
                             state.sprites.forEach(function(spr) {
                                 if (spr.userData.isTimeSprite) {
@@ -227,7 +326,6 @@ import { createSprites } from './sprites.js';
                             });
                         }
                         if (state.sphereGroup && inputR > 0) {
-                            // 仅球体大小变化（布局不变），重新分布位置
                             let rawPoints = state.sphereCoulomb(window._totalItems.length, { radius: state.SPHERE_RADIUS, iter: 500 });
                             let timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
                             if (timeIdx >= 0) {
@@ -253,7 +351,6 @@ import { createSprites } from './sprites.js';
                             state.applyZoom();
                         }
                     }
-                    // 纹理重建（布局变更时createSprites已经做了，不需要重复）
                     if (!layoutChanged && !sphereChanged && state.ICON_RES !== prevIconRes) {
                         if (state.nativeBridgeReady) NativeBridge.clearIconCache();
                         state.sprites.forEach(function(spr) { spr.userData.hasRealIcon = false; });
@@ -265,7 +362,7 @@ import { createSprites } from './sprites.js';
                     saveBtn.style.background = '#2ecc71';
                     setTimeout(function() {
                         saveBtn.textContent = '保存';
-                        saveBtn.style.background = '#8ab4f8';
+                        saveBtn.style.background = currentThemeColor;
                     }, 1500);
                 });
             }
