@@ -46,9 +46,9 @@ jobs:
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
             echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/vibe-launcher.p12"
             echo "ANDROID_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/vibe-launcher.p12" >> "$GITHUB_ENV"
-            echo "ANDROID_SIGNING_STORE_PASSWORD=*** >> "$GITHUB_ENV"
+            echo "ANDROID_SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
             echo "ANDROID_SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-            echo "ANDROID_SIGNING_KEY_PASSWORD=*** >> "$GITHUB_ENV"
+            echo "ANDROID_SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
             echo "✅ 签名配置完成 喵～"
           else
             echo "⚠️ 未检测到签名密钥，使用 Debug 签名 喵～"
