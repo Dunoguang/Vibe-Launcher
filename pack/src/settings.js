@@ -195,6 +195,8 @@ import { createSprites } from './sprites.js';
                     for (let ri = 0; ri < radios.length; ri++) {
                         if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
                     }
+                    // 应用保存的布局模式到 state
+                    state.layoutMode = saved.layoutMode;
                 }
                 // FPS显示开关
                 let fpsCb = document.getElementById('s-fps');
