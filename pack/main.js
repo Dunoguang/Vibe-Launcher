@@ -2271,15 +2271,30 @@ let _lastBatteryLevel = -1;
                 try { var r = typeof json === 'string' ? JSON.parse(json) : json;
                     if (r.success) {
                         _timeBgPath = r.path;
-                        var img = new Image();
-                        img.onload = function() {
-                            _timeBgImg = img;
-                            updateTimeSpriteBgOnly();
-                            renderTimePageToTexture();
-                            // 延时重试确保生效
-                            setTimeout(function() { updateTimeSpriteBgOnly(); renderTimePageToTexture(); }, 500);
+                        // 用XHR加载本地文件，绕过可能的file://限制
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('GET', r.path, true);
+                        xhr.responseType = 'blob';
+                        xhr.onload = function() {
+                            if (xhr.status === 0 || xhr.status === 200) {
+                                var url = URL.createObjectURL(xhr.response);
+                                var img = new Image();
+                                img.onload = function() {
+                                    URL.revokeObjectURL(url);
+                                    _timeBgImg = img;
+                                    updateTimeSpriteBgOnly();
+                                    renderTimePageToTexture();
+                                };
+                                img.src = url;
+                            }
                         };
-                        img.src = r.path;
+                        xhr.onerror = function() {
+                            // fallback: 直接img.src
+                            var img = new Image();
+                            img.onload = function() { _timeBgImg = img; updateTimeSpriteBgOnly(); renderTimePageToTexture(); };
+                            img.src = r.path;
+                        };
+                        xhr.send();
                         timeBgPickBtn.textContent = '重新选择';
                     }
                 } catch(e) {}
