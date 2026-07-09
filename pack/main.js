@@ -4,6 +4,7 @@ import { state } from './src/state.js';
 import { sphereCoulomb } from './src/sphere-coulomb.js';
 import { cubicBezier, animateValue, materialEasing, easeOutCubic } from './src/utils.js';
 import { createGearTexture, drawCircleFrame, drawCircleBackground, drawTimeCircleBackground, createPlaceholderTexture, createIconTextureFromImage } from './src/textures.js';
+import { initSettingsPanel } from './src/settings.js';
 import { createSprites, clearAllSprites, tryLoadApps, createDemoApps } from './src/sprites.js';
 import { enterTimeView, exitTimeView, returnToTimeView, syncTimeSpriteTexture, updateTimeSpriteBgOnly, renderTimePageToTexture, createTimeTexture, stopTimeTextureUpdates, scheduleMinuteUpdate, timeTextureUpdateInterval } from './src/time.js';
 import html2canvas from 'html2canvas';
@@ -25,6 +26,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
             const sceneInit = await initScene(loadingEl);
             if (!sceneInit) return;
             const { scene, camera, renderer, rendererType, canvas, sphereGroup } = sceneInit;
+            state.canvas = canvas;
             state.renderer = renderer;
             state.scene = scene;
             state.camera = camera;
@@ -73,6 +75,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
 
             // 旋转动画（用于点击时间图标返回时间视图）
             let rotationAnimData = null;
+            state.rotationAnimData = rotationAnimData;
             const placeholderColors = [
                 '#ff6b6b', '#ff8e72', '#ffa94d', '#ffd43b', '#a9e34b',
                 '#69db7c', '#38d9a9', '#3bc9db', '#4dabf7', '#5c7cfa',
@@ -80,14 +83,16 @@ console.log("IIFE starting, THREE:", typeof THREE);
                 '#ffb8a8', '#ffc078', '#ffe066', '#c0eb75', '#8ce99a',
                 '#63e6be', '#66d9e8', '#74c0fc', '#91a7ff', '#b197fc',
             ];
+            state.placeholderColors = placeholderColors;
 
             let nativeBridgeReady = false;
-            state.nativeBridgeReady = nativeBridgeReady;
+            state.nativeBridgeReady = state.nativeBridgeReady;
             const DRAG_THRESHOLD = 3;
             const prevScreen = new THREE.Vector2();
             const inertiaQ = new THREE.Quaternion();
             state.inertiaQ = inertiaQ;
             let inertiaStrength = 0, infiniteInertia = false;
+            state.infiniteInertia = infiniteInertia;
             const INERTIA_DECAY = 0.975;
             const INERTIA_FAST_DECAY = 0.85;
             const INERTIA_MIN = 0.0005;
@@ -120,7 +125,7 @@ let zoomLevel = computeInitDistance(), defaultZoom = zoomLevel;
             camera.position.set(0, 0, zoomLevel);
 
             function applyZoom() { camera.position.z = zoomLevel; }
-            state.applyZoom = applyZoom;
+            state.applyZoom = function() { camera.position.z = state.zoomLevel; };
             const computeTimeViewZoom = () => {
                 const R = BASE_SCALE * 0.44;
                 const fovHalfRad = THREE.MathUtils.degToRad(camera.fov / 2);
@@ -344,7 +349,8 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 const hint = document.getElementById('sphere-min-hint');
                 if (hint) hint.textContent = '最少 ' + minR.toFixed(2) + '（默认2.5）';
                 return minR;
-            };
+            }
+            state.updateSphereMinHint = updateSphereMinHint;
 
             const rotationQuat = new THREE.Quaternion();
             state.rotationQuat = rotationQuat;
@@ -379,7 +385,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
             const checkHover = (e) => {
                 if (state.isInTimeView) return;
                 raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(sprites);
+                const intersects = raycaster.intersectObjects(state.sprites);
                 let newHovered = null;
                 for (let hi = 0; hi < intersects.length; hi++) {
                     if (intersects[hi].object.userData.isDecor) continue;
@@ -545,7 +551,7 @@ updateMouse(e.clientX, e.clientY);
                             NativeBridge.log("lp-timer-fired");
                             updateMouse(_lpX2, _lpY2);
                             raycaster.setFromCamera(mouse, camera);
-                            let hits = raycaster.intersectObjects(sprites);
+                            let hits = raycaster.intersectObjects(state.sprites);
                             hits = hits.filter(function(h) { return !h.object.userData.isDecor; });
                             let spr = hits.length > 0 ? hits[0].object : null;
                             if (spr) {
@@ -839,9 +845,9 @@ updateMouse(e.clientX, e.clientY);
                             returnToTimeView();
                         } else if (app && !state.isInTimeView) {
                             startCancelableAction(hoveredSprite, targetQuat, appZoom, function() {
-                                if (app && nativeBridgeReady) {
+                                if (app && state.nativeBridgeReady) {
                                     try {
-                                        const result = NativeBridge.launchApp(app.packageName);
+                                        const result = JSON.parse(NativeBridge.launchApp(app.packageName));
                                         if (result && !result.success) console.warn('启动失败:', result.error);
                                     } catch (err) { console.error('启动应用异常:', err); }
                                 }
@@ -1090,6 +1096,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             document.addEventListener('touchstart', wakeUp, { passive: true });
 
             let _texVersion = 0;
+            state.animate = animate;
             const updateBatteryFromNative = () => {
                 try {
                     const bl = JSON.parse(NativeBridge.getBatteryLevel());
@@ -1145,7 +1152,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     });
                 }
                 // 返回前台时检测应用列表变动
-                if (!document.hidden && nativeBridgeReady) {
+                if (!document.hidden && state.nativeBridgeReady) {
                     setTimeout(function() {
                         NativeBridge.requestInstalledApps();
                     }, 500);
@@ -1185,267 +1192,6 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 });
             }
 
-            const initSettingsPanel = () => {
-// ========== 壁纸 ==========
-            const wallpaperPickBtn = document.getElementById('s-wallpaper-pick');
-            const wallpaperRemoveBtn = document.getElementById('s-wallpaper-remove');
-            window._onWallpaperPicked = function(json) {
-                try { var r = typeof json === 'string' ? JSON.parse(json) : json;
-                    if (r.success) {
-                        var cb = '?t=' + Date.now();
-                        document.body.style.backgroundImage = 'url(' + r.path + cb + ')';
-                        document.body.style.backgroundSize = 'cover';
-                        document.body.style.backgroundPosition = 'center';
-                        var img = new Image();
-                        img.onload = function() { _wallpaperImg = img; updateTimeSpriteBgOnly(); };
-                        img.src = r.path;
-                    }
-                } catch(e) {}
-            };
-            (function initWallpaper() {
-                if (typeof NativeBridge !== 'undefined') {
-                    try { var raw = NativeBridge.getWallpaperPath(); var r = JSON.parse(raw);
-                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + '?t=' + Date.now() + ')'; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; wallpaperPickBtn.textContent = '重新选择'; var img = new Image(); img.onload = function() { _wallpaperImg = img; }; img.src = r.path; }
-                    } catch(e) {}
-                }
-            })();
-            wallpaperPickBtn.onclick = function() {
-                console.log('[wallpaper] click');
-                if (typeof NativeBridge !== 'undefined') NativeBridge.pickWallpaper();
-            };
-            wallpaperRemoveBtn.onclick = function() {
-                document.body.style.backgroundImage = 'none';
-                _wallpaperImg = null;
-                updateTimeSpriteBgOnly();
-                renderTimePageToTexture();
-                wallpaperPickBtn.textContent = '选择图片';
-                if (typeof NativeBridge !== 'undefined') NativeBridge.removeWallpaper();
-            };
-
-            // 时间页面背景
-            var timeBgPickBtn = document.getElementById('s-timebg-pick');
-            var timeBgRemoveBtn = document.getElementById('s-timebg-remove');
-            window._onTimeBgPicked = function(json) {
-                try { var r = typeof json === 'string' ? JSON.parse(json) : json;
-                    if (r.success) {
-                        _timeBgPath = r.path;
-                        // 用XHR加载本地文件，绕过可能的file://限制
-                        var xhr = new XMLHttpRequest();
-                        xhr.open('GET', r.path, true);
-                        xhr.responseType = 'blob';
-                        xhr.onload = function() {
-                            if (xhr.status === 0 || xhr.status === 200) {
-                                var url = URL.createObjectURL(xhr.response);
-                                var img = new Image();
-                                img.onload = function() {
-                                    URL.revokeObjectURL(url);
-                                    _timeBgImg = img;
-                                    updateTimeSpriteBgOnly();
-                                    renderTimePageToTexture();
-                                };
-                                img.src = url;
-                            }
-                        };
-                        xhr.onerror = function() {
-                            // fallback: 直接img.src
-                            var img = new Image();
-                            img.onload = function() { _timeBgImg = img; updateTimeSpriteBgOnly(); renderTimePageToTexture(); };
-                            img.src = r.path;
-                        };
-                        xhr.send();
-                        timeBgPickBtn.textContent = '重新选择';
-                    }
-                } catch(e) {}
-            };
-            timeBgPickBtn.onclick = function() {
-                if (typeof NativeBridge !== 'undefined') NativeBridge.pickTimeBg();
-            };
-            timeBgRemoveBtn.onclick = function() {
-                _timeBgImg = null; _timeBgPath = null;
-                updateTimeSpriteBgOnly();
-                renderTimePageToTexture();
-                timeBgPickBtn.textContent = '选择图片';
-                if (typeof NativeBridge !== 'undefined') NativeBridge.removeTimeBg();
-            };
-                const overlay = document.getElementById('settings-overlay');
-                const backBtn = document.getElementById('settings-close-btn');
-                const saveBtn = document.getElementById('s-save');
-
-                // Load from localStorage
-                let saved = {};
-                try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
-
-                // Setup radio button clicks
-// Radio clicks now use inline onclick="setRadio(...)" — see HTML
-
-                // Apply saved values
-                const iconInput = document.getElementById('s-icon');
-                if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
-                const sphereInput = document.getElementById('settings-sphere-input');
-                if (saved.sphereSize && sphereInput) sphereInput.value = parseFloat(saved.sphereSize);
-                if (saved.layoutMode) {
-                    const radios = document.getElementsByName('layoutMode');
-                    for (let ri = 0; ri < radios.length; ri++) {
-                        if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
-                    }
-                }
-
-                backBtn.addEventListener('click', function() {
-                    overlay.style.display = 'none';
-                    canvas.style.pointerEvents = 'auto';
-                    startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
-                        zoomLevel = defaultZoom;
-                        state.zoomLevel = zoomLevel;
-                        applyZoom();
-                    });
-                });
-
-                const clearBtn = document.getElementById('s-clear-cache');
-                clearBtn.addEventListener('click', function() {
-                    if (nativeBridgeReady) {
-                        NativeBridge.clearIconCache();
-                        clearBtn.textContent = '已清除 ✓';
-                        clearBtn.style.background = 'rgba(46,204,113,0.15)';
-                        clearBtn.style.color = '#2ecc71';
-                        setTimeout(() => {
-                            clearBtn.textContent = '清除图标缓存';
-                            clearBtn.style.background = '';
-                            clearBtn.style.color = '';
-                        }, 2000);
-                    }
-                });
-
-                saveBtn.addEventListener('click', function() {
-                    const iconRes = document.getElementById('s-icon');
-                    const sphereSizeInput = document.getElementById('settings-sphere-input');
-                    let sphereSize = sphereSizeInput ? sphereSizeInput.value : '2.5';
-                    // 最小半径校验
-                    const minR = updateSphereMinHint();
-                    let inputR = parseFloat(sphereSize);
-                    if (isNaN(inputR) || inputR <= 0) inputR = 2.5;
-                    if (inputR < minR) {
-                        inputR = minR;
-                        if (sphereSizeInput) sphereSizeInput.value = Math.ceil(minR * 100) / 100;
-                        saveBtn.textContent = '已自动调整至最小 ✓';
-                        saveBtn.style.background = '#e67e22';
-                        setTimeout(function() {
-                            saveBtn.textContent = '保存';
-                            saveBtn.style.background = '#8ab4f8';
-                        }, 2000);
-                    }
-                    sphereSize = '' + inputR;
-                    const layoutRadios = document.getElementsByName('layoutMode');
-                    let layoutVal = 'sphere';
-                    for (let lr = 0; lr < layoutRadios.length; lr++) {
-                        if (layoutRadios[lr].checked) { layoutVal = layoutRadios[lr].value; break; }
-                    }
-                    const animInput = document.getElementById('settings-anim-input');
-                    const animSpeedVal = animInput ? parseInt(animInput.value) || 250 : 250;
-                    if (animSpeedVal < 10) animInput.value = 10;
-                    if (animSpeedVal > 5000) animInput.value = 5000;
-                    const hotreloadCb = document.getElementById('s-hotreload');
-                    const hotreloadEnabled = hotreloadCb ? hotreloadCb.checked : false;
-                    const settings = {
-                        iconRes: iconRes ? iconRes.value : '512',
-                        sphereSize: sphereSize || '2.5',
-                        layoutMode: layoutVal,
-                        hotReload: hotreloadEnabled,
-                        animSpeed: animSpeedVal
-                    };
-                    localStorage.setItem('vibe-settings', JSON.stringify(settings));
-                    ANIM_DURATION = animSpeedVal;
-                    try { NativeBridge.setHotReload(hotreloadEnabled); } catch(e) {}
-
-                    // 统一：应用所有更改，无需刷新页面
-                    const prevIconRes = ICON_RES;
-                    ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
-                    const layoutChanged = layoutMode !== layoutVal;
-                    const sphereChanged = Math.abs(SPHERE_RADIUS - inputR) > 0.001;
-                    layoutMode = layoutVal;
-                    SPHERE_RADIUS = inputR;
-
-                    if (layoutChanged || sphereChanged) {
-                        // 变更布局/球体大小 → 重建所有精灵（球体大小兜底在createSprites内自动计算）
-                        createSprites(apps, null, true);
-                        // 重建后重置到默认视角
-                        zoomLevel = defaultZoom;
-                        state.zoomLevel = zoomLevel;
-                        applyZoom();
-                        // 重建后重新加载图标
-                        if (nativeBridgeReady) NativeBridge.clearIconCache();
-                        if (window._allPkgs && nativeBridgeReady) {
-                            NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
-                        }
-                    } else {
-                        // 仅分辨率/速度等变化，原地重建纹理
-                        if (ICON_RES !== prevIconRes) {
-                            console.log('Rebuilding textures at ICON_RES:', ICON_RES);
-                            sprites.forEach(function(spr) {
-                                if (spr.userData.isTimeSprite) {
-                                    spr.material.map = createTimeTexture();
-                                } else if (spr.userData.app && spr.userData.app.packageName === '__settings__') {
-                                    spr.material.map = createGearTexture();
-                                } else if (spr.userData._iconUrl) {
-                                    (function(s) {
-                                        const img = new Image();
-                                        img.onload = function() {
-                                            s.material.map = createIconTextureFromImage(img);
-                                            s.material.needsUpdate = true;
-                                        };
-                                        img.src = s.userData._iconUrl;
-                                    })(spr);
-                                } else if (spr.userData.color) {
-                                    spr.material.map = createPlaceholderTexture(spr.userData.app.appName, spr.userData.color);
-                                }
-                                spr.material.needsUpdate = true;
-                            });
-                        }
-                        if (sphereGroup && inputR > 0) {
-                            // 仅球体大小变化（布局不变），重新分布位置
-                            let rawPoints = sphereCoulomb(window._totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
-                            const timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
-                            if (timeIdx >= 0) {
-                                const timePos = new THREE.Vector3(rawPoints[timeIdx][0], rawPoints[timeIdx][1], rawPoints[timeIdx][2]);
-                                const alignQ = new THREE.Quaternion().setFromUnitVectors(timePos.clone().normalize(), new THREE.Vector3(0,0,1));
-                                rawPoints = rawPoints.map(function(p) {
-                                    let v = new THREE.Vector3(p[0],p[1],p[2]);
-                                    v.applyQuaternion(alignQ);
-                                    return v;
-                                });
-                                rawPoints.sort(function(a, b) { return b.z - a.z; });
-                            }
-                            for (let k = 0; k < sprites.length; k++) {
-                                if (k < rawPoints.length) {
-                                    sprites[k].position.copy(rawPoints[k]);
-                                }
-                            }
-                            sphereGroup.quaternion.copy(rotationQuat);
-                            SPHERE_DIAMETER = SPHERE_RADIUS * 2;
-                            defaultZoom = computeInitDistance();
-                            timeViewZoom = computeTimeViewZoom();
-                            zoomLevel = defaultZoom;
-                            applyZoom();
-                        }
-                    }
-
-                    // 纹理重建（布局变更时createSprites已经做了，不需要重复）
-                    if (!layoutChanged && !sphereChanged && ICON_RES !== prevIconRes) {
-                        if (nativeBridgeReady) NativeBridge.clearIconCache();
-                        sprites.forEach(function(spr) { spr.userData.hasRealIcon = false; });
-                        if (window._allPkgs && nativeBridgeReady) {
-                            NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), ICON_RES);
-                        }
-                    }
-
-                    saveBtn.textContent = '已保存 ✓';
-                    saveBtn.style.background = '#2ecc71';
-                    setTimeout(function() {
-                        saveBtn.textContent = '保存';
-                        saveBtn.style.background = '#8ab4f8';
-                    }, 1500);
-                });
-            }
-
             function init() {
                 zoomLevel = computeInitDistance();
                 defaultZoom = zoomLevel;
@@ -1460,13 +1206,13 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 if (ctxInfo) ctxInfo.addEventListener('click', function() {
                     const menu = document.getElementById('context-menu');
                     const pkg = menu ? menu.getAttribute('data-pkg') : null;
-                    NativeBridge.log("ctx-info " + pkg); if (pkg && nativeBridgeReady) NativeBridge.log('details-result ' + NativeBridge.openAppDetails(pkg));
+                    NativeBridge.log("ctx-info " + pkg); if (pkg && state.nativeBridgeReady) NativeBridge.log('details-result ' + NativeBridge.openAppDetails(pkg));
                     hideContextMenu();
                 });
                 if (ctxUninstall) ctxUninstall.addEventListener('click', function() {
                     const menu = document.getElementById('context-menu');
                     const pkg = menu ? menu.getAttribute('data-pkg') : null;
-                    NativeBridge.log("ctx-uninstall " + pkg); if (pkg && nativeBridgeReady) NativeBridge.log('uninst-result ' + NativeBridge.uninstallApp(pkg));
+                    NativeBridge.log("ctx-uninstall " + pkg); if (pkg && state.nativeBridgeReady) NativeBridge.log('uninst-result ' + NativeBridge.uninstallApp(pkg));
                     hideContextMenu();
                 });
                 requestAnimationFrame(animate);
