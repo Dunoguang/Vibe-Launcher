@@ -7,22 +7,22 @@ export let timeTextureUpdateInterval = null;
 
             export const updateTimeSpriteBgOnly = function() {
                 state._texVersion++;
-                if (!state.timeSprite || !timeSprite.material) return;
+                if (!state.timeSprite || !state.timeSprite.material) return;
                 var s = Math.max(window.innerWidth, window.innerHeight);
                 var c = document.createElement('canvas');
                 c.width = s; c.height = s;
                 var ctx = c.getContext('2d');
                 var cx = s/2, cy = s/2, r = s * 0.44;
                 drawTimeCircleBackground(ctx, cx, cy, r, s);
-                var oldMap = timeSprite.material.map;
+                var oldMap = state.timeSprite.material.map;
                 var tex = new THREE.CanvasTexture(c);
                 tex.minFilter = THREE.LinearFilter;
                 tex.magFilter = THREE.LinearFilter;
                 if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                timeSprite.material.map = tex;
-                timeSprite.material.needsUpdate = true;
+                state.timeSprite.material.map = tex;
+                state.timeSprite.material.needsUpdate = true;
                 if (oldMap && oldMap !== tex) oldMap.dispose();
-                if (state.renderer) renderer.render(state.scene, state.camera);
+                if (state.renderer) state.renderer.render(state.scene, state.camera);
             };
             // 状态机：DOM可见 → bg-only，DOM隐藏 → full
             export const syncTimeSpriteTexture = function() {
@@ -68,13 +68,13 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             }
 
             export const updateTimeSpriteTexture = () => {
-                if (!state.timeSprite || !timeSprite.material) return;
+                if (!state.timeSprite || !state.timeSprite.material) return;
                 const newTex = createTimeTexture();
-                if (timeSprite.material.map) {
-                    timeSprite.material.map.dispose();
+                if (state.timeSprite.material.map) {
+                    state.timeSprite.material.map.dispose();
                 }
-                timeSprite.material.map = newTex;
-                timeSprite.material.needsUpdate = true;
+                state.timeSprite.material.map = newTex;
+                state.timeSprite.material.needsUpdate = true;
             }
 
             export const scheduleMinuteUpdate = () => {
@@ -117,7 +117,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 state.isInTimeView = true;
                 cancelZoomAnimation();
                 rotationAnimData = null;
-                inertiaQ.identity();
+                state.inertiaQ.identity();
                 state.inertiaStrength = 0;
                 recentSpeeds = [];
                 clearHover();
@@ -158,7 +158,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 topSwipeData = null;
                 document.body.style.cursor = 'grab';
                 if (state.timeSprite) {
-                    timeSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
+                    state.timeSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
                 }
                 _pointerDownCount = 0;
                 const targetZoom = state.defaultZoom;
@@ -183,14 +183,14 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 // 取消当前所有动画
                 cancelZoomAnimation();
                 rotationAnimData = null;
-                inertiaQ.identity();
+                state.inertiaQ.identity();
                 state.inertiaStrength = 0;
                 recentSpeeds = [];
                 clearHover();
                 document.body.style.cursor = 'default';
 
                 // 计算需要旋转的目标四元数：使时间图标正对摄像机
-                const timePos = timeSprite.position.clone();
+                const timePos = state.timeSprite.position.clone();
                 const targetDir = timePos.clone().normalize();
                 const cameraDir = new THREE.Vector3(0, 0, 1);
                 const targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
@@ -228,7 +228,7 @@ let zoomComplete = false, rotationComplete = false;
             // ========== 纹理生成 ==========
             export const renderTimePageToTexture = () => {
                 const page = document.getElementById('time-page');
-                if (!page || !state.timeSprite || !timeSprite.material || typeof html2canvas === 'undefined') return;
+                if (!page || !state.timeSprite || !state.timeSprite.material || typeof html2canvas === 'undefined') return;
                 const s = Math.max(window.innerWidth, window.innerHeight);
                 var ver = ++state._texVersion;
 
@@ -255,13 +255,13 @@ let zoomComplete = false, rotationComplete = false;
                     ctx.restore();
 
                     const ts = new Date(); console.log('TIME-UPDATE ' + ts.getHours().toString().padStart(2,'0') + ':' + ts.getMinutes().toString().padStart(2,'0') + ':' + ts.getSeconds().toString().padStart(2,'0') + ' html2canvas ' + domCanvas.width + 'x' + domCanvas.height);
-                    const oldMap = timeSprite.material.map;
+                    const oldMap = state.timeSprite.material.map;
                     const tex = new THREE.CanvasTexture(texCanvas);
                     tex.minFilter = THREE.LinearFilter;
                     tex.magFilter = THREE.LinearFilter;
                     if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                    timeSprite.material.map = tex;
-                    timeSprite.material.needsUpdate = true;
+                    state.timeSprite.material.map = tex;
+                    state.timeSprite.material.needsUpdate = true;
                     if (oldMap && oldMap !== tex) oldMap.dispose();
                     if (ver !== state._texVersion) { console.log('[TIME-TEX] skip stale (ver=' + ver + ' current=' + state._texVersion + ')'); return; }
                 }).catch(function(e) { console.warn('html2canvas error:', e); if (_wasHidden) page.style.visibility = 'hidden'; });
