@@ -115,19 +115,19 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             export const enterTimeView = (animate, onComplete) => {
                 if (state.isInTimeView || !state.timeSprite) return;
                 state.isInTimeView = true;
-                cancelZoomAnimation();
-                rotationAnimData = null;
+                state.cancelZoomAnimation();
+                state.rotationAnimData = null;
                 state.inertiaQ.identity();
                 state.inertiaStrength = 0;
-                recentSpeeds = [];
-                clearHover();
+                state.recentSpeeds = [];
+                state.clearHover();
                 document.body.style.cursor = 'default';
                 const targetZoom = computeTimeViewZoom();
                 state.timeViewZoom = targetZoom;
                 if (animate) {
-                    startZoomAnimation(targetZoom, ANIM_DURATION, function() {
+                    state.startZoomAnimation(targetZoom, ANIM_DURATION, function() {
                         state.zoomLevel = targetZoom;
-                        applyZoom();
+                        state.applyZoom();
                         if (onComplete) onComplete();
                         // 显示原生时间页面覆盖层（最高分辨率）
                         const tp = document.getElementById('time-page');
@@ -136,7 +136,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     });
                 } else {
                     state.zoomLevel = targetZoom;
-                    applyZoom();
+                    state.applyZoom();
                     if (onComplete) onComplete();
                     const tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; console.log('[TIME-DOM] SHOW'); tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] SHOW'); }
@@ -151,8 +151,8 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 const tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] HIDE'); }
                 syncTimeSpriteTexture()
-                cancelZoomAnimation();
-                rotationAnimData = null;
+                state.cancelZoomAnimation();
+                state.rotationAnimData = null;
                 stopTimeTextureUpdates();
                 bottomSwipeData = null;
                 topSwipeData = null;
@@ -163,14 +163,14 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 _pointerDownCount = 0;
                 const targetZoom = state.defaultZoom;
                 if (animate) {
-                    startZoomAnimation(targetZoom, ANIM_DURATION, function() {
+                    state.startZoomAnimation(targetZoom, ANIM_DURATION, function() {
                         state.zoomLevel = targetZoom;
-                        applyZoom();
+                        state.applyZoom();
                         if (callback) callback();
                     });
                 } else {
                     state.zoomLevel = targetZoom;
-                    applyZoom();
+                    state.applyZoom();
                     if (callback) callback();
                 }
             }
@@ -181,12 +181,12 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 console.log('[TIME-ENTRY] starting returnToTimeView');
                 state.isInTimeView = true;
                 // 取消当前所有动画
-                cancelZoomAnimation();
-                rotationAnimData = null;
+                state.cancelZoomAnimation();
+                state.rotationAnimData = null;
                 state.inertiaQ.identity();
                 state.inertiaStrength = 0;
-                recentSpeeds = [];
-                clearHover();
+                state.recentSpeeds = [];
+                state.clearHover();
                 document.body.style.cursor = 'default';
 
                 // 计算需要旋转的目标四元数：使时间图标正对摄像机
@@ -216,10 +216,10 @@ let zoomComplete = false, rotationComplete = false;
                     checkBothComplete();
                 });
 
-                startZoomAnimation(targetZoom, ANIM_DURATION, function() {
+                state.startZoomAnimation(targetZoom, ANIM_DURATION, function() {
                     console.log('[TIME-ENTRY] zoom done');
                     state.zoomLevel = targetZoom;
-                    applyZoom();
+                    state.applyZoom();
                     zoomComplete = true;
                     checkBothComplete();
                 });

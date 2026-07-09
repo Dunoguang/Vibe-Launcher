@@ -108,6 +108,7 @@ let zoomLevel = computeInitDistance(), defaultZoom = zoomLevel;
             camera.position.set(0, 0, zoomLevel);
 
             function applyZoom() { camera.position.z = zoomLevel; }
+                state.applyZoom = applyZoom;
 
             const computeTimeViewZoom = () => {
                 const R = BASE_SCALE * 0.44;
@@ -169,6 +170,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
 
 
             function startZoomAnimation(targetVal, duration, callback) {
+                state.startZoomAnimation = startZoomAnimation;
                 zoomAnimStart = performance.now();
                 wakeUp();
                 zoomAnimDuration = duration || 250;
@@ -180,6 +182,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             }
 
             function cancelZoomAnimation() {
+                state.cancelZoomAnimation = cancelZoomAnimation;
                 zoomTarget = null;
                 zoomAnimStart = null;
                 zoomAnimDuration = 0;
@@ -627,12 +630,14 @@ updateSphereMinHint();
             }
 
             function checkAllIconsLoaded() {
+                state.checkAllIconsLoaded = checkAllIconsLoaded;
                 if (pendingIconLoads <= 0 && enterAnimationComplete) {
                     loadingEl.style.opacity = '0';
                     setTimeout(function() { loadingEl.textContent = ''; }, 500);
                 }
             }
             function hideLoadingIfReady() {
+                state.hideLoadingIfReady = hideLoadingIfReady;
                 if (loadingEl) {
                     loadingEl.style.display = 'none';
                 }
@@ -1039,6 +1044,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
             }
 
             function clearHover() {
+                state.clearHover = clearHover;
                 if (hoveredSprite && hoveredSprite.userData.baseScale) {
                     hoveredSprite.scale.set(hoveredSprite.userData.baseScale, hoveredSprite.userData.baseScale, 1);
                     hoveredSprite = null;
