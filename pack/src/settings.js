@@ -275,7 +275,9 @@ import { createSprites } from './sprites.js';
                         animSpeed: animSpeedVal,
                         showFps: !!(document.getElementById('s-fps') || {}).checked,
                         themeColor: currentThemeColor,
-                        pinnedShortcuts: pinnedShortcuts
+                        pinnedShortcuts: pinnedShortcuts,
+                        wallpaperBlur: parseInt(document.getElementById('s-wallpaper-blur')?.value || 0),
+                        wallpaperDim: parseInt(document.getElementById('s-wallpaper-dim')?.value || 0)
                     };
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
                     state.ANIM_DURATION = animSpeedVal;

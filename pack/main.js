@@ -29,6 +29,151 @@ if (notifPanel) {
     });
 }
 
+// ==================== 独立状态栏 ====================
+(function initStatusBar() {
+    const bar = document.getElementById('status-bar');
+    if (!bar) return;
+
+    // 显示状态栏
+    bar.style.display = 'flex';
+
+    // 更新时间
+    function updateTime() {
+        const el = document.getElementById('sb-time');
+        if (!el) return;
+        const now = new Date();
+        el.textContent = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    }
+    updateTime();
+    setInterval(updateTime, 10000);
+
+    // 更新电池
+    function updateBattery() {
+        const el = document.getElementById('sb-battery');
+        if (!el) return;
+        try {
+            const bl = JSON.parse(NativeBridge.getBatteryLevel());
+            const ch = JSON.parse(NativeBridge.isCharging());
+            if (bl.success) {
+                el.textContent = (ch.charging ? '⚡' : '🔋') + bl.level + '%';
+            }
+        } catch (e) {}
+    }
+    updateBattery();
+    setInterval(updateBattery, 30000);
+
+    // 更新WiFi状态
+    function updateWifi() {
+        const el = document.getElementById('sb-wifi');
+        if (!el) return;
+        try {
+            const r = JSON.parse(NativeBridge.getWifiEnabled());
+            el.style.opacity = (r.success && r.enabled) ? '1' : '0.3';
+        } catch (e) {}
+    }
+    updateWifi();
+    setInterval(updateWifi, 10000);
+
+    // 更新通知红点
+    window._updateStatusBarNotifDot = function(count) {
+        const dot = document.getElementById('sb-notif-dot');
+        if (dot) dot.style.display = count > 0 ? 'block' : 'none';
+    };
+})();
+
+// ==================== 通知权限弹窗 ====================
+(function initNotifPerm() {
+    const dialog = document.getElementById('notif-perm-dialog');
+    if (!dialog) return;
+
+    // 检查是否已授权
+    try {
+        if (typeof NativeBridge !== 'undefined') {
+            const r = JSON.parse(NativeBridge.isNotificationListenerEnabled());
+            if (r.success && r.enabled) return; // 已授权，不显示
+        }
+    } catch (e) {}
+
+    // 检查是否已跳过
+    try {
+        const skipUntil = localStorage.getItem('notif-perm-skip');
+        if (skipUntil && Date.now() < parseInt(skipUntil)) return;
+    } catch (e) {}
+
+    // 延迟显示弹窗
+    setTimeout(function() {
+        dialog.style.display = 'block';
+    }, 2000);
+
+    window._grantNotifPerm = function() {
+        dialog.style.display = 'none';
+        try {
+            if (typeof NativeBridge !== 'undefined') {
+                NativeBridge.openNotificationSettings();
+            }
+        } catch (e) {}
+    };
+
+    window._dismissNotifPerm = function() {
+        dialog.style.display = 'none';
+        try {
+            localStorage.setItem('notif-perm-skip', '' + (Date.now() + 7 * 24 * 3600 * 1000));
+        } catch (e) {}
+    };
+})();
+
+// ==================== 壁纸模糊/暗度 ====================
+(function initWallpaperEffects() {
+    const blurSlider = document.getElementById('s-wallpaper-blur');
+    const blurVal = document.getElementById('s-wallpaper-blur-val');
+    const dimSlider = document.getElementById('s-wallpaper-dim');
+    const dimVal = document.getElementById('s-wallpaper-dim-val');
+
+    // 读取已保存的设置
+    try {
+        const saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
+        if (saved.wallpaperBlur !== undefined && blurSlider) {
+            blurSlider.value = saved.wallpaperBlur;
+            if (blurVal) blurVal.textContent = saved.wallpaperBlur + 'px';
+        }
+        if (saved.wallpaperDim !== undefined && dimSlider) {
+            dimSlider.value = saved.wallpaperDim;
+            if (dimVal) dimVal.textContent = saved.wallpaperDim + '%';
+        }
+        applyWallpaperEffects(saved.wallpaperBlur || 0, saved.wallpaperDim || 0);
+    } catch (e) {}
+
+    if (blurSlider) {
+        blurSlider.addEventListener('input', function() {
+            const v = parseInt(this.value);
+            if (blurVal) blurVal.textContent = v + 'px';
+            applyWallpaperEffects(v, parseInt(dimSlider ? dimSlider.value : 0));
+        });
+    }
+    if (dimSlider) {
+        dimSlider.addEventListener('input', function() {
+            const v = parseInt(this.value);
+            if (dimVal) dimVal.textContent = v + '%';
+            applyWallpaperEffects(parseInt(blurSlider ? blurSlider.value : 0), v);
+        });
+    }
+
+    function applyWallpaperEffects(blur, dim) {
+        const body = document.body;
+        body.style.backdropFilter = blur > 0 ? 'blur(' + blur + 'px)' : '';
+        body.style.webkitBackdropFilter = blur > 0 ? 'blur(' + blur + 'px)' : '';
+        // 暗度通过覆盖层实现
+        let overlay = document.getElementById('wallpaper-dim-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'wallpaper-dim-overlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:-1';
+            document.body.appendChild(overlay);
+        }
+        overlay.style.background = dim > 0 ? 'rgba(0,0,0,' + (dim / 100) + ')' : '';
+    }
+})();
+
 // ==================== 搜索功能 ====================
 let searchOpen = false;
 let searchDebounce = null;
@@ -55,7 +200,6 @@ function closeSearch() {
 window._openSearch = openSearch;
 window._closeSearch = closeSearch;
 
-// 搜索输入处理
 const searchInput = document.getElementById('search-input');
 if (searchInput) {
     searchInput.addEventListener('input', function() {
@@ -65,63 +209,37 @@ if (searchInput) {
             document.getElementById('search-results').innerHTML = '';
             return;
         }
-        searchDebounce = setTimeout(() => {
-            performSearch(query);
-        }, 150);
+        searchDebounce = setTimeout(() => { performSearch(query); }, 150);
     });
-
     searchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeSearch();
-        }
+        if (e.key === 'Escape') closeSearch();
     });
 }
 
 function performSearch(query) {
     const resultsEl = document.getElementById('search-results');
     if (!resultsEl) return;
-
-    // 搜索本地应用列表
     const items = window._totalItems || [];
     const matches = items.filter(it => {
         if (!it.data) return false;
         const name = (it.data.appName || '').toLowerCase();
         const pkg = (it.data.packageName || '').toLowerCase();
-        const q = query.toLowerCase();
-        return name.includes(q) || pkg.includes(q);
+        return name.includes(query.toLowerCase()) || pkg.includes(query.toLowerCase());
     }).slice(0, 10);
 
     if (matches.length === 0) {
         resultsEl.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.3);font-size:13px">未找到应用</div>';
         return;
     }
-
     resultsEl.innerHTML = '';
     matches.forEach(it => {
         const item = document.createElement('div');
         item.className = 'search-result-item';
         const initial = (it.data.appName || '?').charAt(0).toUpperCase();
-        item.innerHTML = `
-            <div class="search-result-icon">${initial}</div>
-            <div>
-                <div class="search-result-name">${escapeHtmlSearch(it.data.appName)}</div>
-                <div class="search-result-pkg">${it.data.packageName || ''}</div>
-            </div>
-        `;
+        item.innerHTML = '<div class="search-result-icon">' + initial + '</div><div><div class="search-result-name">' + escapeHtmlSearch(it.data.appName) + '</div><div class="search-result-pkg">' + (it.data.packageName || '') + '</div></div>';
         item.addEventListener('click', function() {
-            if (it.data.packageName === '__time__') {
-                closeSearch();
-                return;
-            }
-            if (it.data.packageName === '__settings__') {
-                closeSearch();
-                return;
-            }
-            try {
-                if (typeof NativeBridge !== 'undefined') {
-                    NativeBridge.launchApp(it.data.packageName);
-                }
-            } catch (e) {}
+            if (it.data.packageName === '__time__' || it.data.packageName === '__settings__') { closeSearch(); return; }
+            try { if (typeof NativeBridge !== 'undefined') NativeBridge.launchApp(it.data.packageName); } catch (e) {}
             closeSearch();
         });
         resultsEl.appendChild(item);
@@ -139,61 +257,43 @@ let lastTapTime = 0;
 document.addEventListener('touchend', function(e) {
     const now = Date.now();
     if (now - lastTapTime < 300) {
-        // 双击
-        if (!searchOpen && !e.target.closest('#search-bar') && !e.target.closest('#settings-overlay') && !e.target.closest('#notification-panel') && !e.target.closest('#context-menu')) {
+        if (!searchOpen && !e.target.closest('#search-bar') && !e.target.closest('#settings-overlay') && !e.target.closest('#notification-panel') && !e.target.closest('#context-menu') && !e.target.closest('#status-bar')) {
             openSearch();
         }
     }
     lastTapTime = now;
 });
 
-// ESC 关闭搜索
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && searchOpen) {
-        closeSearch();
-    }
+    if (e.key === 'Escape' && searchOpen) closeSearch();
 });
 
 // ==================== 通知下滑手势 ====================
-// 从屏幕顶部 5% 区域下滑 → 打开通知面板
 (function() {
-    let touchStartY = 0;
-    let touchStartX = 0;
-    let isNotifSwipe = false;
-    const NOTIF_ZONE = 0.05; // 顶部5%区域
+    let touchStartY = 0, touchStartX = 0, isNotifSwipe = false;
+    const NOTIF_ZONE = 0.08;
 
     document.addEventListener('touchstart', function(e) {
         if (e.touches.length !== 1) return;
         const t = e.touches[0];
         if (t.clientY < window.innerHeight * NOTIF_ZONE) {
-            touchStartY = t.clientY;
-            touchStartX = t.clientX;
-            isNotifSwipe = true;
-        } else {
-            isNotifSwipe = false;
-        }
+            touchStartY = t.clientY; touchStartX = t.clientX; isNotifSwipe = true;
+        } else { isNotifSwipe = false; }
     }, { passive: true });
 
     document.addEventListener('touchmove', function(e) {
         if (!isNotifSwipe) return;
         const t = e.touches[0];
-        const dy = t.clientY - touchStartY;
-        const dx = Math.abs(t.clientX - touchStartX);
-        // 下滑超过30px且水平移动不大
-        if (dy > 30 && dx < 50) {
+        if ((t.clientY - touchStartY) > 30 && Math.abs(t.clientX - touchStartX) < 50) {
             isNotifSwipe = false;
             openNotificationPanel();
         }
     }, { passive: true });
 
-    document.addEventListener('touchend', function() {
-        isNotifSwipe = false;
-    }, { passive: true });
+    document.addEventListener('touchend', function() { isNotifSwipe = false; }, { passive: true });
 })();
 
 // 点击搜索栏外部关闭
 document.addEventListener('click', function(e) {
-    if (searchOpen && !e.target.closest('#search-bar') && !e.target.closest('.search-result-item')) {
-        closeSearch();
-    }
+    if (searchOpen && !e.target.closest('#search-bar') && !e.target.closest('.search-result-item')) closeSearch();
 });

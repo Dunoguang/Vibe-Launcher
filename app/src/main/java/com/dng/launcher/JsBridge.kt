@@ -439,6 +439,21 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
+    @JavascriptInterface
+    fun isNotificationListenerEnabled(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val flat = android.provider.Settings.Secure.getString(
+                ctx.contentResolver,
+                "enabled_notification_listeners"
+            ) ?: ""
+            val enabled = flat.contains("com.dng.launcher/VibeNotificationListener")
+            """{"success":true,"enabled":$enabled}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
     // ==================== 快捷方式管理 ====================
 
     @JavascriptInterface

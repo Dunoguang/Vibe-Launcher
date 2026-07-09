@@ -52,6 +52,41 @@
         .app-label.visible {
             opacity: 1;
         }
+        /* ===== 独立状态栏 ===== */
+        #status-bar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+            display: none; align-items: center; justify-content: space-between;
+            padding: 6px 16px; height: 36px;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            pointer-events: auto;
+        }
+        .sb-left { display: flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,0.8) }
+        .sb-right { display: flex; align-items: center; gap: 10px; font-size: 12px; color: rgba(255,255,255,0.7) }
+        .sb-icon { font-size: 14px; cursor: pointer }
+        .sb-notif { position: relative; cursor: pointer }
+        .sb-notif-dot {
+            position: absolute; top: -3px; right: -5px; width: 8px; height: 8px;
+            border-radius: 50%; background: #ff4444; display: none;
+        }
+        #notif-perm-dialog {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 100; display: none;
+            background: rgba(22,22,36,0.96); border-radius: 20px;
+            padding: 28px 24px; width: min(80vw, 320px);
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            backdrop-filter: blur(12px);
+        }
+        #notif-perm-dialog h3 { font-size: 18px; color: #fff; margin-bottom: 12px }
+        #notif-perm-dialog p { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 20px; line-height: 1.5 }
+        .perm-btns { display: flex; gap: 10px }
+        .perm-btns button {
+            flex: 1; padding: 12px; border: none; border-radius: 12px;
+            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .perm-allow { background: #8ab4f8; color: #000 }
+        .perm-later { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5) }
         .loading-indicator {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -240,7 +275,7 @@
     -webkit-appearance:none;width:22px;height:22px;border-radius:50%;
     background:#8ab4f8;cursor:pointer;box-shadow:0 2px 8px rgba(138,180,248,0.4);
 }
-.layout-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.layout-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .layout-card{
     padding:12px 10px;border-radius:10px;text-align:center;cursor:pointer;
     background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.06);
@@ -310,6 +345,27 @@
 </style>
 </head>
 <body>
+    <!-- 独立状态栏 -->
+    <div id="status-bar">
+        <div class="sb-left"><span id="sb-time">12:00</span></div>
+        <div class="sb-right">
+            <span class="sb-icon" id="sb-wifi" onclick="window._qsToggle('wifi')">📶</span>
+            <span class="sb-icon" id="sb-battery">🔋</span>
+            <span class="sb-notif" onclick="window._toggleNotifications()">
+                <span class="sb-icon">🔔</span>
+                <span class="sb-notif-dot" id="sb-notif-dot"></span>
+            </span>
+        </div>
+    </div>
+    <!-- 通知权限弹窗 -->
+    <div id="notif-perm-dialog">
+        <h3>🔔 开启通知</h3>
+        <p>Vibe Launcher 需要通知权限才能在桌面显示通知</p>
+        <div class="perm-btns">
+            <button class="perm-later" onclick="window._dismissNotifPerm()">稍后</button>
+            <button class="perm-allow" onclick="window._grantNotifPerm()">授权</button>
+        </div>
+    </div>
     <div id="time-page" style="
         position:fixed; top:0; left:0; width:100vw; height:100vh;
         visibility:hidden; z-index:-1;
@@ -465,6 +521,16 @@
                     <div class="settings-row">
                         <button id="s-wallpaper-pick" class="settings-btn">选择图片</button>
                         <button id="s-wallpaper-remove" class="settings-btn-danger">移除</button>
+                    </div>
+                    <div class="toggle-desc" style="margin-top:8px">壁纸模糊度</div>
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                        <input id="s-wallpaper-blur" type="range" min="0" max="20" value="0" step="1" class="qs-slider" style="flex:1">
+                        <span id="s-wallpaper-blur-val" class="setting-val">0px</span>
+                    </div>
+                    <div class="toggle-desc" style="margin-top:8px">壁纸暗度</div>
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                        <input id="s-wallpaper-dim" type="range" min="0" max="80" value="0" step="5" class="qs-slider" style="flex:1">
+                        <span id="s-wallpaper-dim-val" class="setting-val">0%</span>
                     </div>
                 </div>
 

@@ -52,6 +52,10 @@ function updateNotificationBadge() {
     } else {
         badge.style.display = 'none';
     }
+    // 同步状态栏红点
+    if (typeof window._updateStatusBarNotifDot === 'function') {
+        window._updateStatusBarNotifDot(count);
+    }
 }
 
 function renderNotificationList() {
