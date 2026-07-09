@@ -186,15 +186,25 @@ class MainActivity : AppCompatActivity() {
                 val text = crashFile.readText()
                 runOnUiThread {
                     AlertDialog.Builder(this)
-                        .setTitle("上次运行异常退出")
-                        .setMessage("检测到崩溃日志：${crashFile.name}\n\n是否导出？")
+                        .setTitle("应用上次异常退出❌")
+                        .setMessage("是否导出或分享崩溃日志？")
                         .setPositiveButton("导出") { _, _ ->
                             exportLogLauncher.launch(crashFile.name)
+                        }
+                        .setNeutralButton("分享") { _, _ ->
+                            try {
+                                val text = crashFile.readText()
+                                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Vibe Launcher 崩溃日志")
+                                    putExtra(android.content.Intent.EXTRA_TEXT, text)
+                                }
+                                startActivity(android.content.Intent.createChooser(intent, "分享日志"))
+                            } catch (_: Exception) {}
                         }
                         .setNegativeButton("删除") { _, _ ->
                             crashFile.delete()
                         }
-                        .setNeutralButton("稍后") { _, _ -> }
                         .show()
                 }
             } catch (_: Exception) {}
