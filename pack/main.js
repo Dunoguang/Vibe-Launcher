@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { initScene } from './src/scene.js';
+import { state } from './src/state.js';
 import html2canvas from 'html2canvas';
 window.THREE = THREE;
 
@@ -88,9 +89,15 @@ console.log("IIFE starting, THREE:", typeof THREE);
             const sceneInit = await initScene(loadingEl);
             if (!sceneInit) return;
             const { scene, camera, renderer, rendererType, canvas, sphereGroup } = sceneInit;
+            state.renderer = renderer;
+            state.scene = scene;
+            state.camera = camera;
+            state.sphereGroup = sphereGroup;
 
             // ========== 常量 ==========
             let SPHERE_RADIUS = 2.5, layoutMode = 'sphere';
+            state.SPHERE_RADIUS = SPHERE_RADIUS;
+            state.layoutMode = layoutMode;
             (function() {
                 try {
                     const _s = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
@@ -100,6 +107,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
             let SPHERE_DIAMETER = SPHERE_RADIUS * 2;
             const BASE_SCALE = 0.52;
             let ICON_RES = 512;
+            state.ICON_RES = ICON_RES;
             try {
                 const _saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
                 if (_saved.iconRes && parseInt(_saved.iconRes) >= 16) ICON_RES = parseInt(_saved.iconRes);
@@ -177,6 +185,9 @@ let zoomLevel = computeInitDistance(), defaultZoom = zoomLevel;
             }
 
 let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = null, timeTextureUpdateInterval = null;
+            state.timeViewZoom = timeViewZoom;
+            state.isInTimeView = isInTimeView;
+            state.timeSprite = timeSprite;
 
             // ========== 可取消动作状态机 ==========
 
@@ -371,6 +382,9 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             // ========== 时间纹理 ==========
             // 壁纸缓存
             let _wallpaperImg = null, _timeBgImg = null, _timeBgPath = null;
+            state._wallpaperImg = _wallpaperImg;
+            state._timeBgImg = _timeBgImg;
+            state._timeBgPath = _timeBgPath;
             (function preloadWallpaper() {
                 if (typeof NativeBridge !== 'undefined') {
                     try { var raw = NativeBridge.getWallpaperPath(); var r = JSON.parse(raw);
@@ -694,6 +708,8 @@ let zoomComplete = false, rotationComplete = false;
 
             // ========== 精灵管理 ==========
 let apps = [], sprites = [];
+            state.sprites = sprites;
+            state.apps = apps;
 
             const updateSphereMinHint = () => {
                 const iconCount = window._totalItems ? window._totalItems.length : (sprites.length || 100);
