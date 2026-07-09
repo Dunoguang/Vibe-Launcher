@@ -180,7 +180,27 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             val bridge = JsBridge(this, wv); jsBridge = bridge; wv.addJavascriptInterface(bridge, "NativeBridge")
-            val hotReload = prefs.getBoolean("hot_reload_enabled", false)
+            // 检查历史崩溃日志
+        filesDir.listFiles()?.filter { it.name.startsWith("crash_") }?.forEach { crashFile ->
+            try {
+                val text = crashFile.readText()
+                runOnUiThread {
+                    AlertDialog.Builder(this)
+                        .setTitle("上次运行异常退出")
+                        .setMessage("检测到崩溃日志：${crashFile.name}\n\n是否导出？")
+                        .setPositiveButton("导出") { _, _ ->
+                            exportLogLauncher.launch(crashFile.name)
+                        }
+                        .setNegativeButton("删除") { _, _ ->
+                            crashFile.delete()
+                        }
+                        .setNeutralButton("稍后") { _, _ -> }
+                        .show()
+                }
+            } catch (_: Exception) {}
+        }
+
+        val hotReload = prefs.getBoolean("hot_reload_enabled", false)
             val externalHtml = java.io.File(filesDir, "index.html")
             val loadPath = if (hotReload && externalHtml.exists()) {
                 Log.d(TAG, "loading external index.html from $externalHtml (hot-reload ON)")
