@@ -76,13 +76,23 @@ class MainActivity : AppCompatActivity() {
     private var webView: WebView? = null
     private var jsBridge: JsBridge? = null
     private var errorDialogShown = false  // 每次启动重置
+    private var currentLogFileName: String? = null
+
+    private fun getLogFile(): File {
+        val name = currentLogFileName ?: run {
+            val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
+            val ts = sdf.format(java.util.Date())
+            "log_$ts.txt"
+        }.also { currentLogFileName = it }
+        return File(filesDir, name)
+    }
 
     private val exportLogLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain")
     ) { uri: Uri? ->
         if (uri != null) {
             try {
-                val logFile = File(filesDir, "log.txt")
+                val logFile = getLogFile()
                 if (logFile.exists()) {
                     contentResolver.openOutputStream(uri)?.use { out ->
                         logFile.inputStream().use { it.copyTo(out) }
@@ -137,7 +147,7 @@ class MainActivity : AppCompatActivity() {
                     val line = "[${msg.messageLevel()}] ${msg.sourceId()}:${msg.lineNumber()} - ${msg.message()}"
                     Log.d(TAG, line)
                     try {
-                        File(filesDir, "log.txt").appendText(line + "\n")
+                        getLogFile().appendText(line + "\n")
                     } catch (_: Exception) {}
 
                     if (msg.messageLevel() == ConsoleMessage.MessageLevel.ERROR && !errorDialogShown) {
@@ -218,14 +228,20 @@ class MainActivity : AppCompatActivity() {
                 exportLogLauncher.launch("vibe-launcher-error-log.txt")
             }
             .setNeutralButton("分享") { _, _ ->
-                val logFile = File(filesDir, "log.txt")
-                val text = if (logFile.exists()) logFile.readText() else "日志为空"
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "Vibe Launcher 错误日志")
-                    putExtra(Intent.EXTRA_TEXT, text)
+                try {
+                    val logFile = getLogFile()
+                    val text = if (logFile.exists()) logFile.readText() else "日志为空"
+                    Log.d(TAG, "Share: logFile exists=${logFile.exists()} size=${logFile.length()}")
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, "Vibe Launcher 错误日志")
+                        putExtra(Intent.EXTRA_TEXT, text)
+                    }
+                    startActivity(Intent.createChooser(intent, "分享日志"))
+                    Log.d(TAG, "Share intent sent successfully")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Share failed: ${e.message}")
                 }
-                startActivity(Intent.createChooser(intent, "分享日志"))
             }
             .setNegativeButton("取消", null)
             .setCancelable(false)
