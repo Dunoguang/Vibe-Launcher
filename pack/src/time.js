@@ -6,8 +6,8 @@ import { drawTimeCircleBackground, drawCircleFrame } from './textures.js';
 export let timeTextureUpdateInterval = null;
 
             export const updateTimeSpriteBgOnly = function() {
-                _texVersion++;
-                if (!timeSprite || !timeSprite.material) return;
+                state._texVersion++;
+                if (!state.timeSprite || !timeSprite.material) return;
                 var s = Math.max(window.innerWidth, window.innerHeight);
                 var c = document.createElement('canvas');
                 c.width = s; c.height = s;
@@ -22,11 +22,11 @@ export let timeTextureUpdateInterval = null;
                 timeSprite.material.map = tex;
                 timeSprite.material.needsUpdate = true;
                 if (oldMap && oldMap !== tex) oldMap.dispose();
-                if (renderer) renderer.render(scene, camera);
+                if (state.renderer) renderer.render(state.scene, state.camera);
             };
             // 状态机：DOM可见 → bg-only，DOM隐藏 → full
             export const syncTimeSpriteTexture = function() {
-                console.log('[TEX-SYNC] called state.isInTimeView=' + state.isInTimeView + ' _backProgress=' + _backProgress);
+                console.log('[TEX-SYNC] called state.isInTimeView=' + state.isInTimeView + ' state._backProgress=' + state._backProgress);
                 var tp = document.getElementById('time-page');
                 if (tp && tp.style.visibility === 'visible') {
                     console.log('[TIME-TEX] bg-only');
@@ -68,7 +68,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             }
 
             export const updateTimeSpriteTexture = () => {
-                if (!timeSprite || !timeSprite.material) return;
+                if (!state.timeSprite || !timeSprite.material) return;
                 const newTex = createTimeTexture();
                 if (timeSprite.material.map) {
                     timeSprite.material.map.dispose();
@@ -113,20 +113,20 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
 
             // ========== 进入/退出时间视图 ==========
             export const enterTimeView = (animate, onComplete) => {
-                if (state.isInTimeView || !timeSprite) return;
+                if (state.isInTimeView || !state.timeSprite) return;
                 state.isInTimeView = true;
                 cancelZoomAnimation();
                 rotationAnimData = null;
                 inertiaQ.identity();
-                inertiaStrength = 0;
+                state.inertiaStrength = 0;
                 recentSpeeds = [];
                 clearHover();
                 document.body.style.cursor = 'default';
                 const targetZoom = computeTimeViewZoom();
-                timeViewZoom = targetZoom;
+                state.timeViewZoom = targetZoom;
                 if (animate) {
                     startZoomAnimation(targetZoom, ANIM_DURATION, function() {
-                        zoomLevel = targetZoom;
+                        state.zoomLevel = targetZoom;
                         applyZoom();
                         if (onComplete) onComplete();
                         // 显示原生时间页面覆盖层（最高分辨率）
@@ -135,7 +135,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                         syncTimeSpriteTexture();
                     });
                 } else {
-                    zoomLevel = targetZoom;
+                    state.zoomLevel = targetZoom;
                     applyZoom();
                     if (onComplete) onComplete();
                     const tp = document.getElementById('time-page');
@@ -157,19 +157,19 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 bottomSwipeData = null;
                 topSwipeData = null;
                 document.body.style.cursor = 'grab';
-                if (timeSprite) {
-                    timeSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
+                if (state.timeSprite) {
+                    timeSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
                 }
                 _pointerDownCount = 0;
-                const targetZoom = defaultZoom;
+                const targetZoom = state.defaultZoom;
                 if (animate) {
                     startZoomAnimation(targetZoom, ANIM_DURATION, function() {
-                        zoomLevel = targetZoom;
+                        state.zoomLevel = targetZoom;
                         applyZoom();
                         if (callback) callback();
                     });
                 } else {
-                    zoomLevel = targetZoom;
+                    state.zoomLevel = targetZoom;
                     applyZoom();
                     if (callback) callback();
                 }
@@ -177,14 +177,14 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
 
             // 点击时间图标返回时间视图
             export const returnToTimeView = () => {
-                if (state.isInTimeView || !timeSprite) { console.log('[TIME-ENTRY] skipped, already in time view or no sprite'); return; }
+                if (state.isInTimeView || !state.timeSprite) { console.log('[TIME-ENTRY] skipped, already in time view or no sprite'); return; }
                 console.log('[TIME-ENTRY] starting returnToTimeView');
                 state.isInTimeView = true;
                 // 取消当前所有动画
                 cancelZoomAnimation();
                 rotationAnimData = null;
                 inertiaQ.identity();
-                inertiaStrength = 0;
+                state.inertiaStrength = 0;
                 recentSpeeds = [];
                 clearHover();
                 document.body.style.cursor = 'default';
@@ -198,7 +198,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 // 同时执行旋转和缩放动画
 let zoomComplete = false, rotationComplete = false;
                 const targetZoom = computeTimeViewZoom();
-                timeViewZoom = targetZoom;
+                state.timeViewZoom = targetZoom;
 
                 const checkBothComplete = () => {
                     console.log('[TIME-ENTRY] checkBothComplete zoom=' + zoomComplete + ' rot=' + rotationComplete);
@@ -218,7 +218,7 @@ let zoomComplete = false, rotationComplete = false;
 
                 startZoomAnimation(targetZoom, ANIM_DURATION, function() {
                     console.log('[TIME-ENTRY] zoom done');
-                    zoomLevel = targetZoom;
+                    state.zoomLevel = targetZoom;
                     applyZoom();
                     zoomComplete = true;
                     checkBothComplete();
@@ -228,9 +228,9 @@ let zoomComplete = false, rotationComplete = false;
             // ========== 纹理生成 ==========
             export const renderTimePageToTexture = () => {
                 const page = document.getElementById('time-page');
-                if (!page || !timeSprite || !timeSprite.material || typeof html2canvas === 'undefined') return;
+                if (!page || !state.timeSprite || !timeSprite.material || typeof html2canvas === 'undefined') return;
                 const s = Math.max(window.innerWidth, window.innerHeight);
-                var ver = ++_texVersion;
+                var ver = ++state._texVersion;
 
                 var _wasHidden = page.style.visibility === 'hidden';
                 page.style.visibility = 'visible';
@@ -263,7 +263,7 @@ let zoomComplete = false, rotationComplete = false;
                     timeSprite.material.map = tex;
                     timeSprite.material.needsUpdate = true;
                     if (oldMap && oldMap !== tex) oldMap.dispose();
-                    if (ver !== _texVersion) { console.log('[TIME-TEX] skip stale (ver=' + ver + ' current=' + _texVersion + ')'); return; }
+                    if (ver !== state._texVersion) { console.log('[TIME-TEX] skip stale (ver=' + ver + ' current=' + state._texVersion + ')'); return; }
                 }).catch(function(e) { console.warn('html2canvas error:', e); if (_wasHidden) page.style.visibility = 'hidden'; });
             }
 let _lastBatteryLevel = -1;
