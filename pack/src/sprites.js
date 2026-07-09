@@ -304,6 +304,24 @@ state.updateSphereMinHint();
                         enterTimeView(true, function() {
                             state.enterAnimationComplete = true;
                             checkAllIconsLoaded();
+                            // 2秒后自动退出时间视图，进入应用桌面
+                            setTimeout(function() {
+                                if (state.isInTimeView) {
+                                    exitTimeView(true, function() {
+                                        // 启动缓慢自转
+                                        state.inertiaStrength = 0.3;
+                                        state.infiniteInertia = true;
+                                        let spinAxis;
+                                        if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
+                                        else if (state.layoutMode === 'waterfall') spinAxis = new THREE.Vector3(0, 0, 1);
+                                        else spinAxis = new THREE.Vector3(1, 0, 0);
+                                        let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.008);
+                                        state.inertiaQ.copy(smallQ);
+                                        // 显示 Smart Stack
+                                        try { if (window._showSmartStack) window._showSmartStack(); } catch(e) {}
+                                    });
+                                }
+                            }, 2000);
                         });
                     }
                 } else {
