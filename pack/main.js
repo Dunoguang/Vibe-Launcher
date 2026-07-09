@@ -77,6 +77,20 @@ console.log("IIFE starting, THREE:", typeof THREE);
 
             // 缩放动画
             let zoomTarget = null, zoomAnimStart = null, zoomAnimDuration = 0, zoomAnimElapsed = 0, zoomAnimStartVal = 0, zoomAnimEndVal = 0, zoomAnimCallback = null;
+            state.zoomTarget = zoomTarget;
+            state.zoomAnimStart = zoomAnimStart;
+            state.zoomAnimDuration = zoomAnimDuration;
+            state.zoomAnimElapsed = zoomAnimElapsed;
+            state.zoomAnimStartVal = zoomAnimStartVal;
+            state.zoomAnimEndVal = zoomAnimEndVal;
+            state.zoomAnimCallback = zoomAnimCallback;
+            state.zoomTarget = state.zoomTarget;
+            state.zoomAnimStart = state.zoomAnimStart;
+            state.zoomAnimDuration = state.zoomAnimDuration;
+            state.zoomAnimElapsed = state.zoomAnimElapsed;
+            state.zoomAnimStartVal = state.zoomAnimStartVal;
+            state.zoomAnimEndVal = state.zoomAnimEndVal;
+            state.zoomAnimCallback = state.zoomAnimCallback;
 
             // 旋转动画（用于点击时间图标返回时间视图）
             let rotationAnimData = null;
@@ -336,7 +350,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                 camera.updateProjectionMatrix();
                 defaultZoom = computeInitDistance();
                 timeViewZoom = computeTimeViewZoom();
-                if (!state.isInTimeView && zoomTarget === null) {
+                if (!state.isInTimeView && state.zoomTarget === null) {
                     zoomLevel = defaultZoom;
                     applyZoom();
                 }
@@ -346,7 +360,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
             let animFrameId = null;
             state.animFrameId = animFrameId
             const isBusy = () => {
-                return !!zoomAnimStart || !!rotationAnimData || inertiaStrength > INERTIA_MIN || isDragging || state._backProgress >= 0;
+                return !!state.zoomAnimStart || !!rotationAnimData || inertiaStrength > INERTIA_MIN || isDragging || state._backProgress >= 0;
             };
             const wakeUp = () => {
                 if (!animFrameId) {
@@ -355,8 +369,8 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
             };
             const animate = (timestamp) => {
                 const now = timestamp || performance.now();
-                updateZoomAnimation(now);
-                updateRotationAnimation(now);
+                state.updateZoomAnimation(now);
+                state.updateRotationAnimation(now);
                 if (inertiaStrength > INERTIA_MIN && !state.isInTimeView && !rotationAnimData) {
                     const decay = (isDragging && hasMoved) ? INERTIA_FAST_DECAY : INERTIA_DECAY;
                     const factor = Math.min(inertiaStrength, 1.0);

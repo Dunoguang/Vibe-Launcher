@@ -23,6 +23,7 @@ import { materialEasing } from './utils.js';
                 const distance = R / (Math.tan(fovHalfRad) * halfDiagonalNDC);
                 return state.SPHERE_RADIUS + distance;
             }
+            state.computeTimeViewZoom = computeTimeViewZoom;
 
             export const startCancelableAction = (sprite, rotTarget, zoomTarget, onCommit) => {
                 cancelSwipeData = null; if (state.cancelableAction) cancelCurrentAction('superseded');
@@ -37,13 +38,14 @@ import { materialEasing } from './utils.js';
                         state.cancelableAction.rotDone = true; tryCommitCancelable();
                     }
                 });
-                state.startZoomAnimation(zoomTarget, state.ANIM_DURATION, function() {
-                    state.zoomLevel = zoomTarget; state.applyZoom();
+                state.startZoomAnimation(state.zoomTarget, state.ANIM_DURATION, function() {
+                    state.zoomLevel = state.zoomTarget; state.applyZoom();
                     if (state.cancelableAction && !state.cancelableAction.cancelled) {
                         state.cancelableAction.zoomDone = true; tryCommitCancelable();
                     }
                 });
             }
+            state.startCancelableAction = startCancelableAction;
 
             export function tryCommitCancelable() {
                 const a = state.cancelableAction;
@@ -54,6 +56,7 @@ import { materialEasing } from './utils.js';
                     if (cb) cb();
                 }
             }
+            state.tryCommitCancelable = tryCommitCancelable;
 
             export function cancelCurrentAction(reason) { cancelSwipeData = null;
                 if (!state.cancelableAction || state.cancelableAction.cancelled) return;
@@ -65,40 +68,44 @@ import { materialEasing } from './utils.js';
                 });
                 state.cancelableAction = null;
             }
+            state.cancelCurrentAction = cancelCurrentAction;
 
             export function startZoomAnimation(targetVal, duration, callback) {
-                zoomAnimStart = performance.now();
+                state.zoomAnimStart = performance.now();
                 state.wakeUp();
-                zoomAnimDuration = duration || 250;
-                zoomAnimStartVal = state.zoomLevel;
-                zoomAnimEndVal = targetVal;
-                zoomAnimElapsed = 0;
-                zoomTarget = targetVal;
-                zoomAnimCallback = callback || null;
+                state.zoomAnimDuration = duration || 250;
+                state.zoomAnimStartVal = state.zoomLevel;
+                state.zoomAnimEndVal = targetVal;
+                state.zoomAnimElapsed = 0;
+                state.zoomTarget = targetVal;
+                state.zoomAnimCallback = callback || null;
             }
+            state.startZoomAnimation = startZoomAnimation;
 
             export function cancelZoomAnimation() {
-                zoomTarget = null;
-                zoomAnimStart = null;
-                zoomAnimDuration = 0;
-                zoomAnimCallback = null;
+                state.zoomTarget = null;
+                state.zoomAnimStart = null;
+                state.zoomAnimDuration = 0;
+                state.zoomAnimCallback = null;
             }
+            state.cancelZoomAnimation = cancelZoomAnimation;
 
             export const updateZoomAnimation = (now) => {
-                if (zoomTarget === null) return;
-                zoomAnimElapsed = now - zoomAnimStart;
-                let t = Math.min(1, zoomAnimElapsed / zoomAnimDuration);
+                if (state.zoomTarget === null) return;
+                state.zoomAnimElapsed = now - state.zoomAnimStart;
+                let t = Math.min(1, state.zoomAnimElapsed / state.zoomAnimDuration);
                 const eased = materialEasing(t);
-                state.zoomLevel = zoomAnimStartVal + (zoomAnimEndVal - zoomAnimStartVal) * eased;
+                state.zoomLevel = state.zoomAnimStartVal + (state.zoomAnimEndVal - state.zoomAnimStartVal) * eased;
                 state.applyZoom();
                 if (t >= 1) {
-                    state.zoomLevel = zoomAnimEndVal;
+                    state.zoomLevel = state.zoomAnimEndVal;
                     state.applyZoom();
-                    const cb = zoomAnimCallback;
+                    const cb = state.zoomAnimCallback;
                     cancelZoomAnimation();
                     if (cb) cb();
                 }
             }
+            state.updateZoomAnimation = updateZoomAnimation;
 
             export const updateRotationAnimation = (now) => {
                 if (!state.rotationAnimData) return;
@@ -115,6 +122,7 @@ import { materialEasing } from './utils.js';
                     if (cb) cb();
                 }
             }
+            state.updateRotationAnimation = updateRotationAnimation;
 
             export function startRotationAnimation(targetQuat, duration, callback) {
                 state.rotationAnimData = {
@@ -131,4 +139,5 @@ import { materialEasing } from './utils.js';
                     callback();
                 }
             }
+            state.startRotationAnimation = startRotationAnimation;
 
