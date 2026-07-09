@@ -162,29 +162,6 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             state.startRotationAnimation = startRotationAnimation;
 
             // ========== 设置纹理 ==========
-            const createGearTexture = () => {
-                console.log('createGearTexture size:', ICON_RES);
-                const s = Math.max(16, ICON_RES), ca = document.createElement('canvas');
-                ca.width = s; ca.height = s;
-                const ctx = ca.getContext('2d'), cx = s/2, cy = s/2, rr = s * 0.44;
-                ctx.fillStyle = '#000000';
-                ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI*2); ctx.fill();
-                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-                ctx.lineWidth = s * 0.012;
-                ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI*2); ctx.stroke();
-                ctx.fillStyle = 'rgba(255,255,255,0.5)';
-                ctx.font = 'bold ' + (s * 0.45) + 'px sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText('⚙', cx, cy);
-                const tex = new THREE.CanvasTexture(ca);
-                tex.minFilter = THREE.LinearFilter;
-                tex.magFilter = THREE.LinearFilter;
-                if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                return tex;
-            }
-
-            // ========== 时间纹理 ==========
-            // 壁纸缓存
             let _wallpaperImg = null, _timeBgImg = null, _timeBgPath = null;
             state._wallpaperImg = _wallpaperImg;
             state._timeBgImg = _timeBgImg;
@@ -204,41 +181,6 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                     }, 100);
                 }
             })();
-
-            const createPlaceholderTexture = (appName, colorHex) => {
-                console.log('createPlaceholderTexture', appName, 'size:', ICON_RES);
-                const s = Math.max(16, ICON_RES),
-                    c = document.createElement('canvas');
-                c.width = s;
-                c.height = s;
-                const ctx = c.getContext('2d'),
-                    cx = s / 2,
-                    cy = s / 2,
-                    r = s * 0.44;
-                ctx.fillStyle = '#000000';
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = colorHex + 'aa';
-                ctx.lineWidth = s * 0.03;
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.stroke();
-                const initial = (appName || '?').charAt(0).toUpperCase();
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold ' + (s * 0.5) + 'px "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.shadowColor = colorHex;
-                ctx.shadowBlur = s * 0.1;
-                ctx.fillText(initial, cx, cy);
-                ctx.shadowBlur = 0;
-                const tex = new THREE.CanvasTexture(c);
-                tex.minFilter = THREE.LinearFilter;
-                tex.magFilter = THREE.LinearFilter;
-                if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                return tex;
-            }
 
             let apps = [], sprites = [];
             state.apps = apps; state.sprites = sprites;
