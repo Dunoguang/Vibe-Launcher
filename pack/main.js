@@ -680,7 +680,7 @@ updateSphereMinHint();
             var _backStartZoom = 0;
             var _backSavedQuat = null;
             window._onBackStarted = function() {
-                console.log('[BACK] onBackStarted isInTimeView=' + isInTimeView);
+                console.log('[BACK] onBackStarted state.isInTimeView=' + state.isInTimeView);
                 var overlay = document.getElementById('settings-overlay');
                 if (overlay && overlay.style.display === 'flex') {
                     _backType = 'settings';
@@ -699,7 +699,7 @@ updateSphereMinHint();
                     if (!animFrameId) animFrameId = requestAnimationFrame(animate);
                     return;
                 }
-                if (!isInTimeView) {
+                if (!state.isInTimeView) {
                     _backProgress = -1;
                     _backType = '';
                     return;
@@ -825,7 +825,7 @@ updateSphereMinHint();
                     });
                     return;
                 }
-                if (_backProgress >= 0 && isInTimeView) {
+                if (_backProgress >= 0 && state.isInTimeView) {
                     var finalP = _backProgress;
                     _backProgress = -1;
                     _backType = '';
@@ -876,7 +876,7 @@ updateSphereMinHint();
                     cancelCurrentAction('back');
                     return;
                 }
-                if (isInTimeView) {
+                if (state.isInTimeView) {
                     exitTimeView(true);
                     return;
                 }
@@ -979,7 +979,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
             function getAppBySprite(s) { return s && s.userData ? s.userData.app : null; }
 
             const checkHover = (e) => {
-                if (isInTimeView) return;
+                if (state.isInTimeView) return;
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects(sprites);
                 let newHovered = null;
@@ -1061,7 +1061,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                 hasMoved = false;
                 bottomSwipeData = null;
                 topSwipeData = null;
-                document.body.style.cursor = isInTimeView ? 'default' : (hoveredSprite ? 'pointer' : 'grab');
+                document.body.style.cursor = state.isInTimeView ? 'default' : (hoveredSprite ? 'pointer' : 'grab');
             }
 
             const isInBottomZone = (clientY) => {
@@ -1073,7 +1073,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
 
             function onPointerDown(e) { try{NativeBridge.log('PDOWN');}catch(e){}
                 // Touch down in time view: hide DOM, start full texture render
-                if (isInTimeView) {
+                if (state.isInTimeView) {
                     var tp = document.getElementById('time-page');
                     if (tp && tp.style.visibility === 'visible' && tp.style.zIndex === '100') {
                         tp.style.visibility = 'hidden'; tp.style.zIndex = '-1';
@@ -1103,13 +1103,13 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                     return;
                 }
                 infiniteInertia = false;
-                if (!isInTimeView && activePointerIds.size === 0 && isInTopZone(e.clientY)) {
+                if (!state.isInTimeView && activePointerIds.size === 0 && isInTopZone(e.clientY)) {
                     topSwipeData = { pointerId: e.pointerId, startY: e.clientY, startZoom: zoomLevel, active: true, confirmed: false, startTimeViewZoom: computeTimeViewZoom() };
                     activePointerIds.add(e.pointerId);
                     cancelZoomAnimation();
                     return;
                 }
-                if (isInTimeView && activePointerIds.size === 0) {
+                if (state.isInTimeView && activePointerIds.size === 0) {
                     if (isInBottomZone(e.clientY)) {
                         bottomSwipeData = {
                             pointerId: e.pointerId,
@@ -1127,7 +1127,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                         return;
                     }
                 }
-                if (isInTimeView) return;
+                if (state.isInTimeView) return;
 
                 activePointerIds.add(e.pointerId);
                 if (activePointerIds.size === 1) {
@@ -1141,7 +1141,7 @@ updateMouse(e.clientX, e.clientY);
                     const _lpX2 = e.clientX, _lpY2 = e.clientY;
                     clearLongPressTimer();
                     longPressFired = false;
-                    if (!isInTimeView) {
+                    if (!state.isInTimeView) {
                         longPressTimer = setTimeout(function() {
                             NativeBridge.log("lp-timer-fired");
                             updateMouse(_lpX2, _lpY2);
@@ -1177,7 +1177,7 @@ updateMouse(e.clientX, e.clientY);
                     cancelCurrentAction('drag'); recentSpeeds = []; hasMoved = false; isDragging = false; return;
                 }
                 updateMouse(e.clientX, e.clientY);
-                if (!isInTimeView && topSwipeData && topSwipeData.active && topSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
+                if (!state.isInTimeView && topSwipeData && topSwipeData.active && topSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
                     const dY = e.clientY - topSwipeData.startY;
                     if (dY > 3 && !topSwipeData.confirmed) topSwipeData.confirmed = true;
                     if (topSwipeData.confirmed || dY > 8) {
@@ -1190,7 +1190,7 @@ updateMouse(e.clientX, e.clientY);
                     }
                     return;
                 }
-                if (isInTimeView && bottomSwipeData && bottomSwipeData.active &&
+                if (state.isInTimeView && bottomSwipeData && bottomSwipeData.active &&
                     bottomSwipeData.pointerId === e.pointerId && activePointerIds.size === 1) {
                     const deltaY = bottomSwipeData.startY - e.clientY;
                     if (deltaY < -5 && e.clientY < bottomSwipeData.minY) {
@@ -1243,9 +1243,9 @@ updateMouse(e.clientX, e.clientY);
                     return;
                 }
 
-                if (!isInTimeView && (!hasMoved || activePointerIds.size !== 1)) checkHover(e);
+                if (!state.isInTimeView && (!hasMoved || activePointerIds.size !== 1)) checkHover(e);
                 // 持续追踪长按目标
-                if (!isDragging || activePointerIds.size !== 1 || isInTimeView) {
+                if (!isDragging || activePointerIds.size !== 1 || state.isInTimeView) {
                     return;
                 }
 
@@ -1287,7 +1287,7 @@ updateMouse(e.clientX, e.clientY);
 
             const onPointerUp = (e) => {
                 if (contextMenuOpen) { activePointerIds.delete(e.pointerId); if (activePointerIds.size===0) document.body.style.cursor='default'; return; }
-                try{NativeBridge.log("PU drag:"+isDragging+" move:"+hasMoved+" hov:"+!!hoveredSprite+" tv:"+isInTimeView);}catch(e){}
+                try{NativeBridge.log("PU drag:"+isDragging+" move:"+hasMoved+" hov:"+!!hoveredSprite+" tv:"+state.isInTimeView);}catch(e){}
                 if (cancelSwipeData && cancelSwipeData.pointerId === e.pointerId && cancelSwipeData.active) {
                     activePointerIds.delete(e.pointerId);
                     const sd = cancelSwipeData; cancelSwipeData = null;
@@ -1336,7 +1336,7 @@ updateMouse(e.clientX, e.clientY);
                     }
                     return;
                 }
-                if (!isInTimeView && topSwipeData && topSwipeData.pointerId === e.pointerId && topSwipeData.active) {
+                if (!state.isInTimeView && topSwipeData && topSwipeData.pointerId === e.pointerId && topSwipeData.active) {
                     activePointerIds.delete(e.pointerId);
                     const sd = topSwipeData; topSwipeData = null;
                     if (sd.confirmed && zoomLevel <= sd.startTimeViewZoom + (defaultZoom - sd.startTimeViewZoom) * 0.5) {
@@ -1346,7 +1346,7 @@ updateMouse(e.clientX, e.clientY);
                     }
                     return;
                 }
-                if (isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId && bottomSwipeData.active) {
+                if (state.isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId && bottomSwipeData.active) {
                     activePointerIds.delete(e.pointerId);
                     const swipeData = bottomSwipeData;
                     bottomSwipeData = null;
@@ -1404,7 +1404,7 @@ updateMouse(e.clientX, e.clientY);
                     hideContextMenu();
                 }
                 if (activePointerIds.size === 0) {
-                    if (isDragging && !hasMoved && hoveredSprite && !isInTimeView && !longPressFired) {
+                    if (isDragging && !hasMoved && hoveredSprite && !state.isInTimeView && !longPressFired) {
                         lastTapOnIcon = true;
                         try { NativeBridge.log('click-detect:' + (getAppBySprite(hoveredSprite)||{}).packageName); } catch(e) {}
                         const a=getAppBySprite(hoveredSprite); try{NativeBridge.log("CLICK:"+(a?a.packageName:"null"));}catch(e){}
@@ -1438,7 +1438,7 @@ updateMouse(e.clientX, e.clientY);
                             });
                         } else if (app && app.packageName === '__time__') {
                             returnToTimeView();
-                        } else if (app && !isInTimeView) {
+                        } else if (app && !state.isInTimeView) {
                             startCancelableAction(hoveredSprite, targetQuat, appZoom, function() {
                                 if (app && nativeBridgeReady) {
                                     try {
@@ -1449,7 +1449,7 @@ updateMouse(e.clientX, e.clientY);
                             });
                         }
                     }
-                    if (isDragging && hasMoved && !isInTimeView) startInertiaFromSpeeds();
+                    if (isDragging && hasMoved && !state.isInTimeView) startInertiaFromSpeeds();
                     isDragging = false;
                     hasMoved = false;
                     document.body.style.cursor = hoveredSprite ? 'pointer' : 'grab';
@@ -1457,10 +1457,10 @@ updateMouse(e.clientX, e.clientY);
             }
 
             const onPointerLeave = (e) => {
-                if (activePointerIds.has(e.pointerId) && activePointerIds.size === 1 && isDragging && !hasMoved && !isInTimeView) {
+                if (activePointerIds.has(e.pointerId) && activePointerIds.size === 1 && isDragging && !hasMoved && !state.isInTimeView) {
                     clearHover();
                 }
-                if (isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId && bottomSwipeData.active) {
+                if (state.isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId && bottomSwipeData.active) {
                     activePointerIds.delete(e.pointerId);
                     const bsd = bottomSwipeData;
                     bottomSwipeData = null;
@@ -1483,7 +1483,7 @@ updateMouse(e.clientX, e.clientY);
 
             const onPointerCancel = (e) => {
                 activePointerIds.delete(e.pointerId);
-                if (isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId) {
+                if (state.isInTimeView && bottomSwipeData && bottomSwipeData.pointerId === e.pointerId) {
                     const bsd = bottomSwipeData;
                     bottomSwipeData = null;
                 topSwipeData = null;
@@ -1505,13 +1505,13 @@ updateMouse(e.clientX, e.clientY);
                     hasMoved = false;
                     clearLongPressTimer();
                     clearHover();
-                    document.body.style.cursor = isInTimeView ? 'default' : 'grab';
+                    document.body.style.cursor = state.isInTimeView ? 'default' : 'grab';
                 }
             }
 
             // ========== 缩放 ==========
             const onWheel = (e) => {
-                if (isInTimeView) return;
+                if (state.isInTimeView) return;
                 if (e.cancelable) e.preventDefault();
                 zoomLevel += e.deltaY * 0.01;
                 zoomLevel = Math.max(MIN_ZOOM, zoomLevel);
@@ -1549,7 +1549,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                         const ratio = pinchStartDist / dist;
                         zoomLevel = pinchStartZoom * ratio;
                         zoomLevel = Math.max(MIN_ZOOM, zoomLevel);
-                        if (isInTimeView) {
+                        if (state.isInTimeView) {
                             zoomLevel = Math.max(timeViewZoom, zoomLevel);
                         }
                         applyZoom();
@@ -1559,7 +1559,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
 
             const onTouchEnd = (e) => {
                 if (e.touches.length < 2) {
-                    if (wasPinching && isInTimeView && zoomLevel > timeViewZoom + 0.15) {
+                    if (wasPinching && state.isInTimeView && zoomLevel > timeViewZoom + 0.15) {
                         const zoomRange = defaultZoom - timeViewZoom;
                         const thresholdZoom = timeViewZoom + zoomRange * exitThresholdRatio;
                         if (zoomLevel >= thresholdZoom) {
@@ -1580,7 +1580,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             // Restore DOM when finger lifts in time view (no exit happened)
             var _pointerDownCount = 0;
             window.addEventListener('pointerup', function onPointerUpTimeView() {
-                if (isInTimeView && !isDragging && activePointerIds.size === 0 && !bottomSwipeData && !topSwipeData) {
+                if (state.isInTimeView && !isDragging && activePointerIds.size === 0 && !bottomSwipeData && !topSwipeData) {
                     var tp = document.getElementById('time-page');
                     if (tp && _pointerDownCount > 0) {
                         tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none';
@@ -1600,7 +1600,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             });
 
             window.addEventListener('touchend', function(e) {
-                if (isInTimeView) return;
+                if (state.isInTimeView) return;
                 if (wasPinching || e.touches.length > 0) return;
                 const now = Date.now();
                 if (now - lastTap < 300 && !isDragging && !lastTapOnIcon && !_prevTapOnIcon) {
@@ -1638,7 +1638,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 camera.updateProjectionMatrix();
                 defaultZoom = computeInitDistance();
                 timeViewZoom = computeTimeViewZoom();
-                if (!isInTimeView && zoomTarget === null) {
+                if (!state.isInTimeView && zoomTarget === null) {
                     zoomLevel = defaultZoom;
                     applyZoom();
                 }
@@ -1658,7 +1658,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 const now = timestamp || performance.now();
                 updateZoomAnimation(now);
                 updateRotationAnimation(now);
-                if (inertiaStrength > INERTIA_MIN && !isInTimeView && !rotationAnimData) {
+                if (inertiaStrength > INERTIA_MIN && !state.isInTimeView && !rotationAnimData) {
                     const decay = (isDragging && hasMoved) ? INERTIA_FAST_DECAY : INERTIA_DECAY;
                     const factor = Math.min(inertiaStrength, 1.0);
                     const applyQ = new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(), inertiaQ, factor);
@@ -1736,7 +1736,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 if (document.hidden) {
                     const tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] HIDE'); }
-                } else if (!document.hidden && !isInTimeView && zoomTarget === null) {
+                } else if (!document.hidden && !state.isInTimeView && zoomTarget === null) {
                     startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
                         zoomLevel = defaultZoom;
                         applyZoom();
@@ -2048,7 +2048,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 timeViewZoom = computeTimeViewZoom();
                 camera.position.set(0, 0, zoomLevel);
                 applyZoom();
-                isInTimeView = false;
+                state.isInTimeView = false;
                 initSettingsPanel();
                 // 上下文菜单事件
                 const ctxInfo = document.getElementById('ctx-app-info');
