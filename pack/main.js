@@ -112,6 +112,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
             state.inertiaQ = inertiaQ;
             let inertiaStrength = 0, infiniteInertia = false;
             state.infiniteInertia = infiniteInertia;
+            state.inertiaStrength = inertiaStrength;
             // INERTIA_DECAY moved to config.js
             // INERTIA_FAST_DECAY moved to config.js
             // INERTIA_MIN moved to config.js
@@ -367,6 +368,7 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                     animFrameId = requestAnimationFrame(animate);
                 }
             };
+            state.wakeUp = wakeUp;
             const animate = (timestamp) => {
                 const now = timestamp || performance.now();
                 state.updateZoomAnimation(now);
