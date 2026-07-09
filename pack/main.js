@@ -1,6 +1,8 @@
 import * as THREE from 'three/webgpu';
 import { initScene } from './src/scene.js';
 import { state } from './src/state.js';
+import { sphereCoulomb } from './src/sphere-coulomb.js';
+import { cubicBezier, animateValue, materialEasing, easeOutCubic } from './src/utils.js';
 import html2canvas from 'html2canvas';
 window.THREE = THREE;
 
@@ -12,76 +14,6 @@ console.log("IIFE starting, THREE:", typeof THREE);
             }
 
             // ========== 球面库仑斥力分布（Thomson 问题）==========
-            const sphereCoulomb = (N, opts = {}) => {
-                const { radius = 1, iter = 400, damp = 0.985, dt = 0.03, tol = 1e-6, soft = 0.01 } = opts;
-                if (N <= 0) return [];
-                if (N === 1) return [[0, 0, radius]];
-
-                const p = Array.from({ length: N }, () => {
-                    const u = Math.random() * 2 - 1,
-                        th = Math.random() * Math.PI * 2;
-                    const r = Math.sqrt(1 - u * u) * radius;
-                    return [r * Math.cos(th), u * radius, r * Math.sin(th)];
-                });
-                const v = Array.from({ length: N }, () => [0, 0, 0]);
-                const f = Array.from({ length: N }, () => [0, 0, 0]);
-
-                for (let t = 0; t < iter; t++) {
-                    for (let i = 0; i < N; i++) f[i][0] = f[i][1] = f[i][2] = 0;
-
-                    for (let i = 0; i < N; i++) {
-                        for (let j = i + 1; j < N; j++) {
-                            const dx = p[i][0] - p[j][0],
-                                dy = p[i][1] - p[j][1],
-                                dz = p[i][2] - p[j][2];
-                            const d2 = dx * dx + dy * dy + dz * dz + soft * soft;
-                            const k = 1 / (d2 * Math.sqrt(d2));
-                            const fx = k * dx,
-                                fy = k * dy,
-                                fz = k * dz;
-                            f[i][0] += fx;
-                            f[i][1] += fy;
-                            f[i][2] += fz;
-                            f[j][0] -= fx;
-                            f[j][1] -= fy;
-                            f[j][2] -= fz;
-                        }
-                    }
-
-                    let maxV = 0;
-                    for (let i = 0; i < N; i++) {
-                        const x = p[i][0],
-                            y = p[i][1],
-                            z = p[i][2];
-                        const len = Math.sqrt(x * x + y * y + z * z);
-                        const nx = x / len,
-                            ny = y / len,
-                            nz = z / len;
-                        const dot = f[i][0] * nx + f[i][1] * ny + f[i][2] * nz;
-                        const ftx = f[i][0] - dot * nx,
-                            fty = f[i][1] - dot * ny,
-                            ftz = f[i][2] - dot * nz;
-
-                        v[i][0] = (v[i][0] + ftx * dt) * damp;
-                        v[i][1] = (v[i][1] + fty * dt) * damp;
-                        v[i][2] = (v[i][2] + ftz * dt) * damp;
-
-                        const spd = Math.sqrt(v[i][0] ** 2 + v[i][1] ** 2 + v[i][2] ** 2);
-                        if (spd > maxV) maxV = spd;
-
-                        let px = x + v[i][0] * dt,
-                            py = y + v[i][1] * dt,
-                            pz = z + v[i][2] * dt;
-                        const plen = Math.sqrt(px * px + py * py + pz * pz);
-                        p[i][0] = px * radius / plen;
-                        p[i][1] = py * radius / plen;
-                        p[i][2] = pz * radius / plen;
-                    }
-                    if (maxV < tol) break;
-                }
-                return p;
-            }
-
             const labelEl = document.getElementById('appLabel');
             const loadingEl = document.getElementById('loadingIndicator');
 
@@ -253,61 +185,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             }
 
             // ====== 三次贝塞尔求解器 ======
-            function cubicBezier(x1, y1, x2, y2) {
-              const ZERO = 1e-6;
-              function sampleCurveX(t) {
-                return ((1 - t) ** 3) * 0 + 3 * ((1 - t) ** 2) * t * x1 + 3 * (1 - t) * (t ** 2) * x2 + (t ** 3) * 1;
-              }
-              function sampleCurveY(t) {
-                return ((1 - t) ** 3) * 0 + 3 * ((1 - t) ** 2) * t * y1 + 3 * (1 - t) * (t ** 2) * y2 + (t ** 3) * 1;
-              }
-              function sampleDerivX(t) {
-                return 3 * ((1 - t) ** 2) * x1 + 6 * (1 - t) * t * (x2 - x1) + 3 * (t ** 2) * (1 - x2);
-              }
-              function solveX(x) {
-                let t2 = x;
-                for (let i = 0; i < 8; i++) {
-                  const x2 = sampleCurveX(t2) - x;
-                  if (Math.abs(x2) < ZERO) return t2;
-                  const d2 = sampleDerivX(t2);
-                  if (Math.abs(d2) < ZERO) break;
-                  t2 -= x2 / d2;
-                }
-                let t0 = 0, t1 = 1;
-                t2 = x;
-                for (let i = 0; i < 8; i++) {
-                  const x2 = sampleCurveX(t2) - x;
-                  if (Math.abs(x2) < ZERO) return t2;
-                  t2 = x2 > 0 ? (t0 = t0, t1 = t2, (t0 + t2) / 2) : (t0 = t2, t1 = t1, (t2 + t1) / 2);
-                }
-                return t2;
-              }
-              return function (t) {
-                if (t <= 0) return 0;
-                if (t >= 1) return 1;
-                return sampleCurveY(solveX(t));
-              };
-            }
-            // ★ Material Design 标准曲线
-            const materialEasing = cubicBezier(0.4, 0.0, 0.2, 1);
-
             // ====== 通用动画函数 ======
-            function animateValue({ from, to, duration, easing, onUpdate, onComplete }) {
-              const start = performance.now();
-              function frame(now) {
-                const t = Math.min((now - start) / duration, 1);
-                const progress = easing(t);
-                const value = from + (to - from) * progress;
-                onUpdate(value);
-                if (t < 1) requestAnimationFrame(frame);
-                else onComplete?.();
-              }
-              requestAnimationFrame(frame);
-            }
-
-            const easeOutCubic = (t) => {
-                return 1 - Math.pow(1 - t, 3);
-            }
 
             const updateZoomAnimation = (now) => {
                 if (zoomTarget === null) return;
