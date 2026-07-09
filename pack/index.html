@@ -164,6 +164,56 @@
         .media-vol { display: flex; align-items: center; gap: 8px; margin-top: 8px }
         .media-vol .qs-slider::-webkit-slider-thumb { background: #8ab4f8; box-shadow: 0 0 8px rgba(138,180,248,0.5) }
         .qs-data { font-size: 12px; color: rgba(255,255,255,0.3); text-align: center; padding: 4px 0 }
+        /* ===== 智能叠放（Smart Stack）===== */
+        #smart-stack {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+            display: none; flex-direction: column;
+            padding: 8px 16px 20px; gap: 8px;
+            pointer-events: auto;
+            max-height: 60vh; overflow-y: auto;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+        #smart-stack.expanded {
+            max-height: 75vh;
+            padding-bottom: 30px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px 20px 0 0;
+        }
+        #smart-stack::-webkit-scrollbar { width: 0 }
+        .stack-indicator {
+            text-align: center; font-size: 12px; color: rgba(255,255,255,0.3);
+            padding: 4px 0; cursor: pointer;
+        }
+        .stack-card {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 16px; border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            cursor: pointer; transition: all 0.25s ease;
+            animation: cardSlideUp 0.3s ease both;
+            min-height: 56px;
+        }
+        .stack-card:active { transform: scale(0.97) }
+        .stack-card.peek { min-height: 48px }
+        .stack-card.expanded { min-height: 52px }
+        @keyframes cardSlideUp {
+            from { transform: translateY(20px); opacity: 0 }
+            to { transform: translateY(0); opacity: 1 }
+        }
+        .card-icon {
+            width: 40px; height: 40px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; flex-shrink: 0;
+        }
+        .card-body { flex: 1; min-width: 0 }
+        .card-title { font-size: 15px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+        .card-subtitle { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px }
+        /* ===== 动态背景 ===== */
+        #dynamic-bg-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -2; pointer-events: none;
+            transition: background 2s ease;
+        }
         #notif-header {
             display: flex; justify-content: space-between; align-items: center;
             padding: 20px 20px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -584,6 +634,8 @@
     <div id="fps-counter" style="position:fixed;top:8px;left:8px;z-index:2147483647;color:#0f0;font-size:16px;font-family:monospace;background:rgba(0,0,0,0.8);padding:4px 8px;border-radius:4px;display:none;pointer-events:none;user-select:none;font-weight:bold">FPS: <span id="fps-value">0</span></div>
     <div class="app-label" id="appLabel"></div>
     <div class="loading-indicator" id="loadingIndicator"></div>
+    <!-- 智能叠放 -->
+    <div id="smart-stack"></div>
     <script type="module" src="/main.js"></script>
 </body>
 </html>

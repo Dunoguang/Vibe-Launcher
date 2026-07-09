@@ -1,9 +1,23 @@
 // === Entry Point ===
 import './src/setup.js';
 import { initNotifications, toggleNotificationPanel, closeNotificationPanel, clearAllNotifications, openNotificationPanel } from './src/notification.js';
+import { initSmartStack, trackAppLaunch } from './src/smartstack.js';
+import { initDynamicBackground, flashAppColor } from './src/dynamic-bg.js';
 
 // 初始化通知系统
 initNotifications();
+
+// 初始化智能叠放
+initSmartStack();
+const stackEl = document.getElementById('smart-stack');
+if (stackEl) stackEl.style.display = 'flex';
+
+// 初始化动态背景
+initDynamicBackground();
+
+// 全局：记录应用启动
+window._trackAppLaunch = trackAppLaunch;
+window._flashAppColor = flashAppColor;
 
 // 全局通知面板控制
 window._toggleNotifications = toggleNotificationPanel;

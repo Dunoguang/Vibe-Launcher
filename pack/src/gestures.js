@@ -453,6 +453,8 @@ state.updateMouse(e.clientX, e.clientY);
                         } else if (app && !state.isInTimeView) {
                             state.startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
                                 if (app && state.nativeBridgeReady) {
+                                    try { if (window._trackAppLaunch) window._trackAppLaunch(app.packageName); } catch(_){}
+                                    try { if (window._flashAppColor) window._flashAppColor(app.packageName); } catch(_){}
                                     try {
                                         let result = JSON.parse(NativeBridge.launchApp(app.packageName));
                                         if (result && !result.success) console.warn('启动失败:', result.error);
