@@ -111,7 +111,7 @@ import { materialEasing } from './utils.js';
                 if (cancelableAction && cancelableAction.phase === 'animating') {
                     state.cancelSwipeData = { pointerId: e.pointerId, startY: e.clientY, startZoom: state.zoomLevel, active: true, confirmed: false, startRot: state.sphereGroup.quaternion.clone() };
                     state.activePointerIds.add(e.pointerId);
-                    cancelZoomAnimation();
+                    state.cancelZoomAnimation();
                     return;
                 }
                 // 菜单打开时：点击画布关闭菜单，不触发拖动
@@ -132,7 +132,7 @@ import { materialEasing } from './utils.js';
                 if (!state.isInTimeView && state.activePointerIds.size === 0 && isInTopZone(e.clientY)) {
                     state.topSwipeData = { pointerId: e.pointerId, startY: e.clientY, startZoom: state.zoomLevel, active: true, confirmed: false, startTimeViewZoom: state.computeTimeViewZoom() };
                     state.activePointerIds.add(e.pointerId);
-                    cancelZoomAnimation();
+                    state.cancelZoomAnimation();
                     return;
                 }
                 if (state.isInTimeView && state.activePointerIds.size === 0) {
@@ -147,7 +147,7 @@ import { materialEasing } from './utils.js';
                         };
                         state.activePointerIds.add(e.pointerId);
                         document.body.style.cursor = 'grabbing';
-                        cancelZoomAnimation();
+                        state.cancelZoomAnimation();
                         return;
                     } else {
                         return;
@@ -326,7 +326,7 @@ state.updateMouse(e.clientX, e.clientY);
                             cancelCurrentAction('swipe');
                         } else if (state.zoomLevel < sd.startZoom && progressDown > 0.35) {
                             // 下滑超过阈值：直接完成展开
-                            cancelZoomAnimation();
+                            state.cancelZoomAnimation();
                             state.startZoomAnimation(cancelableAction.zoomTarget, 150, function() {
                                 state.zoomLevel = cancelableAction.zoomTarget; state.applyZoom();
                                 if (cancelableAction && !cancelableAction.cancelled) {
@@ -561,7 +561,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     clearLongPressTimer();
                     clearHover();
                     state.wasPinching = true;
-                    cancelZoomAnimation();
+                    state.cancelZoomAnimation();
                     state.bottomSwipeData = null;
                 state.topSwipeData = null;
                     state.activePointerIds.clear();

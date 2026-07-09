@@ -4,6 +4,7 @@ import { initScene } from './scene.js';
 import { state } from './state.js';
 import { sphereCoulomb } from './sphere-coulomb.js';
 import { cubicBezier, animateValue, materialEasing, easeOutCubic } from './utils.js';
+state.materialEasing = materialEasing;
 import { createGearTexture, drawCircleFrame, drawCircleBackground, drawTimeCircleBackground, createPlaceholderTexture, createIconTextureFromImage } from './textures.js';
 import { initSettingsPanel } from './settings.js';
 import { checkHover, clearLongPressTimer, showContextMenu, hideContextMenu, clearHover, startInertiaFromSpeeds, resetAllPointers, onPointerDown, onPointerMove, onPointerUp, onPointerLeave, onPointerCancel, onWheel, onTouchStart, onTouchMove, onTouchEnd, getTouchDist, quatAngle, isInBottomZone, isInTopZone } from './gestures.js';
@@ -184,7 +185,7 @@ let isDragging = false, hasMoved = false;
                         }
                     }
                 }
-                renderer.render(scene, camera);
+                state.renderer.render(state.scene, state.camera);
                 if (isBusy()) {
                      state.animFrameId = requestAnimationFrame(animate);
                 } else {
