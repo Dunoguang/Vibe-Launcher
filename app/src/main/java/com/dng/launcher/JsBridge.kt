@@ -70,9 +70,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun requestAppIcons(packageNamesJson: String, iconRes: Int) {
@@ -116,9 +113,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun launchApp(packageName: String): String {
@@ -135,9 +129,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun uninstallApp(packageName: String): String {
@@ -153,9 +144,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun openAppDetails(packageName: String): String {
@@ -172,9 +160,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun getBatteryLevel(): String {
@@ -189,9 +174,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun isCharging(): String {
@@ -219,9 +201,6 @@ class JsBridge(context: Context, webView: WebView) {
     data class IconResult(val packageName: String, val iconUrl: String)
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun goBack(): String {
@@ -236,9 +215,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun clearIconCache(): String {
@@ -251,9 +227,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun setHotReload(enabled: Boolean): String {
@@ -269,9 +242,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun getHotReload() {
@@ -300,9 +270,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun log(msg: String) {
@@ -315,9 +282,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun pickWallpaper() {
@@ -344,9 +308,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun getWallpaperPath(): String {
@@ -361,9 +322,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun removeWallpaper(): String {
@@ -396,9 +354,6 @@ class JsBridge(context: Context, webView: WebView) {
 
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun pickTimeBg() {
@@ -411,9 +366,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun getTimeBgPath(): String {
@@ -428,9 +380,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-    fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
-    }
 
     @JavascriptInterface
     fun removeTimeBg(): String {
