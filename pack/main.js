@@ -5,6 +5,7 @@ import { sphereCoulomb } from './src/sphere-coulomb.js';
 import { cubicBezier, animateValue, materialEasing, easeOutCubic } from './src/utils.js';
 import { createGearTexture, drawCircleFrame, drawCircleBackground, drawTimeCircleBackground, createPlaceholderTexture, createIconTextureFromImage } from './src/textures.js';
 import { initSettingsPanel } from './src/settings.js';
+import { BASE_SCALE, HOVER_SCALE, FOV_RAD, MIN_ZOOM, TOP_ZONE_RATIO, BOTTOM_ZONE_RATIO, DRAG_THRESHOLD, INERTIA_DECAY, INERTIA_FAST_DECAY, INERTIA_MIN, SPEED_SAMPLES, LONG_PRESS_MS } from './src/config.js';
 import { createSprites, clearAllSprites, tryLoadApps, createDemoApps } from './src/sprites.js';
 import { enterTimeView, exitTimeView, returnToTimeView, syncTimeSpriteTexture, updateTimeSpriteBgOnly, renderTimePageToTexture, createTimeTexture, stopTimeTextureUpdates, scheduleMinuteUpdate, timeTextureUpdateInterval } from './src/time.js';
 import html2canvas from 'html2canvas';
@@ -43,16 +44,16 @@ console.log("IIFE starting, THREE:", typeof THREE);
                 } catch(e) {}
             })();
             let SPHERE_DIAMETER = SPHERE_RADIUS * 2;
-            const BASE_SCALE = 0.52;
+            // BASE_SCALE moved to config.js
             let ICON_RES = 512;
             state.ICON_RES = ICON_RES;
             try {
                 const _saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
                 if (_saved.iconRes && parseInt(_saved.iconRes) >= 16) ICON_RES = parseInt(_saved.iconRes);
             } catch(e) {}
-            const HOVER_SCALE = 0.72;
-            const FOV_RAD = THREE.MathUtils.degToRad(50);
-            const MIN_ZOOM = 0.1;
+            // HOVER_SCALE moved to config.js
+            // FOV_RAD moved to config.js
+            // MIN_ZOOM moved to config.js
             
             let ANIM_DURATION = (function() {
         try {
@@ -68,7 +69,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
             state.bottomSwipeData = bottomSwipeData;
             state.topSwipeData = topSwipeData;
             state.cancelSwipeData = cancelSwipeData;
-            const TOP_ZONE_RATIO = 0.15, BOTTOM_ZONE_RATIO = 0.15;
+            // TOP_ZONE_RATIO, BOTTOM_ZONE_RATIO moved to config.js
 
             // 缩放动画
             let zoomTarget = null, zoomAnimStart = null, zoomAnimDuration = 0, zoomAnimElapsed = 0, zoomAnimStartVal = 0, zoomAnimEndVal = 0, zoomAnimCallback = null;
@@ -87,18 +88,18 @@ console.log("IIFE starting, THREE:", typeof THREE);
 
             let nativeBridgeReady = false;
             state.nativeBridgeReady = state.nativeBridgeReady;
-            const DRAG_THRESHOLD = 3;
+            // DRAG_THRESHOLD moved to config.js
             const prevScreen = new THREE.Vector2();
             const inertiaQ = new THREE.Quaternion();
             state.inertiaQ = inertiaQ;
             let inertiaStrength = 0, infiniteInertia = false;
             state.infiniteInertia = infiniteInertia;
-            const INERTIA_DECAY = 0.975;
-            const INERTIA_FAST_DECAY = 0.85;
-            const INERTIA_MIN = 0.0005;
+            // INERTIA_DECAY moved to config.js
+            // INERTIA_FAST_DECAY moved to config.js
+            // INERTIA_MIN moved to config.js
             let recentSpeeds = [];
             state.recentSpeeds = recentSpeeds;
-            const SPEED_SAMPLES = 5;
+            // SPEED_SAMPLES moved to config.js
             const activePointerIds = new Set();
 
             const raycaster = new THREE.Raycaster();
@@ -107,7 +108,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
             let hoveredSprite = null, longPressTimer = null, longPressFired = false, contextMenuOpen = false;
             state.hoveredSprite = hoveredSprite;
             state.longPressTimer = longPressTimer;
-            const LONG_PRESS_MS = 600;
+            // LONG_PRESS_MS moved to config.js
             let lastTap = 0, lastTapX = 0, lastTapY = 0, lastTapOnIcon = false, _prevTapOnIcon = false;
             let _timePageTimer = null;
 
