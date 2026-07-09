@@ -235,7 +235,8 @@ class JsBridge(context: Context, webView: WebView) {
 
     private var currentLogFileName: String? = null
 
-    private fun getLogFile(): java.io.File {
+    private fun getLogFile(): java.io.File? {
+        val ctx = contextRef.get() ?: return null
         val name = currentLogFileName ?: run {
             val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
             val ts = sdf.format(java.util.Date())
@@ -248,7 +249,7 @@ class JsBridge(context: Context, webView: WebView) {
     fun log(msg: String) {
         Log.d("VibeLauncher", "[JS] $msg")
         val ctx = contextRef.get() ?: return
-        val logFile = getLogFile()
+        val logFile = getLogFile() ?: return
         try {
             logFile.appendText(java.time.Instant.now().toString() + " " + msg + "\n")
         } catch (_: Exception) {}
