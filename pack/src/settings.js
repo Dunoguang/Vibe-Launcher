@@ -2,9 +2,7 @@ import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { createGearTexture } from './textures.js';
 import { createSprites } from './sprites.js';
-
             export const initSettingsPanel = () => {
-// ========== 壁纸 ==========
             const wallpaperPickBtn = document.getElementById('s-wallpaper-pick');
             const wallpaperRemoveBtn = document.getElementById('s-wallpaper-remove');
             window._onWallpaperPicked = function(json) {
@@ -28,7 +26,6 @@ import { createSprites } from './sprites.js';
                 }
             })();
             wallpaperPickBtn.onclick = function() {
-                console.log('[wallpaper] click');
                 if (typeof NativeBridge !== 'undefined') NativeBridge.pickWallpaper();
             };
             wallpaperRemoveBtn.onclick = function() {
@@ -39,7 +36,6 @@ import { createSprites } from './sprites.js';
                 wallpaperPickBtn.textContent = '选择图片';
                 if (typeof NativeBridge !== 'undefined') NativeBridge.removeWallpaper();
             };
-
             // 时间页面背景
             var timeBgPickBtn = document.getElementById('s-timebg-pick');
             var timeBgRemoveBtn = document.getElementById('s-timebg-remove');
@@ -88,14 +84,10 @@ import { createSprites } from './sprites.js';
                 const overlay = document.getElementById('settings-overlay');
                 const backBtn = document.getElementById('settings-close-btn');
                 const saveBtn = document.getElementById('s-save');
-
                 // Load from localStorage
                 let saved = {};
                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
-
                 // Setup radio button clicks
-// Radio clicks now use inline onclick="setRadio(...)" — see HTML
-
                 // Apply saved values
                 const iconInput = document.getElementById('s-icon');
                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
@@ -128,7 +120,6 @@ import { createSprites } from './sprites.js';
                         document.getElementById('fps-counter').style.display = 'block';
                     }
                 }
-
                 backBtn.addEventListener('click', function() {
                     overlay.style.display = 'none';
                     state.canvas.style.pointerEvents = 'auto';
@@ -138,7 +129,6 @@ import { createSprites } from './sprites.js';
                         state.applyZoom();
                     });
                 });
-
                 const clearBtn = document.getElementById('s-clear-cache');
                 clearBtn.addEventListener('click', function() {
                     if (state.nativeBridgeReady) {
@@ -153,7 +143,6 @@ import { createSprites } from './sprites.js';
                         }, 2000);
                     }
                 });
-
                 saveBtn.addEventListener('click', function() {
                     const iconRes = document.getElementById('s-icon');
                     const sphereSizeInput = document.getElementById('settings-sphere-input');
@@ -195,7 +184,6 @@ import { createSprites } from './sprites.js';
                     localStorage.setItem('vibe-settings', JSON.stringify(settings));
                     state.ANIM_DURATION = animSpeedVal;
                     try { NativeBridge.setHotReload(hotreloadEnabled); } catch(e) {}
-
                     // 统一：应用所有更改，无需刷新页面
                     const prevIconRes = state.ICON_RES;
                     state.ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
@@ -203,7 +191,6 @@ import { createSprites } from './sprites.js';
                     const sphereChanged = Math.abs(state.SPHERE_RADIUS - inputR) > 0.001;
                     state.layoutMode = layoutVal;
                     state.SPHERE_RADIUS = inputR;
-
                     if (layoutChanged || sphereChanged) {
                         // 变更布局/球体大小 → 重建所有精灵（球体大小兜底在createSprites内自动计算）
                         createSprites(state.apps, null, true);
@@ -219,7 +206,6 @@ import { createSprites } from './sprites.js';
                     } else {
                         // 仅分辨率/速度等变化，原地重建纹理
                         if (state.ICON_RES !== prevIconRes) {
-                            console.log('Rebuilding textures at ICON_RES:', state.ICON_RES);
                             state.sprites.forEach(function(spr) {
                                 if (spr.userData.isTimeSprite) {
                                     spr.material.map = state.createTimeTexture();
@@ -267,7 +253,6 @@ import { createSprites } from './sprites.js';
                             state.applyZoom();
                         }
                     }
-
                     // 纹理重建（布局变更时createSprites已经做了，不需要重复）
                     if (!layoutChanged && !sphereChanged && state.ICON_RES !== prevIconRes) {
                         if (state.nativeBridgeReady) NativeBridge.clearIconCache();
@@ -276,7 +261,6 @@ import { createSprites } from './sprites.js';
                             NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), state.ICON_RES);
                         }
                     }
-
                     saveBtn.textContent = '已保存 ✓';
                     saveBtn.style.background = '#2ecc71';
                     setTimeout(function() {

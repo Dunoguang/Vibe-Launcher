@@ -1,8 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { materialEasing } from './utils.js';
-
-// === Gesture Functions ===
             const checkHover = (e) => {
                 if (state.isInTimeView) return;
                 state.raycaster.setFromCamera(state.mouse, state.camera);
@@ -35,7 +33,6 @@ import { materialEasing } from './utils.js';
                     state.labelEl.style.top = e.clientY + 'px';
                 }
             }
-
             const clearLongPressTimer = () => {
                 if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
                 
@@ -44,7 +41,6 @@ import { materialEasing } from './utils.js';
                 const menu = document.getElementById('context-menu');
                 if (!menu) return;
                 const app = state.getAppBySprite(sprite);
-                NativeBridge.log('menu-open ' + (app?app.packageName:'?') ); if (app) menu.setAttribute('data-pkg', app.packageName);
                 // 定位菜单，保持在屏幕内
                 const mw = 160, mh = 100;
                 const left = Math.min(x, window.innerWidth - mw);
@@ -56,11 +52,9 @@ import { materialEasing } from './utils.js';
             const hideContextMenu = () => {
                 const menu = document.getElementById('context-menu');
                 if (menu) menu.style.display = 'none';
-                NativeBridge.log("menu-closed");
                 state.contextMenuOpen = false;
                 state.longPressFired = false;
             }
-
             function clearHover() {
                 if (state.hoveredSprite && state.hoveredSprite.userData.baseScale) {
                     state.hoveredSprite.scale.set(state.hoveredSprite.userData.baseScale, state.hoveredSprite.userData.baseScale, 1);
@@ -69,9 +63,7 @@ import { materialEasing } from './utils.js';
                 state.labelEl.classList.remove('visible');
             }
             state.clearHover = clearHover;
-
             function quatAngle(q) { return 2 * Math.acos(Math.min(1, Math.abs(q.w))); }
-
             const startInertiaFromSpeeds = () => {
                 if (state.recentSpeeds.length > 0) {
                     let sum = 0;
@@ -80,7 +72,6 @@ import { materialEasing } from './utils.js';
                 } else state.inertiaStrength = 0.6;
                 state.recentSpeeds = [];
             }
-
             const resetAllPointers = () => {
                 state.activePointerIds.clear();
                 state.isDragging = false;
@@ -89,16 +80,13 @@ import { materialEasing } from './utils.js';
                 state.topSwipeData = null;
                 document.body.style.cursor = state.isInTimeView ? 'default' : (state.hoveredSprite ? 'pointer' : 'grab');
             }
-
             const isInBottomZone = (clientY) => {
                 return clientY > window.innerHeight * (1 - state.BOTTOM_ZONE_RATIO);
             }
             const isInTopZone = (clientY) => {
                 return clientY < window.innerHeight * state.TOP_ZONE_RATIO;
             }
-
-            function onPointerDown(e) { try{NativeBridge.log('PDOWN');}catch(e){}
-                // No longer hide DOM on touch - always show bg-only texture
+            function onPointerDown(e) {                 // No longer hide DOM on touch - always show bg-only texture
                 // 可取消动作进行中：上滑跟手取消
                 if (state.cancelableAction && state.cancelableAction.phase === 'animating') {
                     state.cancelSwipeData = { pointerId: e.pointerId, startY: e.clientY, startZoom: state.zoomLevel, active: true, confirmed: false, startRot: state.sphereGroup.quaternion.clone() };
@@ -146,7 +134,6 @@ import { materialEasing } from './utils.js';
                     }
                 }
                 if (state.isInTimeView) return;
-
                 state.activePointerIds.add(e.pointerId);
                 if (state.activePointerIds.size === 1) {
                     state.isDragging = true;
@@ -161,7 +148,6 @@ state.updateMouse(e.clientX, e.clientY);
                     state.longPressFired = false;
                     if (!state.isInTimeView) {
                         state.longPressTimer = setTimeout(function() {
-                            NativeBridge.log("lp-timer-fired");
                             state.updateMouse(_lpX2, _lpY2);
                             state.raycaster.setFromCamera(state.mouse, state.camera);
                             let hits = state.raycaster.intersectObjects(state.sprites);
@@ -187,7 +173,6 @@ state.updateMouse(e.clientX, e.clientY);
                     document.body.style.cursor = 'grab';
                 }
             }
-
             const onPointerMove = (e) => {
                 if (state.contextMenuOpen) { state.activePointerIds.delete(e.pointerId); return; }
                 // 可取消动作进行中 + 拖动 = 取消
@@ -220,7 +205,7 @@ state.updateMouse(e.clientX, e.clientY);
                     if (state.bottomSwipeData.confirmed || deltaY > 8) {
                         state.bottomSwipeData.confirmed = true;
                         // 有上滑意图: 立即隐藏原生DOM
-                        console.log('[TIME-SWIPE] exit intent'); const tp = document.getElementById('time-page');
+                        const tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; }
                         state.syncTimeSpriteTexture();
                         const screenH = window.innerHeight;
@@ -260,13 +245,11 @@ state.updateMouse(e.clientX, e.clientY);
                     state.applyZoom();
                     return;
                 }
-
                 if (!state.isInTimeView && (!state.hasMoved || state.activePointerIds.size !== 1)) checkHover(e);
                 // 持续追踪长按目标
                 if (!state.isDragging || state.activePointerIds.size !== 1 || state.isInTimeView) {
                     return;
                 }
-
                 const curr = new THREE.Vector2(e.clientX, e.clientY);
                 const dist = Math.sqrt(state.prevScreen.distanceToSquared(curr));
                 if (!state.hasMoved && dist > state.DRAG_THRESHOLD) {
@@ -302,11 +285,9 @@ state.updateMouse(e.clientX, e.clientY);
                 state.inertiaQ.copy(deltaQ);
                 state.prevScreen.copy(curr);
             }
-
             const onPointerUp = (e) => {
                 if (state.contextMenuOpen) { state.activePointerIds.delete(e.pointerId); if (state.activePointerIds.size===0) document.body.style.cursor='default'; return; }
-                try{NativeBridge.log("PU drag:"+state.isDragging+" move:"+state.hasMoved+" hov:"+!!state.hoveredSprite+" tv:"+state.isInTimeView);}catch(e){}
-                if (state.cancelSwipeData && state.cancelSwipeData.pointerId === e.pointerId && state.cancelSwipeData.active) {
+                                if (state.cancelSwipeData && state.cancelSwipeData.pointerId === e.pointerId && state.cancelSwipeData.active) {
                     state.activePointerIds.delete(e.pointerId);
                     const sd = state.cancelSwipeData; state.cancelSwipeData = null;
                     if (sd.confirmed && state.cancelableAction && !state.cancelableAction.cancelled) {
@@ -359,10 +340,20 @@ state.updateMouse(e.clientX, e.clientY);
                     const sd = state.topSwipeData; state.topSwipeData = null;
                     if (sd.confirmed && state.zoomLevel <= sd.startTimeViewZoom + (state.defaultZoom - sd.startTimeViewZoom) * 0.5) {
                         state.returnToTimeView();
+                        return;
                     } else {
                         state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() { state.zoomLevel = state.defaultZoom; state.applyZoom(); });
+                        state.isDragging = true;
+                        state.hasMoved = false;
+                        state.updateMouse(e.clientX, e.clientY);
+                        state.raycaster.setFromCamera(state.mouse, state.camera);
+                        let hits = state.raycaster.intersectObjects(state.sprites);
+                        hits = hits.filter(function(h) { return !h.object.userData.isDecor; });
+                        if (hits.length > 0) {
+                            state.hoveredSprite = hits[0].object;
+                        } else {
+                        }
                     }
-                    return;
                 }
                 if (state.isInTimeView && state.bottomSwipeData && state.bottomSwipeData.pointerId === e.pointerId && state.bottomSwipeData.active) {
                     state.activePointerIds.delete(e.pointerId);
@@ -390,7 +381,7 @@ state.updateMouse(e.clientX, e.clientY);
                                 state.applyZoom();
                                 // 恢复原生时间覆盖层
                                 const tp = document.getElementById('time-page');
-                                if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; console.log('[TIME-DOM] SHOW'); }
+                                if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
                                 state.syncTimeSpriteTexture();
                             });
                         }
@@ -400,12 +391,12 @@ state.updateMouse(e.clientX, e.clientY);
                                 state.zoomLevel = state.timeViewZoom;
                                 state.applyZoom();
                                 const tp = document.getElementById('time-page');
-                                if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; console.log('[TIME-DOM] SHOW'); }
+                                if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
                                 state.syncTimeSpriteTexture();
                             });
                         } else {
                             const tp = document.getElementById('time-page');
-                            if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; console.log('[TIME-DOM] SHOW'); }
+                            if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
                         }
                     }
                     if (state.activePointerIds.size === 0) {
@@ -413,7 +404,6 @@ state.updateMouse(e.clientX, e.clientY);
                     }
                     return;
                 }
-
                 state.activePointerIds.delete(e.pointerId);
                 clearLongPressTimer();
                 // 点击菜单外部时关闭
@@ -424,16 +414,13 @@ state.updateMouse(e.clientX, e.clientY);
                 if (state.activePointerIds.size === 0) {
                     if (state.isDragging && !state.hasMoved && state.hoveredSprite && !state.isInTimeView && !state.longPressFired) {
                         state.lastTapOnIcon = true;
-                        try { NativeBridge.log('click-detect:' + (state.getAppBySprite(state.hoveredSprite)||{}).packageName); } catch(e) {}
-                        const a=state.getAppBySprite(state.hoveredSprite); try{NativeBridge.log("CLICK:"+(a?a.packageName:"null"));}catch(e){}
-                        const app = state.getAppBySprite(state.hoveredSprite);
+                                                                        const app = state.getAppBySprite(state.hoveredSprite);
                         const targetDir = state.hoveredSprite.position.clone().normalize();
                         const targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
                         const appZoom = state.computeTimeViewZoom();
                         if (app && app.packageName === '__settings__') {
                             window._lastSettingsClick = Date.now();
-                            try { NativeBridge.log('settings clicked'); } catch(e) {}
-                            state.startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
+                                                        state.startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
                                 let saved = {};
                                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
                                 const iconInput = document.getElementById('s-icon');
@@ -473,7 +460,6 @@ state.updateMouse(e.clientX, e.clientY);
                     document.body.style.cursor = state.hoveredSprite ? 'pointer' : 'grab';
                 }
             }
-
             const onPointerLeave = (e) => {
                 if (state.activePointerIds.has(e.pointerId) && state.activePointerIds.size === 1 && state.isDragging && !state.hasMoved && !state.isInTimeView) {
                     clearHover();
@@ -498,7 +484,6 @@ state.updateMouse(e.clientX, e.clientY);
                     document.body.style.cursor = 'default';
                 }
             }
-
             const onPointerCancel = (e) => {
                 state.activePointerIds.delete(e.pointerId);
                 if (state.isInTimeView && state.bottomSwipeData && state.bottomSwipeData.pointerId === e.pointerId) {
@@ -526,7 +511,6 @@ state.updateMouse(e.clientX, e.clientY);
                     document.body.style.cursor = state.isInTimeView ? 'default' : 'grab';
                 }
             }
-
             // ========== 缩放 ==========
             const onWheel = (e) => {
                 if (state.isInTimeView) return;
@@ -535,15 +519,12 @@ state.updateMouse(e.clientX, e.clientY);
                 state.zoomLevel = Math.max(state.MIN_ZOOM, state.zoomLevel);
                 state.applyZoom();
             }
-
 let pinchStartDist = 0, pinchStartZoom = state.zoomLevel, wasPinching = false;
             state.wasPinching = wasPinching;
-
             const getTouchDist = (touches) => {
 let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touches[1].clientY;
                 return Math.sqrt(dx * dx + dy * dy);
             }
-
             const onTouchStart = (e) => {
                 if (e.touches.length === 2) {
                     pinchStartDist = getTouchDist(e.touches);
@@ -559,7 +540,6 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     state.activePointerIds.clear();
                 }
             }
-
             const onTouchMove = (e) => {
                 if (e.touches.length === 2) {
                     if (e.cancelable) e.preventDefault();
@@ -575,7 +555,6 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     }
                 }
             }
-
             const onTouchEnd = (e) => {
                 // ====== 双击复位检测 ======
                 if (!state.isInTimeView && !state.wasPinching && e.touches.length === 0) {
@@ -592,7 +571,6 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                                 return;
                             }
                         }
-                        console.log('[DT] DOUBLE TAP RESET');
                         state.rotationQuat.identity();
                         state.sphereGroup.quaternion.identity();
                         state.inertiaQ.identity();
@@ -621,10 +599,8 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                         }
                     }
                     pinchStartDist = 0;
-                    if (wasPinching) setTimeout(async function() { state.wasPinching = false; }, 400);
+                    state.wasPinching = false;
                 }
             }
-
             
-
 export { checkHover, clearLongPressTimer, showContextMenu, hideContextMenu, clearHover, startInertiaFromSpeeds, resetAllPointers, onPointerDown, onPointerMove, onPointerUp, onPointerLeave, onPointerCancel, onWheel, onTouchStart, onTouchMove, onTouchEnd, getTouchDist, quatAngle, isInBottomZone, isInTopZone };

@@ -3,7 +3,6 @@ import { state } from './state.js';
 import { sphereCoulomb } from './sphere-coulomb.js';
 import { createGearTexture, createPlaceholderTexture, createIconTextureFromImage, drawCircleFrame, drawTimeCircleBackground } from './textures.js';
 import { enterTimeView, exitTimeView, createTimeTexture, syncTimeSpriteTexture, scheduleMinuteUpdate, stopTimeTextureUpdates } from './time.js';
-
             export const clearAllSprites = () => {
                 stopTimeTextureUpdates();
                 for (let i = 0; i < state.sprites.length; i++) {
@@ -18,13 +17,10 @@ import { enterTimeView, exitTimeView, createTimeTexture, syncTimeSpriteTexture, 
                 state.timeSprite = null;
                 state.timeSprite = null;
             }
-
 state.pendingIconLoads = 0;
 state.enterAnimationComplete = false;
-
             export const createSprites = (appList, iconMap, skipEnter) => {
                 clearAllSprites();
-
                 const totalItems = [];
 window._totalItems = totalItems;
                 totalItems.push({
@@ -44,12 +40,10 @@ window._totalItems = totalItems;
                         colorIndex: i + 2
                     });
                 }
-
                 const isHemi = (state.layoutMode === 'hemisphere');
                 const isRing = (state.layoutMode === 'ring');
                 const isHbar = (state.layoutMode === 'hbar');
                 const isFlatring = (state.layoutMode === 'flatring');
-
                 // 半球模式：复制透明占位精灵填充后半球
                 if (isHemi) {
                     const bc = totalItems.length;
@@ -61,7 +55,6 @@ window._totalItems = totalItems;
                         });
                     }
                 }
-
                 const N = totalItems.length;
                 let ringRadius = 0;
                 if (isRing || isHbar || isFlatring) {
@@ -73,16 +66,13 @@ window._totalItems = totalItems;
                     state.zoomLevel = state.defaultZoom;
                     state.applyZoom();
                 }
-
                 let rawPoints = sphereCoulomb(N, { radius: state.SPHERE_RADIUS, iter: 500 });
-
                 const timeItemIndex = totalItems.findIndex(function(item) { return item.type === 'time'; });
                 const timeRaw = rawPoints[timeItemIndex];
                 const timePos = new THREE.Vector3(timeRaw[0], timeRaw[1], timeRaw[2]);
                 const targetDir = timePos.clone().normalize();
                 const cameraDir = new THREE.Vector3(0, 0, 1);
                 const alignQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
-
                 let allRotated;
                 if (isRing) {
                     allRotated = [];
@@ -143,11 +133,9 @@ window._totalItems = totalItems;
                         totalItems[zi] = merged[zi].item;
                     }
                 }
-
                 for (let j = 0; j < N; j++) {
                     const item = totalItems[j];
                     let p = rotatedPoints[j];
-
                     if (item.type === 'settings') {
                         const gearTex = createGearTexture();
                         const gearMat = new THREE.SpriteMaterial({ map: gearTex, transparent: true, depthTest: true, depthWrite: true });
@@ -215,13 +203,11 @@ window._totalItems = totalItems;
                         };
                         state.sphereGroup.add(appSprite);
                         state.sprites.push(appSprite);
-
                         if (iconMap && iconMap[app.packageName]) {
                             loadRealIcon(appSprite, iconMap[app.packageName]);
                         }
                     }
                 }
-
                 state.rotationQuat.identity();
                 state.sphereGroup.quaternion.identity();
                 if (state.layoutMode === 'flatring' && state.sprites.length > 0) {
@@ -229,7 +215,6 @@ window._totalItems = totalItems;
                     state.sprites[0].getWorldPosition(tw);
                     state.camera.lookAt(tw);
                 }
-
 state.updateSphereMinHint();
                 // 启动时应用已保存的球体大小
                 try {
@@ -262,13 +247,9 @@ state.updateSphereMinHint();
                         state.applyZoom();
                     }
                 } catch(e) {}
-
                 state.timeViewZoom = state.computeTimeViewZoom();
-
-                console.log('createSprites DONE, calling hideLoadingIfReady');
                 // 初始化时间精灵纹理 + 启动分钟调度
                 setTimeout(() => {
-                    console.log('INIT-TIME: starting time sprite updates');
                     syncTimeSpriteTexture();
                     scheduleMinuteUpdate();
                 }, 500);
@@ -283,7 +264,6 @@ state.updateSphereMinHint();
                     checkAllIconsLoaded();
                 }
             }
-
             export function loadRealIcon(sprite, iconUrl) {
                 state.pendingIconLoads++;
                 const img = new Image();
@@ -304,7 +284,6 @@ state.updateSphereMinHint();
                 img.onerror = function() { console.warn('图标加载失败:', iconUrl); state.pendingIconLoads--; checkAllIconsLoaded(); };
                 img.src = iconUrl;
             }
-
             export function checkAllIconsLoaded() {
                 state.checkAllIconsLoaded = checkAllIconsLoaded;
                 if (state.pendingIconLoads <= 0 && state.enterAnimationComplete) {
@@ -318,9 +297,7 @@ state.updateSphereMinHint();
                     state.loadingEl.style.display = 'none';
                 }
             }
-
             // ========== NativeBridge ==========
-
             export const tryLoadApps = () => {
                 if (typeof NativeBridge !== 'undefined' && NativeBridge.requestInstalledApps) {
                     state.nativeBridgeReady = true;
@@ -337,7 +314,6 @@ state.updateSphereMinHint();
                     }, 800);
                 }
             }
-
             export function createDemoApps() {
                 const demoNames = [
                     '微信', 'QQ', '淘宝', '支付宝', '抖音', '美团', '饿了么', 'B站', '知乎', '微博',
@@ -355,11 +331,8 @@ state.updateSphereMinHint();
                 state.apps = demoApps;
                 createSprites(demoApps, null);
             }
-
-
             // Back gesture state managed via state.js
             window._onBackStarted = function() {
-                console.log('[BACK] onBackStarted state.isInTimeView=' + state.isInTimeView);
                 var overlay = document.getElementById('settings-overlay');
                 if (overlay && overlay.style.display === 'flex') {
                     state._backType = 'settings';
@@ -383,6 +356,12 @@ state.updateSphereMinHint();
                     state._backType = '';
                     return;
                 }
+                // 忽略进入时间视图后短时间内（500ms）的系统返回手势（可能是旋转动画触发的误判）
+                if (state._backType === '' && state._timeEnteredAt && performance.now() - state._timeEnteredAt < 500) {
+                    state._backProgress = -1;
+                    state._backType = '';
+                    return;
+                }
                 state._backType = 'time';
                 state._backProgress = 0;
                 state._backStartZoom = state.zoomLevel;
@@ -395,7 +374,6 @@ state.updateSphereMinHint();
                 syncTimeSpriteTexture();
             };
             window._onBackProgress = function(p) {
-                console.log('[BACK] onBackProgress p=' + p + ' state._backProgress=' + state._backProgress);
                 if (state._backProgress < 0) return;
                 state._backProgress = p;
                 if (state._backType === 'settings') {
@@ -425,7 +403,6 @@ state.updateSphereMinHint();
             // Installed APK has bug: calls _onProgress instead of _onBackProgress
             window._onProgress = window._onBackProgress;
             window._onBackCancelled = function() {
-                console.log('[BACK] onBackCancelled state._backProgress=' + state._backProgress);
                 if (state._backProgress < 0) return;
                 var _cancelP = state._backProgress;
                 state._backProgress = -1;
@@ -510,6 +487,8 @@ state.updateSphereMinHint();
                     var finalP = state._backProgress;
                     state._backProgress = -1;
                     state._backType = '';
+                    // 忽略系统误触发的返回手势（progress接近0的轻触不算）
+                    if (finalP < 0.2) { state.isInTimeView = false; return; }
                     var curZ = state.zoomLevel;
                     var remain = (state.defaultZoom - curZ);
                     if (remain > 0.001) {
@@ -570,7 +549,6 @@ state.updateSphereMinHint();
                     state.applyZoom();
                 });
             };
-
             window._onHotReloadLoaded = function(json) {
                 try {
                     const data = typeof json === 'string' ? JSON.parse(json) : json;
@@ -580,7 +558,6 @@ state.updateSphereMinHint();
                     }
                 } catch(e) {}
             };
-
             window._onAppsLoaded = function(json) {
                 try {
                     const data = typeof json === 'string' ? JSON.parse(json) : json;
@@ -604,11 +581,9 @@ state.updateSphereMinHint();
                         createSprites([], null);
                     }
                 } catch (e) {
-                    console.error('解析应用列表失败:', e);
                     state.loadingEl.textContent = '加载失败';
                 }
             };
-
             window._onIconsLoaded = function(json) {
                 try {
                     const iconData = typeof json === 'string' ? JSON.parse(json) : json;
@@ -629,5 +604,4 @@ state.updateSphereMinHint();
                     }
                 } catch (e) { console.error('解析图标数据失败:', e); }
             };
-
             // ========== 旋转控制 ==========

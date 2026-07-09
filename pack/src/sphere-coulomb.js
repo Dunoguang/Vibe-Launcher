@@ -2,7 +2,6 @@
                 const { radius = 1, iter = 400, damp = 0.985, dt = 0.03, tol = 1e-6, soft = 0.01 } = opts;
                 if (N <= 0) return [];
                 if (N === 1) return [[0, 0, radius]];
-
                 const p = Array.from({ length: N }, () => {
                     const u = Math.random() * 2 - 1,
                         th = Math.random() * Math.PI * 2;
@@ -11,10 +10,8 @@
                 });
                 const v = Array.from({ length: N }, () => [0, 0, 0]);
                 const f = Array.from({ length: N }, () => [0, 0, 0]);
-
                 for (let t = 0; t < iter; t++) {
                     for (let i = 0; i < N; i++) f[i][0] = f[i][1] = f[i][2] = 0;
-
                     for (let i = 0; i < N; i++) {
                         for (let j = i + 1; j < N; j++) {
                             const dx = p[i][0] - p[j][0],
@@ -33,7 +30,6 @@
                             f[j][2] -= fz;
                         }
                     }
-
                     let maxV = 0;
                     for (let i = 0; i < N; i++) {
                         const x = p[i][0],
@@ -47,14 +43,11 @@
                         const ftx = f[i][0] - dot * nx,
                             fty = f[i][1] - dot * ny,
                             ftz = f[i][2] - dot * nz;
-
                         v[i][0] = (v[i][0] + ftx * dt) * damp;
                         v[i][1] = (v[i][1] + fty * dt) * damp;
                         v[i][2] = (v[i][2] + ftz * dt) * damp;
-
                         const spd = Math.sqrt(v[i][0] ** 2 + v[i][1] ** 2 + v[i][2] ** 2);
                         if (spd > maxV) maxV = spd;
-
                         let px = x + v[i][0] * dt,
                             py = y + v[i][1] * dt,
                             pz = z + v[i][2] * dt;

@@ -1,5 +1,4 @@
 import { state } from './state.js';
-
             export const updateBatteryFromNative = () => {
                 try {
                     const bl = JSON.parse(NativeBridge.getBatteryLevel());
@@ -51,16 +50,14 @@ import { state } from './state.js';
                     const bl = JSON.parse(NativeBridge.getBatteryLevel());
                     const batteryEl = document.getElementById('time-page-battery');
                     const displayVal = batteryEl ? batteryEl.textContent : 'no-el';
-                    console.log('[BATT] api=' + (bl.success ? bl.level : 'fail') + '% display=' + displayVal);
                     state.updateBatteryFromNative();
                 } catch(e) { console.log('[BATT] error=' + e.message); }
             }, 1000);
             // initial render handled in startTimePageClock
-
             document.addEventListener('visibilitychange', function() {
                 if (document.hidden) {
                     const tp = document.getElementById('time-page');
-                    if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] HIDE'); }
+                    if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
                 } else if (!document.hidden && !state.isInTimeView && state.zoomTarget === null) {
                     state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
                         state.zoomLevel = state.defaultZoom;
@@ -75,7 +72,6 @@ import { state } from './state.js';
                     }, 500);
                 }
             });
-
             // 全局设置选项切换
             window.setRadio = function(group, val) {
                 const cards = document.querySelectorAll('.layout-card');
@@ -90,9 +86,7 @@ import { state } from './state.js';
                     }
                 });
             }
-
             window.highlightRadio = function(group, val) {
-                console.log('highlightRadio', group, val);
                 const btns = document.querySelectorAll('#' + group + ' .settings-radio');
                 btns.forEach(function(b) {
                     if (b.getAttribute('data-val') === val) {
@@ -108,4 +102,3 @@ import { state } from './state.js';
                     }
                 });
             }
-

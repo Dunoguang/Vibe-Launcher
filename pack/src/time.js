@@ -2,9 +2,7 @@ import * as THREE from 'three/webgpu';
 import html2canvas from 'html2canvas';
 import { state } from './state.js';
 import { drawTimeCircleBackground, drawCircleFrame } from './textures.js';
-
 export let timeTextureUpdateInterval = null;
-
             export const updateTimeSpriteBgOnly = function() {
                 state._texVersion++;
                 if (!state.timeSprite || !state.timeSprite.material) return;
@@ -26,10 +24,8 @@ export let timeTextureUpdateInterval = null;
             };
             // 状态机：DOM可见 → bg-only，DOM隐藏 → full
             export const syncTimeSpriteTexture = function() {
-                console.log('[TEX-SYNC] called state.isInTimeView=' + state.isInTimeView);
                 updateTimeSpriteBgOnly();
             };
-
             const drawCircleBackground = function(ctx, cx, cy, r, s) {
                 var bg = _wallpaperImg;
                 if (bg) {
@@ -43,7 +39,6 @@ export let timeTextureUpdateInterval = null;
                 }
                 drawCircleFrame(ctx, cx, cy, r, s);
             };
-
             export const createTimeTexture = () => {
                 const s = Math.max(window.innerWidth, window.innerHeight);
                 let c = document.createElement('canvas');
@@ -52,14 +47,12 @@ export let timeTextureUpdateInterval = null;
                 const ctx = c.getContext('2d');
 let cx = s / 2, cy = s / 2, r = s * 0.44;
                 drawTimeCircleBackground(ctx, cx, cy, r, s);
-
                 const tex = new THREE.CanvasTexture(c);
                 tex.minFilter = THREE.LinearFilter;
                 tex.magFilter = THREE.LinearFilter;
                 if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
                 return tex;
             }
-
             export const updateTimeSpriteTexture = () => {
                 if (!state.timeSprite || !state.timeSprite.material) return;
                 const newTex = createTimeTexture();
@@ -69,14 +62,12 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 state.timeSprite.material.map = newTex;
                 state.timeSprite.material.needsUpdate = true;
             }
-
             export const scheduleMinuteUpdate = () => {
                 if (timeTextureUpdateInterval) clearTimeout(timeTextureUpdateInterval);
                 const now = new Date();
                 const sec = now.getSeconds();
                 const ms = now.getMilliseconds();
                 const wait = (60 - sec) * 1000 - ms + 50;
-                console.log('SCHEDULE: next update in ' + (wait/1000).toFixed(1) + 's (now ' + sec + 's ' + ms + 'ms)');
                 timeTextureUpdateInterval = setTimeout(() => {
                     // 先刷新DOM，确保截图是最新分钟
                     const el = document.getElementById('time-page-clock');
@@ -94,16 +85,13 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     scheduleMinuteUpdate();
                 }, wait);
             };
-
             export const startTimeTextureUpdates = () => {
                 syncTimeSpriteTexture();
                 scheduleMinuteUpdate();
             };
-
             export const stopTimeTextureUpdates = () => {
                 // 不再清除全局分钟调度器，仅保留接口兼容
             };
-
             // ========== 进入/退出时间视图 ==========
             export const enterTimeView = (animate, onComplete) => {
                 if (state.isInTimeView || !state.timeSprite) return;
@@ -124,7 +112,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                         if (onComplete) onComplete();
                         // 显示原生时间页面覆盖层（最高分辨率）
                         const tp = document.getElementById('time-page');
-                        if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; console.log('[TIME-DOM] SHOW'); tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] SHOW'); }
+                        if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
                         syncTimeSpriteTexture();
                     });
                 } else {
@@ -132,17 +120,16 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     state.applyZoom();
                     if (onComplete) onComplete();
                     const tp = document.getElementById('time-page');
-                    if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; console.log('[TIME-DOM] SHOW'); tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] SHOW'); }
+                    if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
                     syncTimeSpriteTexture();
                 }
             }
-
             export const exitTimeView = (animate, callback) => {
-                if (!state.isInTimeView) return;
+                if (!state.isInTimeView) { NativeBridge.log('EXIT skipped isInTimeView=' + state.isInTimeView); return; }
                 state.isInTimeView = false;
                 // 隐藏原生时间页面
                 const tp = document.getElementById('time-page');
-                if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] HIDE'); }
+                if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
                 syncTimeSpriteTexture()
                 state.cancelZoomAnimation();
                 state.rotationAnimData = null;
@@ -167,12 +154,11 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     if (callback) callback();
                 }
             }
-
             // 点击时间图标返回时间视图
             export const returnToTimeView = () => {
-                if (state.isInTimeView || !state.timeSprite) { console.log('[TIME-ENTRY] skipped, already in time view or no sprite'); return; }
-                console.log('[TIME-ENTRY] starting returnToTimeView');
+                if (state.isInTimeView || !state.timeSprite) { NativeBridge.log('RTTV skipped: isInTimeView=' + state.isInTimeView + ' sprite=' + !!state.timeSprite); return; }
                 state.isInTimeView = true;
+                state._timeEnteredAt = performance.now();
                 // 取消当前所有动画
                 state.cancelZoomAnimation();
                 state.rotationAnimData = null;
@@ -181,50 +167,40 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 state.recentSpeeds = [];
                 state.clearHover();
                 document.body.style.cursor = 'default';
-
                 // 计算需要旋转的目标四元数：使时间图标正对摄像机
                 const timePos = state.timeSprite.position.clone();
                 const targetDir = timePos.clone().normalize();
                 const cameraDir = new THREE.Vector3(0, 0, 1);
                 const targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
-
                 // 同时执行旋转和缩放动画
 let zoomComplete = false, rotationComplete = false;
                 const targetZoom = state.computeTimeViewZoom();
                 state.timeViewZoom = targetZoom;
-
                 const checkBothComplete = () => {
-                    console.log('[TIME-ENTRY] checkBothComplete zoom=' + zoomComplete + ' rot=' + rotationComplete);
                     if (zoomComplete && rotationComplete) {
-                        console.log('[TIME-ENTRY] BOTH COMPLETE - showing DOM');
                         const tp = document.getElementById('time-page');
-                        if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; console.log('[TIME-DOM] SHOW'); tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] SHOW'); }
+                        if (tp) { NativeBridge.log('RTTV showing DOM'); tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
+                        else { NativeBridge.log('RTTV DOM element not found'); }
                         syncTimeSpriteTexture();
                     }
                 }
-
                 state.startRotationAnimation(targetQuat, state.ANIM_DURATION, function() {
-                    console.log('[TIME-ENTRY] rotation done');
                     rotationComplete = true;
                     checkBothComplete();
                 });
-
                 state.startZoomAnimation(targetZoom, state.ANIM_DURATION, function() {
-                    console.log('[TIME-ENTRY] zoom done');
                     state.zoomLevel = targetZoom;
                     state.applyZoom();
                     zoomComplete = true;
                     checkBothComplete();
                 });
             }
-
             // ========== 纹理生成 ==========
             export const renderTimePageToTexture = () => {
                 const page = document.getElementById('time-page');
                 if (!page || !state.timeSprite || !state.timeSprite.material || typeof html2canvas === 'undefined') return;
                 const s = Math.max(window.innerWidth, window.innerHeight);
                 var ver = ++state._texVersion;
-
                 var _wasHidden = page.style.visibility === 'hidden';
                 page.style.visibility = 'visible';
                 html2canvas(page, { scale: 1, useCORS: true, backgroundColor: null }).then(function(domCanvas) {
@@ -235,10 +211,8 @@ let zoomComplete = false, rotationComplete = false;
                     texCanvas.width = s; texCanvas.height = s;
                     const ctx = texCanvas.getContext('2d');
                     let cx = s/2, cy = s/2, r = s * 0.44;
-
                     // 如果用户已松手，不应用完整纹理
                     if (_userShowed) {
-                        console.log('[TIME-TEX] skip full, user released');
                         if (ver !== state._texVersion) return;
                         updateTimeSpriteBgOnly();
                         return;
@@ -250,7 +224,6 @@ let zoomComplete = false, rotationComplete = false;
                     } else {
                         drawTimeCircleBackground(ctx, cx, cy, r, s);
                     }
-
                     // 裁切圆内，绘制 DOM 截图
                     ctx.save();
                     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
@@ -260,8 +233,7 @@ let zoomComplete = false, rotationComplete = false;
                     const rectH = 2 * r * (1 / diag);
                     ctx.drawImage(domCanvas, cx - rectW/2, cy - rectH/2, rectW, rectH);
                     ctx.restore();
-
-                    const ts = new Date(); console.log('TIME-UPDATE ' + ts.getHours().toString().padStart(2,'0') + ':' + ts.getMinutes().toString().padStart(2,'0') + ':' + ts.getSeconds().toString().padStart(2,'0') + ' html2canvas ' + domCanvas.width + 'x' + domCanvas.height);
+                    const ts = new Date();
                     const oldMap = state.timeSprite.material.map;
                     const tex = new THREE.CanvasTexture(texCanvas);
                     tex.minFilter = THREE.LinearFilter;
@@ -270,16 +242,14 @@ let zoomComplete = false, rotationComplete = false;
                     state.timeSprite.material.map = tex;
                     state.timeSprite.material.needsUpdate = true;
                     if (oldMap && oldMap !== tex) oldMap.dispose();
-                    if (ver !== state._texVersion) { console.log('[TIME-TEX] skip stale (ver=' + ver + ' current=' + state._texVersion + ')'); return; }
+                    if (ver !== state._texVersion) { return; }
                 }).catch(function(e) { console.warn('html2canvas error:', e); if (_wasHidden) page.style.visibility = 'hidden'; });
             }
 let _lastBatteryLevel = -1;
-// State syncs
 state.updateTimeSpriteBgOnly = updateTimeSpriteBgOnly;
 state.createTimeTexture = createTimeTexture;
 state.syncTimeSpriteTexture = syncTimeSpriteTexture;
 state.renderTimePageToTexture = renderTimePageToTexture;
-
 state.enterTimeView = enterTimeView;
 state.exitTimeView = exitTimeView;
 state.returnToTimeView = returnToTimeView;

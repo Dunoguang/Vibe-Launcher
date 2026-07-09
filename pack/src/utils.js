@@ -35,7 +35,6 @@
             }
             // ★ Material Design 标准曲线
             export const materialEasing = cubicBezier(0.4, 0.0, 0.2, 1);
-
             export function animateValue({ from, to, duration, easing, onUpdate, onComplete }) {
               const start = performance.now();
               function frame(now) {
@@ -48,5 +47,4 @@
               }
               requestAnimationFrame(frame);
             }
-
             export const easeOutCubic = (t) => { return 1 - Math.pow(1 - t, 3); };

@@ -1,7 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { INERTIA_MIN, INERTIA_DECAY, INERTIA_FAST_DECAY, SPEED_SAMPLES, BASE_SCALE, FOV_RAD, HOVER_SCALE, DRAG_THRESHOLD, TOP_ZONE_RATIO, BOTTOM_ZONE_RATIO, LONG_PRESS_MS, MIN_ZOOM } from './config.js';
-
             export const screenToSphere = (sx, sy) => {
                 const rect = state.canvas.getBoundingClientRect();
 let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = new THREE.Vector3();
@@ -19,16 +18,12 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                 }
                 return v.normalize();
             }
-
             export const updateMouse = (cx, cy) => {
                 const rect = state.canvas.getBoundingClientRect();
                 state.mouse.x = ((cx - rect.left) / rect.width) * 2 - 1;
                 state.mouse.y = -((cy - rect.top) / rect.height) * 2 + 1;
             }
-
             export function getAppBySprite(s) { return s && s.userData ? s.userData.app : null; }
-
-// ========== 事件绑定 ==========
             window.addEventListener('resize', function() {
                 const w = window.innerWidth,
                     h = window.innerHeight;
@@ -44,7 +39,6 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
                     state.applyZoom();
                 }
             });
-
             // ========== 动画循环 ==========
             let animFrameId = null;
             state.animFrameId = animFrameId;
@@ -58,6 +52,5 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
             };
             state.wakeUp = wakeUp;
 state.updateMouse = updateMouse;
-
 state.getAppBySprite = getAppBySprite;
 state.screenToSphere = screenToSphere;

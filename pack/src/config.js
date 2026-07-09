@@ -1,7 +1,4 @@
 import * as THREE from 'three/webgpu';
-
-// === Immutable Config Constants ===
-
 const BASE_SCALE = 0.52;
 const HOVER_SCALE = 0.72;
 const FOV_RAD = THREE.MathUtils.degToRad(50);
@@ -14,5 +11,4 @@ const INERTIA_FAST_DECAY = 0.85;
 const INERTIA_MIN = 0.0005;
 const SPEED_SAMPLES = 5;
 const LONG_PRESS_MS = 600;
-
 export { BASE_SCALE, HOVER_SCALE, FOV_RAD, MIN_ZOOM, TOP_ZONE_RATIO, BOTTOM_ZONE_RATIO, DRAG_THRESHOLD, INERTIA_DECAY, INERTIA_FAST_DECAY, INERTIA_MIN, SPEED_SAMPLES, LONG_PRESS_MS };

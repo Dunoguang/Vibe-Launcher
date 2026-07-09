@@ -2,7 +2,6 @@ import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { BASE_SCALE, FOV_RAD } from './config.js';
 import { materialEasing } from './utils.js';
-
             export const computeInitDistance = () => {
                 const w = window.innerWidth;
                 let h = window.innerHeight;
@@ -10,11 +9,8 @@ import { materialEasing } from './utils.js';
                 const minVisible = state.SPHERE_DIAMETER / (2 * Math.tan(FOV_RAD / 2) * shortEdgeFactor);
                 return minVisible * 1.15;
             }
-
             export function applyZoom() { state.camera.position.z = state.zoomLevel; }
             state.applyZoom = function() { state.camera.position.z = state.zoomLevel; };
-
-
             export const computeTimeViewZoom = () => {
                 const R = BASE_SCALE * 0.44;
                 const fovHalfRad = THREE.MathUtils.degToRad(state.camera.fov / 2);
@@ -24,7 +20,6 @@ import { materialEasing } from './utils.js';
                 return state.SPHERE_RADIUS + distance;
             }
             state.computeTimeViewZoom = computeTimeViewZoom;
-
             export const startCancelableAction = (sprite, rotTarget, zoomTarget, onCommit) => {
                 state.cancelSwipeData = null; if (state.cancelableAction) cancelCurrentAction('superseded');
                 state.cancelableAction = {
@@ -46,7 +41,6 @@ import { materialEasing } from './utils.js';
                 });
             }
             state.startCancelableAction = startCancelableAction;
-
             export function tryCommitCancelable() {
                 const a = state.cancelableAction;
                 if (!a || a.cancelled || a.phase !== 'animating') return;
@@ -57,19 +51,16 @@ import { materialEasing } from './utils.js';
                 }
             }
             state.tryCommitCancelable = tryCommitCancelable;
-
             export function cancelCurrentAction(reason) { state.cancelSwipeData = null;
                 if (!state.cancelableAction || state.cancelableAction.cancelled) return;
                 state.cancelableAction.cancelled = true;
-                try { NativeBridge.log('cancel:' + reason); } catch(e) {}
-                cancelZoomAnimation();
+                                cancelZoomAnimation();
                 state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
                     state.zoomLevel = state.defaultZoom; state.applyZoom();
                 });
                 state.cancelableAction = null;
             }
             state.cancelCurrentAction = cancelCurrentAction;
-
             export function startZoomAnimation(targetVal, duration, callback) {
                 state.zoomAnimStart = performance.now();
                 state.wakeUp();
@@ -81,7 +72,6 @@ import { materialEasing } from './utils.js';
                 state.zoomAnimCallback = callback || null;
             }
             state.startZoomAnimation = startZoomAnimation;
-
             export function cancelZoomAnimation() {
                 state.zoomTarget = null;
                 state.zoomAnimStart = null;
@@ -89,7 +79,6 @@ import { materialEasing } from './utils.js';
                 state.zoomAnimCallback = null;
             }
             state.cancelZoomAnimation = cancelZoomAnimation;
-
             export const updateZoomAnimation = (now) => {
                 if (state.zoomTarget === null) return;
                 state.zoomAnimElapsed = now - state.zoomAnimStart;
@@ -106,7 +95,6 @@ import { materialEasing } from './utils.js';
                 }
             }
             state.updateZoomAnimation = updateZoomAnimation;
-
             export const updateRotationAnimation = (now) => {
                 if (!state.rotationAnimData) return;
                 const elapsed = now - state.rotationAnimData.startTime;
@@ -123,7 +111,6 @@ import { materialEasing } from './utils.js';
                 }
             }
             state.updateRotationAnimation = updateRotationAnimation;
-
             export function startRotationAnimation(targetQuat, duration, callback) {
                 state.rotationAnimData = {
                     from: state.rotationQuat.clone(),
@@ -140,4 +127,3 @@ import { materialEasing } from './utils.js';
                 }
             }
             state.startRotationAnimation = startRotationAnimation;
-

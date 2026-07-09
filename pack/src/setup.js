@@ -22,20 +22,16 @@ import { enterTimeView, exitTimeView, returnToTimeView, syncTimeSpriteTexture, u
 state.syncTimeSpriteTexture = syncTimeSpriteTexture;
 import html2canvas from 'html2canvas';
 window.THREE = THREE;
-
 (async function() {
-console.log("IIFE starting, THREE:", typeof THREE);
             if (typeof THREE === 'undefined') {
                 document.getElementById('loadingIndicator').textContent = 'Three.js 未加载';
                 return;
             }
-
             // ========== 球面库仑斥力分布（Thomson 问题）==========
             const labelEl = document.getElementById('appLabel');
             state.labelEl = labelEl;
             const loadingEl = document.getElementById('loadingIndicator');
             state.loadingEl = loadingEl;
-
             // ========== 场景（从 scene.js 导入）==========
             const sceneInit = await initScene(loadingEl);
             if (!sceneInit) return;
@@ -56,7 +52,6 @@ console.log("IIFE starting, THREE:", typeof THREE);
             // TOP_ZONE_RATIO, BOTTOM_ZONE_RATIO moved to config.js
             state.TOP_ZONE_RATIO = TOP_ZONE_RATIO;
             state.BOTTOM_ZONE_RATIO = BOTTOM_ZONE_RATIO;
-
             // 缩放动画
             let zoomTarget = null, zoomAnimStart = null, zoomAnimDuration = 0, zoomAnimElapsed = 0, zoomAnimStartVal = 0, zoomAnimEndVal = 0, zoomAnimCallback = null;
             state.zoomTarget = zoomTarget;
@@ -73,7 +68,6 @@ console.log("IIFE starting, THREE:", typeof THREE);
             state.zoomAnimStartVal = state.zoomAnimStartVal;
             state.zoomAnimEndVal = state.zoomAnimEndVal;
             state.zoomAnimCallback = state.zoomAnimCallback;
-
             // 旋转动画（用于点击时间图标返回时间视图）
             let rotationAnimData = null;
             state.rotationAnimData = rotationAnimData;
@@ -85,7 +79,6 @@ console.log("IIFE starting, THREE:", typeof THREE);
                 '#63e6be', '#66d9e8', '#74c0fc', '#91a7ff', '#b197fc',
             ];
             state.placeholderColors = placeholderColors;
-
             let nativeBridgeReady = false;
             state.nativeBridgeReady = state.nativeBridgeReady;
             // DRAG_THRESHOLD moved to config.js
@@ -105,7 +98,6 @@ console.log("IIFE starting, THREE:", typeof THREE);
             // SPEED_SAMPLES moved to config.js
             const activePointerIds = new Set();
             state.activePointerIds = activePointerIds;
-
             const raycaster = new THREE.Raycaster();
             raycaster.params.Sprite = { threshold: 0.8 };
             const mouse = new THREE.Vector2();
@@ -119,7 +111,6 @@ console.log("IIFE starting, THREE:", typeof THREE);
             state.DRAG_THRESHOLD = DRAG_THRESHOLD;
             state.LONG_PRESS_MS = LONG_PRESS_MS;
             state.MIN_ZOOM = MIN_ZOOM;
-
             // ANIM_DURATION: from localStorage or default 250
             let ANIM_DURATION = (function() {
                 try {
@@ -139,37 +130,27 @@ console.log("IIFE starting, THREE:", typeof THREE);
             state._prevTapOnIcon = _prevTapOnIcon;
             let _timePageTimer = null;
             state._timePageTimer = _timePageTimer;
-
 let zoomLevel = computeInitDistance(), defaultZoom = zoomLevel;
             state.defaultZoom = defaultZoom;
             state.zoomLevel = zoomLevel;
             camera.position.set(0, 0, zoomLevel);
             state.computeTimeViewZoom = computeTimeViewZoom;
-
 let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = null;
             state.timeViewZoom = timeViewZoom;
             state.isInTimeView = isInTimeView;
             state.timeSprite = timeSprite;
-
             // ========== 可取消动作状态机 ==========
-
             state.startZoomAnimation = startZoomAnimation;
-
             state.cancelZoomAnimation = cancelZoomAnimation;
             state.computeInitDistance = computeInitDistance;
-
             // ====== 三次贝塞尔求解器 ======
             // ====== 通用动画函数 ======
-
             state.startRotationAnimation = startRotationAnimation;
-
             // ========== 壁纸(由textures.js处理) ==========
-
             let apps = [], sprites = [];
             state.apps = apps; state.sprites = sprites;
             state.apps = apps;
             state.sprites = sprites;
-
                         const updateSphereMinHint = () => {
                 const iconCount = window._totalItems ? window._totalItems.length : (sprites.length || 100);
                 const iconVisRadius = BASE_SCALE * 0.44 * 1.1;
@@ -179,13 +160,11 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 return minR;
             }
             state.updateSphereMinHint = updateSphereMinHint;
-
             const rotationQuat = new THREE.Quaternion();
             state.rotationQuat = rotationQuat;
 let isDragging = false, hasMoved = false;
             state.isDragging = isDragging;
             state.hasMoved = hasMoved;
-
             const animate = (timestamp) => {
                 const now = timestamp || performance.now();
                 _fpsFrameCount++;
@@ -208,7 +187,8 @@ let isDragging = false, hasMoved = false;
                 }
                 state.renderer.render(state.scene, state.camera);
                 if (isBusy()) {
-                     state.animFrameId = requestAnimationFrame(animate);
+                     console.log('🚀 3D 桌面已就绪');
+            state.animFrameId = requestAnimationFrame(animate);
                 } else {
                     state.animFrameId = null;
                 }
@@ -229,11 +209,8 @@ let isDragging = false, hasMoved = false;
             state.canvas.addEventListener('touchcancel', function(e) {
                 onTouchEnd(e);
                 state.resetAllPointers();
-
                         });
-
             state.animate = animate; 
-
             // FPS 计数器：animate中计数，此定时器负责显示
             let _fpsFrameCount = 0, _fpsLastTime = performance.now(), _fpsShow = false;
             state._fpsShow = _fpsShow;
@@ -251,32 +228,27 @@ let isDragging = false, hasMoved = false;
                     _fpsShow = state._fpsShow;
                     const ce = document.getElementById('fps-counter');
                     if (ce) ce.style.display = _fpsShow ? 'block' : 'none';
-                    console.log('[FPS] visibility=' + _fpsShow);
                 }
             }, 1000);
-
             // 启动时读取FPS设置
             try {
                 const _sfps = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
                 const _fpsEl = document.getElementById('fps-counter');
-                console.log('[FPS] startup: showFps=' + _sfps.showFps + ' el=' + !!_fpsEl);
                 if (_sfps.showFps && _fpsEl) {
                     _fpsEl.style.display = 'block';
                     state._fpsShow = true;
                     _fpsShow = true;
-                    console.log('[FPS] shown at startup');
                 }
             } catch(e) { console.log('[FPS] startup error=' + e.message); }
             // 首次启动
-             state.animFrameId = requestAnimationFrame(animate);
+             console.log('🚀 3D 桌面已就绪');
+            state.animFrameId = requestAnimationFrame(animate);
             // 任何输入都唤醒
             document.addEventListener('pointerdown', wakeUp, { passive: true });
             document.addEventListener('pointermove', wakeUp, { passive: true });
             document.addEventListener('wheel', wakeUp, { passive: true });
             document.addEventListener('touchstart', wakeUp, { passive: true });
-
             let _texVersion = 0;
              init();
 })();
-
 state.resetAllPointers = resetAllPointers;
