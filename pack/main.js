@@ -81,6 +81,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
             ];
 
             let nativeBridgeReady = false;
+            state.nativeBridgeReady = nativeBridgeReady;
             const DRAG_THRESHOLD = 3;
             const prevScreen = new THREE.Vector2();
             const inertiaQ = new THREE.Quaternion();
