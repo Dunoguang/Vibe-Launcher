@@ -120,6 +120,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             state.startZoomAnimation = startZoomAnimation;
 
             state.cancelZoomAnimation = cancelZoomAnimation;
+            state.computeInitDistance = computeInitDistance;
 
             // ====== 三次贝塞尔求解器 ======
             // ====== 通用动画函数 ======

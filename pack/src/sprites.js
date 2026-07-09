@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { sphereCoulomb } from './sphere-coulomb.js';
 import { createGearTexture, createPlaceholderTexture, createIconTextureFromImage, drawCircleFrame, drawTimeCircleBackground } from './textures.js';
-import { enterTimeView, createTimeTexture, syncTimeSpriteTexture, scheduleMinuteUpdate, stopTimeTextureUpdates } from './time.js';
+import { enterTimeView, exitTimeView, createTimeTexture, syncTimeSpriteTexture, scheduleMinuteUpdate, stopTimeTextureUpdates } from './time.js';
 
             export const clearAllSprites = () => {
                 stopTimeTextureUpdates();
@@ -254,7 +254,7 @@ state.updateSphereMinHint();
                             if (k < rawPts.length) state.sprites[k].position.copy(rawPts[k]);
                         }
                         state.SPHERE_DIAMETER = state.SPHERE_RADIUS * 2;
-                        state.defaultZoom = computeInitDistance();
+                        state.defaultZoom = state.computeInitDistance();
                         state.defaultZoom = state.defaultZoom;
                         state.timeViewZoom = state.computeTimeViewZoom();
                         state.zoomLevel = state.defaultZoom;
@@ -519,7 +519,7 @@ state.updateSphereMinHint();
                             state.applyZoom();
                             exitTimeView(false);
                             state.inertiaStrength = 0.4;
-                            infiniteInertia = true;
+                            state.infiniteInertia = true;
                             let spinAxis;
                             if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                             else spinAxis = new THREE.Vector3(1, 0, 0);
@@ -529,7 +529,7 @@ state.updateSphereMinHint();
                     } else {
                         exitTimeView(false);
                         state.inertiaStrength = 0.4;
-                        infiniteInertia = true;
+                        state.infiniteInertia = true;
                         let spinAxis;
                         if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                         else spinAxis = new THREE.Vector3(1, 0, 0);

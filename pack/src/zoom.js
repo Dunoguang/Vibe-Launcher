@@ -26,7 +26,7 @@ import { materialEasing } from './utils.js';
             state.computeTimeViewZoom = computeTimeViewZoom;
 
             export const startCancelableAction = (sprite, rotTarget, zoomTarget, onCommit) => {
-                cancelSwipeData = null; if (state.cancelableAction) cancelCurrentAction('superseded');
+                state.cancelSwipeData = null; if (state.cancelableAction) cancelCurrentAction('superseded');
                 state.cancelableAction = {
                     sprite: sprite, onCommit: onCommit, phase: 'animating',
                     rotDone: false, zoomDone: false, cancelled: false,
@@ -58,7 +58,7 @@ import { materialEasing } from './utils.js';
             }
             state.tryCommitCancelable = tryCommitCancelable;
 
-            export function cancelCurrentAction(reason) { cancelSwipeData = null;
+            export function cancelCurrentAction(reason) { state.cancelSwipeData = null;
                 if (!state.cancelableAction || state.cancelableAction.cancelled) return;
                 state.cancelableAction.cancelled = true;
                 try { NativeBridge.log('cancel:' + reason); } catch(e) {}

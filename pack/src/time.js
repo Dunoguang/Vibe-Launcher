@@ -154,8 +154,8 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 state.cancelZoomAnimation();
                 state.rotationAnimData = null;
                 stopTimeTextureUpdates();
-                bottomSwipeData = null;
-                topSwipeData = null;
+                state.bottomSwipeData = null;
+                state.topSwipeData = null;
                 document.body.style.cursor = 'grab';
                 if (state.timeSprite) {
                     state.timeSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
@@ -210,7 +210,7 @@ let zoomComplete = false, rotationComplete = false;
                     }
                 }
 
-                startRotationAnimation(targetQuat, state.ANIM_DURATION, function() {
+                state.startRotationAnimation(targetQuat, state.ANIM_DURATION, function() {
                     console.log('[TIME-ENTRY] rotation done');
                     rotationComplete = true;
                     checkBothComplete();

@@ -7,11 +7,11 @@ import { tryLoadApps } from './sprites.js';
 import { updateBatteryDisplay } from './battery.js';
 
             export function init() {
-                state.zoomLevel = computeInitDistance();
+                state.zoomLevel = state.computeInitDistance();
                 state.defaultZoom = state.zoomLevel;
-                state.timeViewZoom = computeTimeViewZoom();
+                state.timeViewZoom = state.computeTimeViewZoom();
                 state.camera.position.set(0, 0, state.zoomLevel);
-                applyZoom();
+                state.applyZoom();
                 state.isInTimeView = false;
                 initSettingsPanel();
                 // 上下文菜单事件

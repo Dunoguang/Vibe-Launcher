@@ -48,10 +48,10 @@ import { state } from './state.js';
                     const tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] HIDE'); }
                 } else if (!document.hidden && !state.isInTimeView && zoomTarget === null) {
-                    startZoomAnimation(defaultZoom, state.ANIM_DURATION, function() {
-                        zoomLevel = defaultZoom;
+                    state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                        zoomLevel = state.defaultZoom;
                         state.zoomLevel = zoomLevel;
-                        applyZoom();
+                        state.applyZoom();
                     });
                 }
                 // 返回前台时检测应用列表变动

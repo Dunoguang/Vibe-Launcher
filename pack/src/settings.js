@@ -238,8 +238,8 @@ import { createSprites } from './sprites.js';
                                 }
                             }
                             state.sphereGroup.quaternion.copy(state.rotationQuat);
-                            SPHERE_DIAMETER = state.SPHERE_RADIUS * 2;
-                            state.defaultZoom = computeInitDistance();
+                            state.SPHERE_DIAMETER = state.SPHERE_RADIUS * 2;
+                            state.defaultZoom = state.computeInitDistance();
                             state.timeViewZoom = state.computeTimeViewZoom();
                             state.zoomLevel = state.defaultZoom;
                             state.applyZoom();
