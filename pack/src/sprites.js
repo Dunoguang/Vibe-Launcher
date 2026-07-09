@@ -365,7 +365,7 @@ state.updateSphereMinHint();
                     state._backType = 'settings';
                     state._backProgress = 0;
                     state._backStartZoom = state.zoomLevel;
-                    if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
+                    if (!state.animFrameId) state.animFrameId = requestAnimationFrame(state.animate);
                     return;
                 }
                 if (state.cancelableAction && state.cancelableAction.phase === 'animating') {
@@ -374,8 +374,8 @@ state.updateSphereMinHint();
                     state._backStartZoom = state.zoomLevel;
                     state._backSavedQuat = state.sphereGroup.quaternion.clone();
                     state.cancelZoomAnimation();
-                    rotationAnimData = null;
-                    if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
+                    state.rotationAnimData = null;
+                    if (!state.animFrameId) state.animFrameId = requestAnimationFrame(state.animate);
                     return;
                 }
                 if (!state.isInTimeView) {
@@ -388,8 +388,8 @@ state.updateSphereMinHint();
                 state._backStartZoom = state.zoomLevel;
                 // Cancel in-progress returnToTimeView animations
                 state.cancelZoomAnimation();
-                rotationAnimData = null;
-                if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
+                state.rotationAnimData = null;
+                if (!state.animFrameId) state.animFrameId = requestAnimationFrame(state.animate);
                 var tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
                 syncTimeSpriteTexture();
@@ -420,7 +420,7 @@ state.updateSphereMinHint();
                     state.zoomLevel = z;
                     state.applyZoom();
                 }
-                if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
+                if (!state.animFrameId) state.animFrameId = requestAnimationFrame(state.animate);
             };
             // Installed APK has bug: calls _onProgress instead of _onBackProgress
             window._onProgress = window._onBackProgress;
@@ -443,12 +443,12 @@ state.updateSphereMinHint();
                         var targetSprite = state.cancelableAction.sprite;
                         var targetDir = targetSprite.position.clone().normalize();
                         var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
-                        startRotationAnimation(targetQuat, state.ANIM_DURATION, function() {
+                        state.startRotationAnimation(targetQuat, state.ANIM_DURATION, function() {
                             if (state.cancelableAction && !state.cancelableAction.cancelled) {
                                 state.cancelableAction.rotDone = true; tryCommitCancelable();
                             }
                         });
-                        startZoomAnimation(state.cancelableAction.zoomTarget, state.ANIM_DURATION, function() {
+                        state.startZoomAnimation(state.cancelableAction.zoomTarget, state.ANIM_DURATION, function() {
                             if (state.cancelableAction && !state.cancelableAction.cancelled) {
                                 state.zoomLevel = state.cancelableAction.zoomTarget; state.applyZoom();
                                 state.cancelableAction.zoomDone = true; tryCommitCancelable();
@@ -456,7 +456,7 @@ state.updateSphereMinHint();
                         });
                     } else {
                         state.cancelableAction = null;
-                        startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                        state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
                             state.zoomLevel = state.defaultZoom; state.applyZoom();
                         });
                     }
@@ -470,8 +470,8 @@ state.updateSphereMinHint();
                     if (timePos) {
                         var td = timePos.clone().normalize();
                         var tq = new THREE.Quaternion().setFromUnitVectors(td, new THREE.Vector3(0, 0, 1));
-                        startRotationAnimation(tq, state.ANIM_DURATION, function() {});
-                        startZoomAnimation(state.timeViewZoom || state.computeTimeViewZoom(), state.ANIM_DURATION, function() {
+                        state.startRotationAnimation(tq, state.ANIM_DURATION, function() {});
+                        state.startZoomAnimation(state.timeViewZoom || state.computeTimeViewZoom(), state.ANIM_DURATION, function() {
                             state.zoomLevel = state.timeViewZoom; state.applyZoom();
                         });
                     }
@@ -488,7 +488,7 @@ state.updateSphereMinHint();
                     var card = document.getElementById('settings-card');
                     if (card) card.style.transform = 'scale(1)';
                     state.canvas.style.pointerEvents = 'auto';
-                    startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                    state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
                         state.zoomLevel = state.defaultZoom;
                         state.zoomLevel = state.zoomLevel;
                         state.applyZoom();
@@ -499,7 +499,7 @@ state.updateSphereMinHint();
                     state._backProgress = -1;
                     state._backType = '';
                     state.cancelableAction = null;
-                    startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                    state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
                         state.zoomLevel = state.defaultZoom;
                         state.zoomLevel = state.zoomLevel;
                         state.applyZoom();
@@ -514,7 +514,7 @@ state.updateSphereMinHint();
                     var remain = (state.defaultZoom - curZ);
                     if (remain > 0.001) {
                         var dur = Math.min(state.ANIM_DURATION * 0.6, state.ANIM_DURATION * (1 - finalP) * 1.2);
-                        startZoomAnimation(state.defaultZoom, dur, function() {
+                        state.startZoomAnimation(state.defaultZoom, dur, function() {
                             state.zoomLevel = state.defaultZoom;
                             state.applyZoom();
                             exitTimeView(false);
@@ -547,7 +547,7 @@ state.updateSphereMinHint();
                 if (overlay && overlay.style.display === "flex") {
                     overlay.style.display = "none";
                     state.canvas.style.pointerEvents = "auto";
-                    startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                    state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
                         state.zoomLevel = state.defaultZoom;
                         state.zoomLevel = state.zoomLevel;
                         state.applyZoom();
@@ -565,7 +565,7 @@ state.updateSphereMinHint();
                 // 兜底：重置摄像头拉近（保留当前朝向）
                 state.inertiaQ.identity();
                 state.inertiaStrength = 0;
-                startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
                     state.zoomLevel = state.defaultZoom;
                     state.applyZoom();
                 });
