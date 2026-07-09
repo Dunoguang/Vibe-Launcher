@@ -13,7 +13,7 @@ initNotifications();
 // 初始化智能叠放
 initSmartStack();
 const stackEl = document.getElementById('smart-stack');
-if (stackEl) stackEl.style.display = 'flex';
+if (stackEl) stackEl.style.display = 'none'; // 默认隐藏，非时间视图时显示
 
 // 初始化动态背景
 initDynamicBackground();
@@ -28,6 +28,18 @@ initMoodSystem();
 
 // 初始化垂直分页
 initVerticalPages();
+
+// Smart Stack 与 Vertical Pages 互斥控制
+window._showSmartStack = function() {
+    const stack = document.getElementById('smart-stack');
+    const pages = document.getElementById('vertical-pages');
+    if (stack) stack.style.display = 'flex';
+    if (pages) pages.style.display = 'none';
+};
+window._hideSmartStack = function() {
+    const stack = document.getElementById('smart-stack');
+    if (stack) stack.style.display = 'none';
+};
 
 // 全局：记录应用启动
 window._trackAppLaunch = trackAppLaunch;
