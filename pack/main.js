@@ -424,7 +424,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             };
 
             const updateTimeSpriteBgOnly = function() {
-                _texVersion++; // invalidate any pending async render
+                _texVersion++;
                 if (!timeSprite || !timeSprite.material) return;
                 var s = Math.max(window.innerWidth, window.innerHeight);
                 var c = document.createElement('canvas');
@@ -440,7 +440,6 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 timeSprite.material.map = tex;
                 timeSprite.material.needsUpdate = true;
                 if (oldMap && oldMap !== tex) oldMap.dispose();
-                // Force re-render
                 if (renderer) renderer.render(scene, camera);
             };
             // 状态机：DOM可见 → bg-only，DOM隐藏 → full
@@ -2257,7 +2256,16 @@ let _lastBatteryLevel = -1;
             window._onTimeBgPicked = function(json) {
                 try { var r = typeof json === 'string' ? JSON.parse(json) : json;
                     if (r.success) {
-                        _timeBgPath = r.path; var img = new Image(); img.onload = function() { _timeBgImg = img; updateTimeSpriteBgOnly(); renderTimePageToTexture(); }; img.src = r.path;
+                        _timeBgPath = r.path;
+                        var img = new Image();
+                        img.onload = function() {
+                            _timeBgImg = img;
+                            updateTimeSpriteBgOnly();
+                            renderTimePageToTexture();
+                            // 延时重试确保生效
+                            setTimeout(function() { updateTimeSpriteBgOnly(); renderTimePageToTexture(); }, 500);
+                        };
+                        img.src = r.path;
                         timeBgPickBtn.textContent = '重新选择';
                     }
                 } catch(e) {}
