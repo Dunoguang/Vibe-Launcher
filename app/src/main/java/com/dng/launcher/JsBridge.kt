@@ -492,6 +492,140 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
+    // ==================== 快捷设置 ====================
+
+    @JavascriptInterface
+    fun getWifiEnabled(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            """{"success":true,"enabled":${wm.isWifiEnabled}}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun setWifiEnabled(enabled: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            @Suppress("DEPRECATION")
+            wm.isWifiEnabled = enabled
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun getBluetoothEnabled(): String {
+        return try {
+            val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            """{"success":true,"enabled":${adapter?.isEnabled ?: false}}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun setBluetoothEnabled(enabled: Boolean): String {
+        return try {
+            val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (adapter == null) return """{"success":false,"error":"no bluetooth"}"""
+            @Suppress("DEPRECATION")
+            if (enabled) adapter.enable() else adapter.disable()
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun getAutoRotate(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val on = android.provider.Settings.System.getInt(
+                ctx.contentResolver, "accelerometer_rotation", 0
+            ) == 1
+            """{"success":true,"enabled":$on}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun setAutoRotate(enabled: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            android.provider.Settings.System.putInt(
+                ctx.contentResolver, "accelerometer_rotation", if (enabled) 1 else 0
+            )
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun getDataUsage(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val tm = ctx.getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+            val carrier = tm.networkOperatorName ?: "未知"
+            val signalLevel = when (tm.dataState) {
+                android.telephony.TelephonyManager.DATA_CONNECTED -> "已连接"
+                android.telephony.TelephonyManager.DATA_CONNECTING -> "连接中"
+                android.telephony.TelephonyManager.DATA_DISCONNECTED -> "未连接"
+                android.telephony.TelephonyManager.DATA_SUSPENDED -> "暂停"
+                else -> "未知"
+            }
+            """{"success":true,"carrier":"$carrier","state":"$signalLevel"}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun openWifiSettings(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            ctx.startActivity(Intent(android.provider.Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun openBluetoothSettings(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            ctx.startActivity(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    // ==================== 媒体控制 ====================
+
+    @JavascriptInterface
+    fun getMediaInfo(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val am = ctx.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            val vol = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+            val maxVol = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+            val muted = am.isStreamMute(android.media.AudioManager.STREAM_MUSIC)
+            """{"success":true,"volume":$vol,"maxVolume":$maxVol,"muted":$muted}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun setMediaVolume(vol: Int): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val am = ctx.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, vol, 0)
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun sendMediaButton(keyCode: Int): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val down = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode)
+            val up = android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode)
+            ctx.sendBroadcast(Intent(Intent.ACTION_MEDIA_BUTTON).putExtra(Intent.EXTRA_KEY_EVENT, down))
+            ctx.sendBroadcast(Intent(Intent.ACTION_MEDIA_BUTTON).putExtra(Intent.EXTRA_KEY_EVENT, up))
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
     // ==================== 亮度控制 ====================
 
     @JavascriptInterface

@@ -133,6 +133,8 @@ export function openNotificationPanel() {
     renderNotificationList();
     // 初始化亮度
     initBrightness();
+    // 初始化快捷设置
+    initQuickSettings();
 }
 
 // ==================== 亮度控制 ====================
@@ -148,7 +150,6 @@ function initBrightness() {
         if (typeof NativeBridge !== 'undefined') {
             const perm = JSON.parse(NativeBridge.canWriteSettings());
             if (!perm.canWrite) {
-                // 没权限，显示提示
                 slider.disabled = true;
                 slider.title = '需要授权修改系统设置';
                 if (valEl) valEl.textContent = '需授权';
@@ -173,32 +174,118 @@ function initBrightness() {
 
     if (!brightnessReady) {
         brightnessReady = true;
-
-        // 拖动时实时调节
         slider.addEventListener('input', function() {
             const v = parseInt(this.value);
             if (valEl) valEl.textContent = Math.round(v / 255 * 100) + '%';
-            try {
-                if (typeof NativeBridge !== 'undefined') {
-                    NativeBridge.setBrightness(v);
-                }
-            } catch (e) {}
+            try { if (typeof NativeBridge !== 'undefined') NativeBridge.setBrightness(v); } catch (e) {}
         });
-
-        // 点击亮度图标跳转系统设置
-        const icon = document.querySelector('.qs-icon');
+        const icon = document.querySelector('.qs-brightness .qs-icon');
         if (icon) {
             icon.style.cursor = 'pointer';
             icon.addEventListener('click', function() {
-                try {
-                    if (typeof NativeBridge !== 'undefined') {
-                        NativeBridge.openWriteSettings();
-                    }
-                } catch (e) {}
+                try { if (typeof NativeBridge !== 'undefined') NativeBridge.openWriteSettings(); } catch (e) {}
             });
         }
     }
 }
+
+// ==================== 快捷设置开关 ====================
+function initQuickSettings() {
+    // WiFi
+    try {
+        const r = JSON.parse(NativeBridge.getWifiEnabled());
+        if (r.success) setTileActive('qs-wifi', r.enabled);
+    } catch (e) {}
+    // 蓝牙
+    try {
+        const r = JSON.parse(NativeBridge.getBluetoothEnabled());
+        if (r.success) setTileActive('qs-bluetooth', r.enabled);
+    } catch (e) {}
+    // 自动旋转
+    try {
+        const r = JSON.parse(NativeBridge.getAutoRotate());
+        if (r.success) setTileActive('qs-rotate', r.enabled);
+    } catch (e) {}
+    // 流量信息
+    try {
+        const r = JSON.parse(NativeBridge.getDataUsage());
+        if (r.success) {
+            const el = document.getElementById('qs-data-info');
+            if (el) el.textContent = r.carrier + ' · ' + r.state;
+        }
+    } catch (e) {}
+
+    // 媒体音量
+    try {
+        const r = JSON.parse(NativeBridge.getMediaInfo());
+        if (r.success) {
+            const player = document.getElementById('media-player');
+            if (player) player.style.display = 'block';
+            const vs = document.getElementById('media-vol-slider');
+            const vv = document.getElementById('media-vol-val');
+            if (vs) { vs.max = r.maxVolume; vs.value = r.volume; }
+            if (vv) vv.textContent = r.volume;
+        }
+    } catch (e) {}
+
+    // 音量滑块事件
+    const volSlider = document.getElementById('media-vol-slider');
+    const volVal = document.getElementById('media-vol-val');
+    if (volSlider && !volSlider._bound) {
+        volSlider._bound = true;
+        volSlider.addEventListener('input', function() {
+            const v = parseInt(this.value);
+            if (volVal) volVal.textContent = v;
+            try { if (typeof NativeBridge !== 'undefined') NativeBridge.setMediaVolume(v); } catch (e) {}
+        });
+    }
+}
+
+function setTileActive(id, active) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (active) el.classList.add('active');
+    else el.classList.remove('active');
+}
+
+// 快捷设置切换
+window._qsToggle = function(which) {
+    try {
+        if (typeof NativeBridge === 'undefined') return;
+        switch (which) {
+            case 'wifi': {
+                const r = JSON.parse(NativeBridge.getWifiEnabled());
+                const next = !(r.success && r.enabled);
+                NativeBridge.setWifiEnabled(next);
+                setTileActive('qs-wifi', next);
+                break;
+            }
+            case 'bluetooth': {
+                const r = JSON.parse(NativeBridge.getBluetoothEnabled());
+                const next = !(r.success && r.enabled);
+                NativeBridge.setBluetoothEnabled(next);
+                setTileActive('qs-bluetooth', next);
+                break;
+            }
+            case 'rotate': {
+                const r = JSON.parse(NativeBridge.getAutoRotate());
+                const next = !(r.success && r.enabled);
+                NativeBridge.setAutoRotate(next);
+                setTileActive('qs-rotate', next);
+                break;
+            }
+            case 'data': {
+                // 长按跳转流量设置
+                try {
+                    NativeBridge.openWifiSettings();
+                } catch (e) {}
+                break;
+            }
+        }
+    } catch (e) {
+        console.warn('[QS] toggle error:', e);
+    }
+};
 
 export function closeNotificationPanel() {
     const panel = document.getElementById('notification-panel');
