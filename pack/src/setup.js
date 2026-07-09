@@ -186,25 +186,9 @@ let isDragging = false, hasMoved = false;
             state.isDragging = isDragging;
             state.hasMoved = hasMoved;
 
-            let _fpsFrames = 0, _fpsLast = performance.now(), _fpsShow = false;
-            state._fpsShow = _fpsShow;
             const animate = (timestamp) => {
                 const now = timestamp || performance.now();
-                // FPS counter
-                _fpsFrames++;
-                if (now - _fpsLast >= 1000) {
-                    const fps = Math.round(_fpsFrames * 1000 / (now - _fpsLast));
-                    _fpsFrames = 0;
-                    _fpsLast = now;
-                    const el = document.getElementById('fps-value');
-                    if (el) el.textContent = fps;
-                    if (_fpsShow !== state._fpsShow) {
-                        _fpsShow = state._fpsShow;
-                        const ce = document.getElementById('fps-counter');
-                        if (ce) ce.style.display = _fpsShow ? 'block' : 'none';
-                        console.log('[FPS] visibility=' + _fpsShow);
-                    }
-                }
+                _fpsFrameCount++;
                 state.updateZoomAnimation(now);
                 state.updateRotationAnimation(now);
                 if (state.inertiaStrength > INERTIA_MIN && !state.isInTimeView && !state.rotationAnimData) {
@@ -249,6 +233,28 @@ let isDragging = false, hasMoved = false;
                         });
 
             state.animate = animate; 
+
+            // FPS 计数器：animate中计数，此定时器负责显示
+            let _fpsFrameCount = 0, _fpsLastTime = performance.now(), _fpsShow = false;
+            state._fpsShow = _fpsShow;
+            setInterval(function() {
+                const now = performance.now();
+                const elapsed = now - _fpsLastTime;
+                if (elapsed > 0) {
+                    const fps = Math.round(_fpsFrameCount * 1000 / elapsed);
+                    const el = document.getElementById('fps-value');
+                    if (el) el.textContent = fps;
+                }
+                _fpsFrameCount = 0;
+                _fpsLastTime = now;
+                if (_fpsShow !== state._fpsShow) {
+                    _fpsShow = state._fpsShow;
+                    const ce = document.getElementById('fps-counter');
+                    if (ce) ce.style.display = _fpsShow ? 'block' : 'none';
+                    console.log('[FPS] visibility=' + _fpsShow);
+                }
+            }, 1000);
+
             // 启动时读取FPS设置
             try {
                 const _sfps = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
