@@ -1,6 +1,9 @@
 package com.dng.launcher
 
 import android.content.Context
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -228,6 +231,17 @@ class JsBridge(context: Context, webView: WebView) {
                 callback("_onHotReloadLoaded", """{"success":false,"error":"${e.message}"}""")
             }
         }
+    }
+
+    private var currentLogFileName: String? = null
+
+    private fun getLogFile(): java.io.File {
+        val name = currentLogFileName ?: run {
+            val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
+            val ts = sdf.format(java.util.Date())
+            "log_$ts.txt"
+        }.also { currentLogFileName = it }
+        return java.io.File(ctx.filesDir, name)
     }
 
     @JavascriptInterface
