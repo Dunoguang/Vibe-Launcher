@@ -53,5 +53,4 @@ android {
 dependencies {
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("com.google.code.gson:gson:2.11.0")
-    implementation("androidx.dynamicanimation:dynamicanimation-ktx:1.0.0-alpha03")
 }
