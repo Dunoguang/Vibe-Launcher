@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { computeInitDistance, applyZoom, computeTimeViewZoom } from './zoom.js';
 import { initSettingsPanel } from './settings.js';
 import { hideContextMenu } from './gestures.js';
-import { animate } from './anim.js';
+
 import { tryLoadApps } from './sprites.js';
 import { updateBatteryDisplay } from './battery.js';
 
@@ -29,7 +29,7 @@ import { updateBatteryDisplay } from './battery.js';
                     NativeBridge.log("ctx-uninstall " + pkg); if (pkg && state.nativeBridgeReady) NativeBridge.log('uninst-result ' + NativeBridge.uninstallApp(pkg));
                     hideContextMenu();
                 });
-                requestAnimationFrame(animate);
+                 requestAnimationFrame(state.animate);
                 tryLoadApps();
                 setTimeout(function() { updateBatteryDisplay(); }, 3000);
                 console.log('🚀 3D 桌面已就绪');

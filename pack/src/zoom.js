@@ -112,11 +112,11 @@ import { materialEasing } from './utils.js';
                 const elapsed = now - state.rotationAnimData.startTime;
                 let t = Math.min(1, elapsed / state.rotationAnimData.duration);
                 const eased = materialEasing(t);
-                rotationQuat.copy(state.rotationAnimData.from).slerp(state.rotationAnimData.to, eased);
-                state.sphereGroup.quaternion.copy(rotationQuat);
+                state.rotationQuat.copy(state.rotationAnimData.from).slerp(state.rotationAnimData.to, eased);
+                state.sphereGroup.quaternion.copy(state.rotationQuat);
                 if (t >= 1) {
-                    rotationQuat.copy(state.rotationAnimData.to);
-                    state.sphereGroup.quaternion.copy(rotationQuat);
+                    state.rotationQuat.copy(state.rotationAnimData.to);
+                    state.sphereGroup.quaternion.copy(state.rotationQuat);
                     const cb = state.rotationAnimData.callback;
                     state.rotationAnimData = null;
                     if (cb) cb();
@@ -126,15 +126,15 @@ import { materialEasing } from './utils.js';
 
             export function startRotationAnimation(targetQuat, duration, callback) {
                 state.rotationAnimData = {
-                    from: rotationQuat.clone(),
+                    from: state.rotationQuat.clone(),
                     to: targetQuat.clone(),
                     startTime: performance.now(),
                     duration: duration || state.ANIM_DURATION,
                     callback: callback || null
                 };
                 if (callback && duration <= 0) {
-                    rotationQuat.copy(targetQuat);
-                    state.sphereGroup.quaternion.copy(rotationQuat);
+                    state.rotationQuat.copy(targetQuat);
+                    state.sphereGroup.quaternion.copy(state.rotationQuat);
                     state.rotationAnimData = null;
                     callback();
                 }

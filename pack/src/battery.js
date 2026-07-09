@@ -48,7 +48,7 @@ import { state } from './state.js';
                     const tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] HIDE'); }
                 } else if (!document.hidden && !state.isInTimeView && zoomTarget === null) {
-                    startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
+                    startZoomAnimation(defaultZoom, state.ANIM_DURATION, function() {
                         zoomLevel = defaultZoom;
                         state.zoomLevel = zoomLevel;
                         applyZoom();

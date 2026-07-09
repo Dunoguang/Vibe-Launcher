@@ -138,7 +138,7 @@ import { createSprites } from './sprites.js';
                     const sphereSizeInput = document.getElementById('settings-sphere-input');
                     let sphereSize = sphereSizeInput ? sphereSizeInput.value : '2.5';
                     // 最小半径校验
-                    const minR = updateSphereMinHint();
+                    const minR = state.updateSphereMinHint();
                     let inputR = parseFloat(sphereSize);
                     if (isNaN(inputR) || inputR <= 0) inputR = 2.5;
                     if (inputR < minR) {
@@ -218,7 +218,7 @@ import { createSprites } from './sprites.js';
                                 spr.material.needsUpdate = true;
                             });
                         }
-                        if (sphereGroup && inputR > 0) {
+                        if (state.sphereGroup && inputR > 0) {
                             // 仅球体大小变化（布局不变），重新分布位置
                             let rawPoints = sphereCoulomb(window._totalItems.length, { radius: state.SPHERE_RADIUS, iter: 500 });
                             const timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
@@ -237,10 +237,10 @@ import { createSprites } from './sprites.js';
                                     sprites[k].position.copy(rawPoints[k]);
                                 }
                             }
-                            sphereGroup.quaternion.copy(rotationQuat);
+                            state.sphereGroup.quaternion.copy(state.rotationQuat);
                             SPHERE_DIAMETER = state.SPHERE_RADIUS * 2;
                             state.defaultZoom = computeInitDistance();
-                            state.timeViewZoom = computeTimeViewZoom();
+                            state.timeViewZoom = state.computeTimeViewZoom();
                             state.zoomLevel = state.defaultZoom;
                             state.applyZoom();
                         }

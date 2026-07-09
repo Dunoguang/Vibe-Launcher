@@ -230,7 +230,7 @@ window._totalItems = totalItems;
                     state.camera.lookAt(tw);
                 }
 
-updateSphereMinHint();
+state.updateSphereMinHint();
                 // 启动时应用已保存的球体大小
                 try {
                     let saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
@@ -256,14 +256,14 @@ updateSphereMinHint();
                         state.SPHERE_DIAMETER = state.SPHERE_RADIUS * 2;
                         state.defaultZoom = computeInitDistance();
                         state.defaultZoom = state.defaultZoom;
-                        state.timeViewZoom = computeTimeViewZoom();
+                        state.timeViewZoom = state.computeTimeViewZoom();
                         state.zoomLevel = state.defaultZoom;
                         state.zoomLevel = state.zoomLevel;
                         applyZoom();
                     }
                 } catch(e) {}
 
-                state.timeViewZoom = computeTimeViewZoom();
+                state.timeViewZoom = state.computeTimeViewZoom();
 
                 console.log('createSprites DONE, calling hideLoadingIfReady');
                 // 初始化时间精灵纹理 + 启动分钟调度
@@ -471,7 +471,7 @@ updateSphereMinHint();
                         var td = timePos.clone().normalize();
                         var tq = new THREE.Quaternion().setFromUnitVectors(td, new THREE.Vector3(0, 0, 1));
                         startRotationAnimation(tq, state.ANIM_DURATION, function() {});
-                        startZoomAnimation(state.timeViewZoom || computeTimeViewZoom(), state.ANIM_DURATION, function() {
+                        startZoomAnimation(state.timeViewZoom || state.computeTimeViewZoom(), state.ANIM_DURATION, function() {
                             state.zoomLevel = state.timeViewZoom; applyZoom();
                         });
                     }

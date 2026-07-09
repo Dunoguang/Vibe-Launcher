@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { init } from './init.js';
 import { initScene } from './scene.js';
 import { state } from './state.js';
 import { sphereCoulomb } from './sphere-coulomb.js';
@@ -32,42 +33,11 @@ console.log("IIFE starting, THREE:", typeof THREE);
             const sceneInit = await initScene(loadingEl);
             if (!sceneInit) return;
             const { scene, camera, renderer, rendererType, canvas, sphereGroup } = sceneInit;
-            state.canvas = canvas;
+            state.camera = camera;
             state.renderer = renderer;
             state.scene = scene;
-            state.camera = camera;
+            state.canvas = canvas;
             state.sphereGroup = sphereGroup;
-
-            // ========== 常量 ==========
-            let SPHERE_RADIUS = 2.5, layoutMode = 'sphere';
-            state.SPHERE_RADIUS = SPHERE_RADIUS;
-            state.layoutMode = layoutMode;
-            (function() {
-                try {
-                    const _s = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
-                    if (_s.layoutMode) layoutMode = _s.layoutMode;
-                } catch(e) {}
-            })();
-            let SPHERE_DIAMETER = SPHERE_RADIUS * 2;
-            // BASE_SCALE moved to config.js
-            let ICON_RES = 512;
-            state.ICON_RES = ICON_RES;
-            try {
-                const _saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
-                if (_saved.iconRes && parseInt(_saved.iconRes) >= 16) ICON_RES = parseInt(_saved.iconRes);
-            } catch(e) {}
-            // HOVER_SCALE moved to config.js
-            // FOV_RAD moved to config.js
-            // MIN_ZOOM moved to config.js
-            
-            let ANIM_DURATION = (function() {
-        try {
-            const s = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
-            const v = parseInt(s.animSpeed);
-            if (v >= 10 && v <= 5000) return v;
-        } catch(e) {}
-        return 250;
-    })();
             const exitThresholdRatio = 0.35;
             let cancelableAction = null;
             let bottomSwipeData = null, topSwipeData = null, cancelSwipeData = null;
@@ -133,7 +103,6 @@ console.log("IIFE starting, THREE:", typeof THREE);
             let _timePageTimer = null;
             state._timePageTimer = _timePageTimer;
 
-
 let zoomLevel = computeInitDistance(), defaultZoom = zoomLevel;
             state.defaultZoom = defaultZoom;
             state.zoomLevel = zoomLevel;
@@ -147,18 +116,12 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
 
             // ========== 可取消动作状态机 ==========
 
-
-
-
-
             state.startZoomAnimation = startZoomAnimation;
 
             state.cancelZoomAnimation = cancelZoomAnimation;
 
             // ====== 三次贝塞尔求解器 ======
             // ====== 通用动画函数 ======
-
-
 
             state.startRotationAnimation = startRotationAnimation;
 
@@ -223,13 +186,14 @@ let isDragging = false, hasMoved = false;
                 }
                 renderer.render(scene, camera);
                 if (isBusy()) {
-                    animFrameId = requestAnimationFrame(animate);
+                     state.animFrameId = requestAnimationFrame(animate);
                 } else {
-                    animFrameId = null;
+                    state.animFrameId = null;
                 }
             };
+            state.animate = animate; 
             // 首次启动
-            animFrameId = requestAnimationFrame(animate);
+             state.animFrameId = requestAnimationFrame(animate);
             // 任何输入都唤醒
             document.addEventListener('pointerdown', wakeUp, { passive: true });
             document.addEventListener('pointermove', wakeUp, { passive: true });
@@ -237,5 +201,5 @@ let isDragging = false, hasMoved = false;
             document.addEventListener('touchstart', wakeUp, { passive: true });
 
             let _texVersion = 0;
-            state.animate = animate;
+             init();
 })();

@@ -301,9 +301,9 @@ state.updateMouse(e.clientX, e.clientY);
                         deltaQ.setFromEuler(new THREE.Euler(0, euler.y * 0.25, 0));
                     }
                 }
-                rotationQuat.premultiply(deltaQ);
-                rotationQuat.normalize();
-                state.sphereGroup.quaternion.copy(rotationQuat);
+                state.rotationQuat.premultiply(deltaQ);
+                state.rotationQuat.normalize();
+                state.sphereGroup.quaternion.copy(state.rotationQuat);
                 const speed = quatAngle(deltaQ);
                 state.recentSpeeds.push(speed);
                 if (state.recentSpeeds.length > state.SPEED_SAMPLES) state.recentSpeeds.shift();
@@ -344,7 +344,7 @@ state.updateMouse(e.clientX, e.clientY);
                         } else {
                             // 没超过阈值：弹回继续展开
                             if (!state.animFrameId) state.animFrameId = requestAnimationFrame(state.animate);
-                            state.startZoomAnimation(cancelableAction.zoomTarget, ANIM_DURATION, function() {
+                            state.startZoomAnimation(cancelableAction.zoomTarget, state.ANIM_DURATION, function() {
                                 state.zoomLevel = cancelableAction.zoomTarget; state.applyZoom();
                                 if (cancelableAction && !cancelableAction.cancelled) {
                                     cancelableAction.zoomDone = true; tryCommitCancelable();
@@ -353,7 +353,7 @@ state.updateMouse(e.clientX, e.clientY);
                             var targetSprite = cancelableAction.sprite;
                             var targetDir = targetSprite.position.clone().normalize();
                             var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
-                            state.startRotationAnimation(targetQuat, ANIM_DURATION, function() {
+                            state.startRotationAnimation(targetQuat, state.ANIM_DURATION, function() {
                                 if (cancelableAction && !cancelableAction.cancelled) {
                                     cancelableAction.rotDone = true; tryCommitCancelable();
                                 }
@@ -368,7 +368,7 @@ state.updateMouse(e.clientX, e.clientY);
                     if (sd.confirmed && state.zoomLevel <= sd.startTimeViewZoom + (state.defaultZoom - sd.startTimeViewZoom) * 0.5) {
                         returnToTimeView();
                     } else {
-                        state.startZoomAnimation(state.defaultZoom, ANIM_DURATION, function() { state.zoomLevel = state.defaultZoom; state.applyZoom(); });
+                        state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() { state.zoomLevel = state.defaultZoom; state.applyZoom(); });
                     }
                     return;
                 }
@@ -393,7 +393,7 @@ state.updateMouse(e.clientX, e.clientY);
                                 state.inertiaQ.copy(smallQ);
                             });
                         } else {
-                            state.startZoomAnimation(state.timeViewZoom, ANIM_DURATION, function() {
+                            state.startZoomAnimation(state.timeViewZoom, state.ANIM_DURATION, function() {
                                 state.zoomLevel = state.timeViewZoom;
                                 state.applyZoom();
                                 // 恢复原生时间覆盖层
@@ -404,7 +404,7 @@ state.updateMouse(e.clientX, e.clientY);
                         }
                     } else {
                         if (Math.abs(state.zoomLevel - state.timeViewZoom) > 0.02) {
-                            state.startZoomAnimation(state.timeViewZoom, ANIM_DURATION, function() {
+                            state.startZoomAnimation(state.timeViewZoom, state.ANIM_DURATION, function() {
                                 state.zoomLevel = state.timeViewZoom;
                                 state.applyZoom();
                                 const tp = document.getElementById('time-page');
@@ -450,7 +450,7 @@ state.updateMouse(e.clientX, e.clientY);
                                 if (saved.sphereSize && sphereInput) sphereInput.value = parseFloat(saved.sphereSize);
                                 const animInput = document.getElementById('settings-anim-input');
                                 if (saved.animSpeed && animInput) animInput.value = saved.animSpeed;
-                                else if (animInput) animInput.value = ANIM_DURATION;
+                                else if (animInput) animInput.value = state.ANIM_DURATION;
                                 const hotreloadCb = document.getElementById('s-hotreload');
                                 if (hotreloadCb) hotreloadCb.checked = !!(saved.hotReload);
                                 if (saved.layoutMode) {
@@ -498,10 +498,10 @@ state.updateMouse(e.clientX, e.clientY);
                         if (currentZoom >= thresholdZoom) {
                             exitTimeView(true);
                         } else {
-                            state.startZoomAnimation(state.timeViewZoom, ANIM_DURATION);
+                            state.startZoomAnimation(state.timeViewZoom, state.ANIM_DURATION);
                         }
                     } else {
-                        state.startZoomAnimation(state.timeViewZoom, ANIM_DURATION);
+                        state.startZoomAnimation(state.timeViewZoom, state.ANIM_DURATION);
                     }
                     document.body.style.cursor = 'default';
                 }
@@ -520,10 +520,10 @@ state.updateMouse(e.clientX, e.clientY);
                         if (currentZoom >= thresholdZoom) {
                             exitTimeView(true);
                         } else {
-                            state.startZoomAnimation(state.timeViewZoom, ANIM_DURATION);
+                            state.startZoomAnimation(state.timeViewZoom, state.ANIM_DURATION);
                         }
                     } else {
-                        state.startZoomAnimation(state.timeViewZoom, ANIM_DURATION);
+                        state.startZoomAnimation(state.timeViewZoom, state.ANIM_DURATION);
                     }
                 }
                 if (state.activePointerIds.size === 0) {
@@ -592,7 +592,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                         if (state.zoomLevel >= thresholdZoom) {
                             exitTimeView(true);
                         } else {
-                            state.startZoomAnimation(state.timeViewZoom, ANIM_DURATION);
+                            state.startZoomAnimation(state.timeViewZoom, state.ANIM_DURATION);
                         }
                     }
                     pinchStartDist = 0;

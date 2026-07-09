@@ -122,10 +122,10 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 state.recentSpeeds = [];
                 state.clearHover();
                 document.body.style.cursor = 'default';
-                const targetZoom = computeTimeViewZoom();
+                const targetZoom = state.computeTimeViewZoom();
                 state.timeViewZoom = targetZoom;
                 if (animate) {
-                    state.startZoomAnimation(targetZoom, ANIM_DURATION, function() {
+                    state.startZoomAnimation(targetZoom, state.ANIM_DURATION, function() {
                         state.zoomLevel = targetZoom;
                         state.applyZoom();
                         if (onComplete) onComplete();
@@ -163,7 +163,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 _pointerDownCount = 0;
                 const targetZoom = state.defaultZoom;
                 if (animate) {
-                    state.startZoomAnimation(targetZoom, ANIM_DURATION, function() {
+                    state.startZoomAnimation(targetZoom, state.ANIM_DURATION, function() {
                         state.zoomLevel = targetZoom;
                         state.applyZoom();
                         if (callback) callback();
@@ -197,7 +197,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
 
                 // 同时执行旋转和缩放动画
 let zoomComplete = false, rotationComplete = false;
-                const targetZoom = computeTimeViewZoom();
+                const targetZoom = state.computeTimeViewZoom();
                 state.timeViewZoom = targetZoom;
 
                 const checkBothComplete = () => {
@@ -210,13 +210,13 @@ let zoomComplete = false, rotationComplete = false;
                     }
                 }
 
-                startRotationAnimation(targetQuat, ANIM_DURATION, function() {
+                startRotationAnimation(targetQuat, state.ANIM_DURATION, function() {
                     console.log('[TIME-ENTRY] rotation done');
                     rotationComplete = true;
                     checkBothComplete();
                 });
 
-                state.startZoomAnimation(targetZoom, ANIM_DURATION, function() {
+                state.startZoomAnimation(targetZoom, state.ANIM_DURATION, function() {
                     console.log('[TIME-ENTRY] zoom done');
                     state.zoomLevel = targetZoom;
                     state.applyZoom();
