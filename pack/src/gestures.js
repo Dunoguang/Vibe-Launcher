@@ -286,17 +286,17 @@ state.updateMouse(e.clientX, e.clientY);
                 }
                 if (!state.hasMoved || dist < 0.5) return;
                 let deltaQ;
-                if (layoutMode === 'flatring') {
+                if (state.layoutMode === 'flatring') {
                     let dx = curr.x - state.prevScreen.x;
                     deltaQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -dx * 0.001);
                 } else {
-                    const p0 = screenToSphere(state.prevScreen.x, state.prevScreen.y);
-                    const p1 = screenToSphere(curr.x, curr.y);
+                    const p0 = state.screenToSphere(state.prevScreen.x, state.prevScreen.y);
+                    const p1 = state.screenToSphere(curr.x, curr.y);
                     deltaQ = new THREE.Quaternion().setFromUnitVectors(p0, p1);
-                    if (layoutMode === 'ring') {
+                    if (state.layoutMode === 'ring') {
                         const euler = new THREE.Euler().setFromQuaternion(deltaQ);
                         deltaQ.setFromEuler(new THREE.Euler(euler.x * 0.25, 0, 0));
-                    } else if (layoutMode === 'hbar') {
+                    } else if (state.layoutMode === 'hbar') {
                         const euler = new THREE.Euler().setFromQuaternion(deltaQ);
                         deltaQ.setFromEuler(new THREE.Euler(0, euler.y * 0.25, 0));
                     }
@@ -387,7 +387,7 @@ state.updateMouse(e.clientX, e.clientY);
                                 state.inertiaStrength = 0.4;
                                 state.infiniteInertia = true;
                                 let spinAxis;
-                                if (layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
+                                if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                                 else spinAxis = new THREE.Vector3(1, 0, 0);
                                 const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                                 state.inertiaQ.copy(smallQ);
@@ -441,7 +441,7 @@ state.updateMouse(e.clientX, e.clientY);
                         if (app && app.packageName === '__settings__') {
                             window._lastSettingsClick = Date.now();
                             try { NativeBridge.log('settings clicked'); } catch(e) {}
-                            startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
+                            state.startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
                                 let saved = {};
                                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
                                 const iconInput = document.getElementById('s-icon');
@@ -454,7 +454,7 @@ state.updateMouse(e.clientX, e.clientY);
                                 const hotreloadCb = document.getElementById('s-hotreload');
                                 if (hotreloadCb) hotreloadCb.checked = !!(saved.hotReload);
                                 if (saved.layoutMode) {
-                                    const radios = document.getElementsByName('layoutMode');
+                                    const radios = document.getElementsByName('state.layoutMode');
                                     for (let ri = 0; ri < radios.length; ri++) {
                                         if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
                                     }
@@ -465,7 +465,7 @@ state.updateMouse(e.clientX, e.clientY);
                         } else if (app && app.packageName === '__time__') {
                             state.returnToTimeView();
                         } else if (app && !state.isInTimeView) {
-                            startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
+                            state.startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
                                 if (app && state.nativeBridgeReady) {
                                     try {
                                         const result = JSON.parse(NativeBridge.launchApp(app.packageName));
@@ -585,6 +585,39 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             }
 
             const onTouchEnd = (e) => {
+                // ====== 双击复位检测 ======
+                if (!state.isInTimeView && !state.wasPinching && e.touches.length === 0) {
+                    const now = Date.now();
+                    if (now - state.lastTap < 300 && !state.isDragging && !state.lastTapOnIcon && !state._prevTapOnIcon) {
+                        if (e.changedTouches && e.changedTouches[0]) {
+                            var dx = e.changedTouches[0].clientX - state.lastTapX;
+                            var dy = e.changedTouches[0].clientY - state.lastTapY;
+                            if (dx * dx + dy * dy > 2500) {
+                                state.lastTap = now;
+                                state.lastTapX = e.changedTouches[0].clientX;
+                                state.lastTapY = e.changedTouches[0].clientY;
+                                state.lastTapOnIcon = true;
+                                return;
+                            }
+                        }
+                        console.log('[DT] DOUBLE TAP RESET');
+                        state.rotationQuat.identity();
+                        state.sphereGroup.quaternion.identity();
+                        state.inertiaQ.identity();
+                        state.inertiaStrength = 0;
+                        state.zoomLevel = state.defaultZoom;
+                        state.applyZoom();
+                        state.lastTap = 0;
+                        return;
+                    }
+                    state.lastTap = now;
+                    if (e.changedTouches && e.changedTouches[0]) {
+                        state.lastTapX = e.changedTouches[0].clientX;
+                        state.lastTapY = e.changedTouches[0].clientY;
+                    }
+                    state.lastTapOnIcon = false;
+                    state._prevTapOnIcon = state.lastTapOnIcon;
+                }
                 if (e.touches.length < 2) {
                     if (state.wasPinching && state.isInTimeView && state.zoomLevel > state.timeViewZoom + 0.15) {
                         const zoomRange = state.defaultZoom - state.timeViewZoom;

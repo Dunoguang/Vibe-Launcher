@@ -47,10 +47,10 @@ import { state } from './state.js';
                 if (document.hidden) {
                     const tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; console.log('[TIME-DOM] HIDE'); }
-                } else if (!document.hidden && !state.isInTimeView && zoomTarget === null) {
+                } else if (!document.hidden && !state.isInTimeView && state.zoomTarget === null) {
                     state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
-                        zoomLevel = state.defaultZoom;
-                        state.zoomLevel = zoomLevel;
+                        state.zoomLevel = state.defaultZoom;
+                        //state.zoomLevel = zoomLevel; (fixed above)
                         state.applyZoom();
                     });
                 }

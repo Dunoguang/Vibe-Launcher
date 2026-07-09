@@ -58,3 +58,6 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
             };
             state.wakeUp = wakeUp;
 state.updateMouse = updateMouse;
+
+state.getAppBySprite = getAppBySprite;
+state.screenToSphere = screenToSphere;

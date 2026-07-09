@@ -115,7 +115,16 @@ console.log("IIFE starting, THREE:", typeof THREE);
             state.hoveredSprite = hoveredSprite;
             state.longPressTimer = longPressTimer;
             // LONG_PRESS_MS moved to config.js
+            state.DRAG_THRESHOLD = DRAG_THRESHOLD;
+            state.LONG_PRESS_MS = LONG_PRESS_MS;
+            state.MIN_ZOOM = MIN_ZOOM;
+            state.SPEED_SAMPLES = SPEED_SAMPLES;
             let lastTap = 0, lastTapX = 0, lastTapY = 0, lastTapOnIcon = false, _prevTapOnIcon = false;
+            state.lastTap = lastTap;
+            state.lastTapX = lastTapX;
+            state.lastTapY = lastTapY;
+            state.lastTapOnIcon = lastTapOnIcon;
+            state._prevTapOnIcon = _prevTapOnIcon;
             var _pointerDownCount = 0;
             state._pointerDownCount = _pointerDownCount;
             let _timePageTimer = null;
@@ -190,18 +199,18 @@ let isDragging = false, hasMoved = false;
                 const now = timestamp || performance.now();
                 state.updateZoomAnimation(now);
                 state.updateRotationAnimation(now);
-                if (inertiaStrength > INERTIA_MIN && !state.isInTimeView && !rotationAnimData) {
-                    const decay = (isDragging && hasMoved) ? INERTIA_FAST_DECAY : INERTIA_DECAY;
-                    const factor = Math.min(inertiaStrength, 1.0);
-                    const applyQ = new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(), inertiaQ, factor);
-                    rotationQuat.premultiply(applyQ);
-                    rotationQuat.normalize();
-                    sphereGroup.quaternion.copy(rotationQuat);
-                    if (!infiniteInertia) {
-                        inertiaStrength *= decay;
-                        if (inertiaStrength < INERTIA_MIN) {
-                            inertiaStrength = 0;
-                            inertiaQ.identity();
+                if (state.inertiaStrength > INERTIA_MIN && !state.isInTimeView && !state.rotationAnimData) {
+                    const decay = (state.isDragging && state.hasMoved) ? INERTIA_FAST_DECAY : INERTIA_DECAY;
+                    const factor = Math.min(state.inertiaStrength, 1.0);
+                    const applyQ = new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(), state.inertiaQ, factor);
+                    state.rotationQuat.premultiply(applyQ);
+                    state.rotationQuat.normalize();
+                    state.sphereGroup.quaternion.copy(state.rotationQuat);
+                    if (!state.infiniteInertia) {
+                        state.inertiaStrength *= decay;
+                        if (state.inertiaStrength < INERTIA_MIN) {
+                            state.inertiaStrength = 0;
+                            state.inertiaQ.identity();
                         }
                     }
                 }
@@ -238,7 +247,8 @@ let isDragging = false, hasMoved = false;
             state.canvas.addEventListener('touchcancel', function(e) {
                 onTouchEnd(e);
                 state.resetAllPointers();
-            });
+
+                        });
 
             state.animate = animate; 
             // 首次启动
