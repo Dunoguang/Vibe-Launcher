@@ -341,6 +341,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 }
                 sprites = [];
                 timeSprite = null;
+                state.timeSprite = null;
             }
 
 let pendingIconLoads = 0, enterAnimationComplete = false;
