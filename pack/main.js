@@ -3,6 +3,7 @@ import { initScene } from './src/scene.js';
 import { state } from './src/state.js';
 import { sphereCoulomb } from './src/sphere-coulomb.js';
 import { cubicBezier, animateValue, materialEasing, easeOutCubic } from './src/utils.js';
+import { createGearTexture, drawCircleFrame, drawCircleBackground, drawTimeCircleBackground, createPlaceholderTexture, createIconTextureFromImage } from './src/textures.js';
 import html2canvas from 'html2canvas';
 window.THREE = THREE;
 
@@ -279,12 +280,6 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 }
             })();
 
-            const drawCircleFrame = function(ctx, cx, cy, r, s) {
-                ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-                ctx.lineWidth = s * 0.012;
-                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-            };
-
             const updateTimeSpriteBgOnly = function() {
                 _texVersion++;
                 if (!timeSprite || !timeSprite.material) return;
@@ -319,20 +314,6 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
 
             const drawCircleBackground = function(ctx, cx, cy, r, s) {
                 var bg = _wallpaperImg;
-                if (bg) {
-                    ctx.save();
-                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
-                    ctx.drawImage(bg, cx-r, cy-r, r*2, r*2);
-                    ctx.restore();
-                } else {
-                    ctx.fillStyle = '#0a0e18';
-                    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-                }
-                drawCircleFrame(ctx, cx, cy, r, s);
-            };
-
-            const drawTimeCircleBackground = function(ctx, cx, cy, r, s) {
-                var bg = _timeBgImg || _wallpaperImg;
                 if (bg) {
                     ctx.save();
                     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
@@ -554,40 +535,6 @@ let zoomComplete = false, rotationComplete = false;
                 if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
                 return tex;
             }
-
-            const createIconTextureFromImage = (img) => {
-                const s = 512,
-                    cx = s / 2,
-                    cy = s / 2,
-                    r = s * 0.44,
-                    margin = s * 0.04;
-                const c2 = document.createElement('canvas');
-                c2.width = s;
-                c2.height = s;
-                const ctx2 = c2.getContext('2d');
-                ctx2.beginPath();
-                ctx2.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx2.clip();
-                const imgSize = Math.min(img.width, img.height);
-                const sx = (img.width - imgSize) / 2,
-                    sy = (img.height - imgSize) / 2;
-                ctx2.drawImage(img, sx, sy, imgSize, imgSize, margin, margin, s - margin * 2, s - margin * 2);
-                ctx2.beginPath();
-                ctx2.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx2.strokeStyle = 'rgba(255,255,255,0.35)';
-                ctx2.lineWidth = s * 0.025;
-                ctx2.stroke();
-                const tex = new THREE.CanvasTexture(c2);
-                tex.minFilter = THREE.LinearFilter;
-                tex.magFilter = THREE.LinearFilter;
-                if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                return tex;
-            }
-
-            // ========== 精灵管理 ==========
-let apps = [], sprites = [];
-            state.sprites = sprites;
-            state.apps = apps;
 
             const updateSphereMinHint = () => {
                 const iconCount = window._totalItems ? window._totalItems.length : (sprites.length || 100);
