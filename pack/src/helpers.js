@@ -102,10 +102,10 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
             // ========== 动画循环 ==========
             let animFrameId = null;
             state.animFrameId = animFrameId
-            const isBusy = () => {
+            export const isBusy = () => {
                 return !!state.zoomAnimStart || !!rotationAnimData || inertiaStrength > INERTIA_MIN || isDragging || state._backProgress >= 0;
             };
-            const wakeUp = () => {
+            export const wakeUp = () => {
                 if (!animFrameId) {
                     animFrameId = requestAnimationFrame(animate);
                 }
