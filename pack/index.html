@@ -208,6 +208,49 @@
         .card-body { flex: 1; min-width: 0 }
         .card-title { font-size: 15px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
         .card-subtitle { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px }
+        /* ===== 垂直分页 ===== */
+        #vertical-pages {
+            position: fixed; top: 36px; left: 0; right: 0; bottom: 80px;
+            z-index: 35; display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            pointer-events: auto;
+        }
+        .vp-card {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 40px 30px; border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.08);
+            min-height: 50vh; width: min(90vw, 400px);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .vp-title { font-size: 14px; color: rgba(255,255,255,0.4); margin-bottom: 16px; letter-spacing: 0.05em }
+        .vp-content {
+            font-size: min(18vw, 80px); font-weight: 700; line-height: 1;
+            letter-spacing: -0.02em;
+            font-family: 'SF Pro Display', 'PingFang SC', -apple-system, sans-serif;
+        }
+        .vp-subtitle { font-size: 15px; color: rgba(255,255,255,0.5); margin-top: 16px; letter-spacing: 0.02em }
+        .vp-ring-container { position: relative; display: flex; align-items: center; justify-content: center }
+        .vp-ring { width: 100%; height: 100% }
+        .vp-ring-text { position: absolute; display: flex; flex-direction: column; align-items: center }
+        .vp-ring-value { font-size: 48px; font-weight: 700; letter-spacing: -0.02em }
+        .vp-ring-label { font-size: 14px; color: rgba(255,255,255,0.5); margin-top: 4px }
+        .vp-dots { display: flex; gap: 6px; margin-top: 24px }
+        .vp-dot { width: 6px; height: 6px; border-radius: 50%; transition: all 0.3s }
+        .vp-dot.active { width: 18px; border-radius: 3px }
+        /* ===== SF Compact 排版优化 ===== */
+        * {
+            font-feature-settings: 'kern' 1, 'liga' 1;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        :root {
+            --mood-accent: #8ab4f8;
+            --mood-text: rgba(255,255,255,0.8);
+            --mood-card: rgba(30,30,50,0.7);
+            --mood-glow: rgba(138,180,248,0.15);
+        }
         /* ===== 动态背景 ===== */
         #dynamic-bg-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -634,6 +677,8 @@
     <div id="fps-counter" style="position:fixed;top:8px;left:8px;z-index:2147483647;color:#0f0;font-size:16px;font-family:monospace;background:rgba(0,0,0,0.8);padding:4px 8px;border-radius:4px;display:none;pointer-events:none;user-select:none;font-weight:bold">FPS: <span id="fps-value">0</span></div>
     <div class="app-label" id="appLabel"></div>
     <div class="loading-indicator" id="loadingIndicator"></div>
+    <!-- 垂直分页 -->
+    <div id="vertical-pages"></div>
     <!-- 智能叠放 -->
     <div id="smart-stack"></div>
     <script type="module" src="/main.js"></script>

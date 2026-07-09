@@ -3,6 +3,9 @@ import './src/setup.js';
 import { initNotifications, toggleNotificationPanel, closeNotificationPanel, clearAllNotifications, openNotificationPanel } from './src/notification.js';
 import { initSmartStack, trackAppLaunch } from './src/smartstack.js';
 import { initDynamicBackground, flashAppColor } from './src/dynamic-bg.js';
+import { initFisheye, fisheyeTick } from './src/fisheye.js';
+import { initMoodSystem, applyMood } from './src/mood.js';
+import { initVerticalPages } from './src/vertical-pages.js';
 
 // 初始化通知系统
 initNotifications();
@@ -14,6 +17,17 @@ if (stackEl) stackEl.style.display = 'flex';
 
 // 初始化动态背景
 initDynamicBackground();
+
+// 初始化鱼眼缩放（蜂窝模式下生效）
+initFisheye();
+// 鱼眼每帧更新
+setInterval(fisheyeTick, 16);
+
+// 初始化动态色彩情绪系统
+initMoodSystem();
+
+// 初始化垂直分页
+initVerticalPages();
 
 // 全局：记录应用启动
 window._trackAppLaunch = trackAppLaunch;
