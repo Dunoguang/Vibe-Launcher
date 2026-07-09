@@ -2,8 +2,8 @@ import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 
             export const createGearTexture = () => {
-                console.log('createGearTexture size:', ICON_RES);
-                const s = Math.max(16, ICON_RES), ca = document.createElement('canvas');
+                console.log('createGearTexture size:', state.ICON_RES);
+                const s = Math.max(16, state.ICON_RES), ca = document.createElement('canvas');
                 ca.width = s; ca.height = s;
                 const ctx = ca.getContext('2d'), cx = s/2, cy = s/2, rr = s * 0.44;
                 ctx.fillStyle = '#000000';
@@ -79,8 +79,8 @@ import { state } from './state.js';
             };
 
             export const createPlaceholderTexture = (appName, colorHex) => {
-                console.log('createPlaceholderTexture', appName, 'size:', ICON_RES);
-                const s = Math.max(16, ICON_RES),
+                console.log('createPlaceholderTexture', appName, 'size:', state.ICON_RES);
+                const s = Math.max(16, state.ICON_RES),
                     c = document.createElement('canvas');
                 c.width = s;
                 c.height = s;
@@ -143,7 +143,5 @@ import { state } from './state.js';
             }
 
             // ========== 精灵管理 ==========
-let apps = [], sprites = [];
-            state.sprites = sprites;
-            state.apps = apps;
+// apps/sprites managed via state
 

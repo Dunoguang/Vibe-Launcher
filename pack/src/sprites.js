@@ -2,25 +2,25 @@ import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { sphereCoulomb } from './sphere-coulomb.js';
 import { createGearTexture, createPlaceholderTexture, createIconTextureFromImage, drawCircleFrame, drawTimeCircleBackground } from './textures.js';
-import { enterTimeView, createTimeTexture, syncTimeSpriteTexture, scheduleMinuteUpdate } from './time.js';
+import { enterTimeView, createTimeTexture, syncTimeSpriteTexture, scheduleMinuteUpdate, stopTimeTextureUpdates } from './time.js';
 
             export const clearAllSprites = () => {
                 stopTimeTextureUpdates();
-                for (let i = 0; i < sprites.length; i++) {
-                    const s = sprites[i];
+                for (let i = 0; i < state.sprites.length; i++) {
+                    const s = state.sprites[i];
                     if (s.material) {
                         if (s.material.map) s.material.map.dispose();
                         s.material.dispose();
                     }
-                    sphereGroup.remove(s);
+                    state.sphereGroup.remove(s);
                 }
-                sprites = [];
-                timeSprite = null;
+                state.sprites = [];
+                state.timeSprite = null;
                 state.timeSprite = null;
             }
 
 state.pendingIconLoads = 0;
-let enterAnimationComplete = false;
+state.enterAnimationComplete = false;
 
             export const createSprites = (appList, iconMap, skipEnter) => {
                 clearAllSprites();
@@ -45,10 +45,10 @@ window._totalItems = totalItems;
                     });
                 }
 
-                const isHemi = (layoutMode === 'hemisphere');
-                const isRing = (layoutMode === 'ring');
-                const isHbar = (layoutMode === 'hbar');
-                const isFlatring = (layoutMode === 'flatring');
+                const isHemi = (state.layoutMode === 'hemisphere');
+                const isRing = (state.layoutMode === 'ring');
+                const isHbar = (state.layoutMode === 'hbar');
+                const isFlatring = (state.layoutMode === 'flatring');
 
                 // 半球模式：复制透明占位精灵填充后半球
                 if (isHemi) {
@@ -65,16 +65,16 @@ window._totalItems = totalItems;
                 const N = totalItems.length;
                 let ringRadius = 0;
                 if (isRing || isHbar || isFlatring) {
-                    ringRadius = Math.max(SPHERE_RADIUS, (N * BASE_SCALE * 1.1) / (2 * Math.PI));
-                    SPHERE_RADIUS = ringRadius;
-                    SPHERE_DIAMETER = SPHERE_RADIUS * 2;
-                    defaultZoom = isFlatring ? ringRadius * 0.09 : ringRadius * 1.15;
-                    state.defaultZoom = defaultZoom;
-                    zoomLevel = defaultZoom;
+                    ringRadius = Math.max(state.SPHERE_RADIUS, (N * state.BASE_SCALE * 1.1) / (2 * Math.PI));
+                    state.SPHERE_RADIUS = ringRadius;
+                    state.SPHERE_DIAMETER = state.SPHERE_RADIUS * 2;
+                    state.defaultZoom = isFlatring ? ringRadius * 0.09 : ringRadius * 1.15;
+                    state.defaultZoom = state.defaultZoom;
+                    state.zoomLevel = state.defaultZoom;
                     applyZoom();
                 }
 
-                let rawPoints = sphereCoulomb(N, { radius: SPHERE_RADIUS, iter: 500 });
+                let rawPoints = sphereCoulomb(N, { radius: state.SPHERE_RADIUS, iter: 500 });
 
                 const timeItemIndex = totalItems.findIndex(function(item) { return item.type === 'time'; });
                 const timeRaw = rawPoints[timeItemIndex];
@@ -153,26 +153,26 @@ window._totalItems = totalItems;
                         const gearMat = new THREE.SpriteMaterial({ map: gearTex, transparent: true, depthTest: true, depthWrite: true });
                         const gearSprite = new THREE.Sprite(gearMat);
                         gearSprite.position.copy(p);
-                        gearSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
-                        gearSprite.userData = { isTimeSprite: false, app: item.data, baseScale: BASE_SCALE };
-                        sphereGroup.add(gearSprite);
-                        sprites.push(gearSprite);
+                        gearSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
+                        gearSprite.userData = { isTimeSprite: false, app: item.data, baseScale: state.BASE_SCALE };
+                        state.sphereGroup.add(gearSprite);
+                        state.sprites.push(gearSprite);
                     } else if (item.type === 'redTest') {
                         const redC = document.createElement('canvas');
-                        redC.width = ICON_RES; redC.height = ICON_RES;
+                        redC.width = state.ICON_RES; redC.height = state.ICON_RES;
                         const rtx = redC.getContext('2d');
                         rtx.fillStyle = '#ff0000';
-                        rtx.fillRect(0, 0, ICON_RES, ICON_RES);
+                        rtx.fillRect(0, 0, state.ICON_RES, state.ICON_RES);
                         const redTex = new THREE.CanvasTexture(redC);
                         redTex.minFilter = THREE.LinearFilter;
                         redTex.magFilter = THREE.LinearFilter;
                         const redMat = new THREE.SpriteMaterial({ map: redTex, transparent: true, depthTest: true, depthWrite: true, opacity: 0 });
                         const redSprite = new THREE.Sprite(redMat);
                         redSprite.position.copy(p);
-                        redSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
-                        redSprite.userData = { isTimeSprite: false, app: item.data, baseScale: BASE_SCALE, isDecor: true };
-                        sphereGroup.add(redSprite);
-                        sprites.push(redSprite);
+                        redSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
+                        redSprite.userData = { isTimeSprite: false, app: item.data, baseScale: state.BASE_SCALE, isDecor: true };
+                        state.sphereGroup.add(redSprite);
+                        state.sprites.push(redSprite);
                     } else if (item.type === 'time') {
                         const timeTex = createTimeTexture();
                         const timeMat = new THREE.SpriteMaterial({
@@ -183,19 +183,19 @@ window._totalItems = totalItems;
                         });
                         const sprite = new THREE.Sprite(timeMat);
                         sprite.position.copy(p);
-                        sprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
+                        sprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
                         sprite.userData = {
                             isTimeSprite: true,
                             app: item.data,
-                            baseScale: BASE_SCALE
+                            baseScale: state.BASE_SCALE
                         };
-                        sphereGroup.add(sprite);
-                        sprites.push(sprite);
-                        timeSprite = sprite;
+                        state.sphereGroup.add(sprite);
+                        state.sprites.push(sprite);
+                        state.timeSprite = sprite;
                         state.timeSprite = sprite;
                     } else {
                         const app = item.data;
-                        const color = placeholderColors[item.colorIndex % placeholderColors.length];
+                        const color = state.placeholderColors[item.colorIndex % state.placeholderColors.length];
                         const placeholderTex = createPlaceholderTexture(app.appName, color);
                         const mat = new THREE.SpriteMaterial({
                             map: placeholderTex,
@@ -205,16 +205,16 @@ window._totalItems = totalItems;
                         });
                         const appSprite = new THREE.Sprite(mat);
                         appSprite.position.copy(p);
-                        appSprite.scale.set(BASE_SCALE, BASE_SCALE, 1);
+                        appSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
                         appSprite.userData = {
                             isTimeSprite: false,
                             app: app,
                             color: color,
                             hasRealIcon: false,
-                            baseScale: BASE_SCALE
+                            baseScale: state.BASE_SCALE
                         };
-                        sphereGroup.add(appSprite);
-                        sprites.push(appSprite);
+                        state.sphereGroup.add(appSprite);
+                        state.sprites.push(appSprite);
 
                         if (iconMap && iconMap[app.packageName]) {
                             loadRealIcon(appSprite, iconMap[app.packageName]);
@@ -223,22 +223,22 @@ window._totalItems = totalItems;
                 }
 
                 state.rotationQuat.identity();
-                sphereGroup.quaternion.identity();
-                if (layoutMode === 'flatring' && sprites.length > 0) {
+                state.sphereGroup.quaternion.identity();
+                if (state.layoutMode === 'flatring' && state.sprites.length > 0) {
                     const tw = new THREE.Vector3();
-                    sprites[0].getWorldPosition(tw);
-                    camera.lookAt(tw);
+                    state.sprites[0].getWorldPosition(tw);
+                    state.camera.lookAt(tw);
                 }
 
 updateSphereMinHint();
                 // 启动时应用已保存的球体大小
                 try {
                     let saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
-                    if (saved.sphereSize && parseFloat(saved.sphereSize) > 0 && layoutMode !== 'ring' && layoutMode !== 'hbar' && layoutMode !== 'flatring') {
-                        SPHERE_RADIUS = parseFloat(saved.sphereSize);
-                        // sphereGroup now uses Coulomb points directly, no need for scale
+                    if (saved.sphereSize && parseFloat(saved.sphereSize) > 0 && state.layoutMode !== 'ring' && state.layoutMode !== 'hbar' && state.layoutMode !== 'flatring') {
+                        state.SPHERE_RADIUS = parseFloat(saved.sphereSize);
+                        // state.sphereGroup now uses Coulomb points directly, no need for scale
                         // 重新分布
-                        let rawPts = sphereCoulomb(totalItems.length, { radius: SPHERE_RADIUS, iter: 500 });
+                        let rawPts = sphereCoulomb(totalItems.length, { radius: state.SPHERE_RADIUS, iter: 500 });
                         const tIdx = totalItems.findIndex(function(it) { return it.type === 'time'; });
                         if (tIdx >= 0) {
                             const tp = new THREE.Vector3(rawPts[tIdx][0], rawPts[tIdx][1], rawPts[tIdx][2]);
@@ -250,20 +250,20 @@ updateSphereMinHint();
                             });
                             rawPts.sort(function(a, b) { return b.z - a.z; });
                         }
-                        for (let k = 0; k < sprites.length; k++) {
-                            if (k < rawPts.length) sprites[k].position.copy(rawPts[k]);
+                        for (let k = 0; k < state.sprites.length; k++) {
+                            if (k < rawPts.length) state.sprites[k].position.copy(rawPts[k]);
                         }
-                        SPHERE_DIAMETER = SPHERE_RADIUS * 2;
-                        defaultZoom = computeInitDistance();
-                        state.defaultZoom = defaultZoom;
-                        timeViewZoom = computeTimeViewZoom();
-                        zoomLevel = defaultZoom;
-                        state.zoomLevel = zoomLevel;
+                        state.SPHERE_DIAMETER = state.SPHERE_RADIUS * 2;
+                        state.defaultZoom = computeInitDistance();
+                        state.defaultZoom = state.defaultZoom;
+                        state.timeViewZoom = computeTimeViewZoom();
+                        state.zoomLevel = state.defaultZoom;
+                        state.zoomLevel = state.zoomLevel;
                         applyZoom();
                     }
                 } catch(e) {}
 
-                timeViewZoom = computeTimeViewZoom();
+                state.timeViewZoom = computeTimeViewZoom();
 
                 console.log('createSprites DONE, calling hideLoadingIfReady');
                 // 初始化时间精灵纹理 + 启动分钟调度
@@ -275,11 +275,11 @@ updateSphereMinHint();
                 hideLoadingIfReady();  // 先隐藏loading
                 if (!skipEnter) {
                     enterTimeView(true, function() {
-                        enterAnimationComplete = true;
+                        state.enterAnimationComplete = true;
                         checkAllIconsLoaded();
                     });
                 } else {
-                    enterAnimationComplete = true;
+                    state.enterAnimationComplete = true;
                     checkAllIconsLoaded();
                 }
             }
@@ -307,7 +307,7 @@ updateSphereMinHint();
 
             export function checkAllIconsLoaded() {
                 state.checkAllIconsLoaded = checkAllIconsLoaded;
-                if (state.pendingIconLoads <= 0 && enterAnimationComplete) {
+                if (state.pendingIconLoads <= 0 && state.enterAnimationComplete) {
                     state.loadingEl.style.opacity = '0';
                     setTimeout(function() { state.loadingEl.textContent = ''; }, 500);
                 }
@@ -357,26 +357,22 @@ updateSphereMinHint();
             }
 
 
-            // Predictive back gesture for time page exit
-            var _backProgress = -1; // back gesture progress, -1=inactive
-            var _backType = ''; // 'time' or 'settings'
-            var _backStartZoom = 0;
-            var _backSavedQuat = null;
+            // Back gesture state managed via state.js
             window._onBackStarted = function() {
                 console.log('[BACK] onBackStarted state.isInTimeView=' + state.isInTimeView);
                 var overlay = document.getElementById('settings-overlay');
                 if (overlay && overlay.style.display === 'flex') {
                     state._backType = 'settings';
                     state._backProgress = 0;
-                    state._backStartZoom = zoomLevel;
+                    state._backStartZoom = state.zoomLevel;
                     if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
                     return;
                 }
                 if (state.cancelableAction && state.cancelableAction.phase === 'animating') {
                     state._backType = 'cancelable';
                     state._backProgress = 0;
-                    state._backStartZoom = zoomLevel;
-                    _backSavedQuat = sphereGroup.quaternion.clone();
+                    state._backStartZoom = state.zoomLevel;
+                    state._backSavedQuat = state.sphereGroup.quaternion.clone();
                     cancelZoomAnimation();
                     rotationAnimData = null;
                     if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
@@ -389,7 +385,7 @@ updateSphereMinHint();
                 }
                 state._backType = 'time';
                 state._backProgress = 0;
-                state._backStartZoom = zoomLevel;
+                state._backStartZoom = state.zoomLevel;
                 // Cancel in-progress returnToTimeView animations
                 cancelZoomAnimation();
                 rotationAnimData = null;
@@ -410,18 +406,18 @@ updateSphereMinHint();
                         var s = Math.max(0.01, 1 - materialEasing(p) * 2);
                         card.style.transform = 'scale(' + s + ')';
                     }
-                    zoomLevel = state._backStartZoom + (defaultZoom - state._backStartZoom) * materialEasing(p);
+                    state.zoomLevel = state._backStartZoom + (state.defaultZoom - state._backStartZoom) * materialEasing(p);
                     applyZoom();
                 } else if (state._backType === 'cancelable') {
                     if (state.cancelableAction && !state.cancelableAction.cancelled) {
                         state.cancelableAction.cancelled = true;
                     }
-                    zoomLevel = state._backStartZoom + (defaultZoom - state._backStartZoom) * materialEasing(p);
+                    state.zoomLevel = state._backStartZoom + (state.defaultZoom - state._backStartZoom) * materialEasing(p);
                     applyZoom();
                 } else {
                     var t = materialEasing(p);
-                    var z = state._backStartZoom + (defaultZoom - state._backStartZoom) * t;
-                    zoomLevel = z;
+                    var z = state._backStartZoom + (state.defaultZoom - state._backStartZoom) * t;
+                    state.zoomLevel = z;
                     applyZoom();
                 }
                 if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
@@ -438,7 +434,7 @@ updateSphereMinHint();
                     if (overlay) overlay.style.opacity = '1';
                     var card = document.getElementById('settings-card');
                     if (card) card.style.transform = 'scale(1)';
-                    zoomLevel = state._backStartZoom;
+                    state.zoomLevel = state._backStartZoom;
                     applyZoom();
                 } else if (state._backType === 'cancelable') {
                     if (_cancelP < 0.3 && state.cancelableAction) {
@@ -447,36 +443,36 @@ updateSphereMinHint();
                         var targetSprite = state.cancelableAction.sprite;
                         var targetDir = targetSprite.position.clone().normalize();
                         var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
-                        startRotationAnimation(targetQuat, ANIM_DURATION, function() {
+                        startRotationAnimation(targetQuat, state.ANIM_DURATION, function() {
                             if (state.cancelableAction && !state.cancelableAction.cancelled) {
                                 state.cancelableAction.rotDone = true; tryCommitCancelable();
                             }
                         });
-                        startZoomAnimation(state.cancelableAction.zoomTarget, ANIM_DURATION, function() {
+                        startZoomAnimation(state.cancelableAction.zoomTarget, state.ANIM_DURATION, function() {
                             if (state.cancelableAction && !state.cancelableAction.cancelled) {
-                                zoomLevel = state.cancelableAction.zoomTarget; applyZoom();
+                                state.zoomLevel = state.cancelableAction.zoomTarget; applyZoom();
                                 state.cancelableAction.zoomDone = true; tryCommitCancelable();
                             }
                         });
                     } else {
                         state.cancelableAction = null;
-                        startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
-                            zoomLevel = defaultZoom; applyZoom();
+                        startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                            state.zoomLevel = state.defaultZoom; applyZoom();
                         });
                     }
                 } else {
                     var tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                    zoomLevel = state._backStartZoom;
+                    state.zoomLevel = state._backStartZoom;
                     applyZoom();
                     // Restart entry animation if was in progress (DOM wasn't shown before gesture)
-                    var timePos = timeSprite ? timeSprite.position.clone() : null;
+                    var timePos = state.timeSprite ? state.timeSprite.position.clone() : null;
                     if (timePos) {
                         var td = timePos.clone().normalize();
                         var tq = new THREE.Quaternion().setFromUnitVectors(td, new THREE.Vector3(0, 0, 1));
-                        startRotationAnimation(tq, ANIM_DURATION, function() {});
-                        startZoomAnimation(timeViewZoom || computeTimeViewZoom(), ANIM_DURATION, function() {
-                            zoomLevel = timeViewZoom; applyZoom();
+                        startRotationAnimation(tq, state.ANIM_DURATION, function() {});
+                        startZoomAnimation(state.timeViewZoom || computeTimeViewZoom(), state.ANIM_DURATION, function() {
+                            state.zoomLevel = state.timeViewZoom; applyZoom();
                         });
                     }
                     syncTimeSpriteTexture();
@@ -492,9 +488,9 @@ updateSphereMinHint();
                     var card = document.getElementById('settings-card');
                     if (card) card.style.transform = 'scale(1)';
                     state.canvas.style.pointerEvents = 'auto';
-                    startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
-                        zoomLevel = defaultZoom;
-                        state.zoomLevel = zoomLevel;
+                    startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                        state.zoomLevel = state.defaultZoom;
+                        state.zoomLevel = state.zoomLevel;
                         applyZoom();
                     });
                     return;
@@ -503,9 +499,9 @@ updateSphereMinHint();
                     state._backProgress = -1;
                     state._backType = '';
                     state.cancelableAction = null;
-                    startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
-                        zoomLevel = defaultZoom;
-                        state.zoomLevel = zoomLevel;
+                    startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                        state.zoomLevel = state.defaultZoom;
+                        state.zoomLevel = state.zoomLevel;
                         applyZoom();
                     });
                     return;
@@ -514,18 +510,18 @@ updateSphereMinHint();
                     var finalP = state._backProgress;
                     state._backProgress = -1;
                     state._backType = '';
-                    var curZ = zoomLevel;
-                    var remain = (defaultZoom - curZ);
+                    var curZ = state.zoomLevel;
+                    var remain = (state.defaultZoom - curZ);
                     if (remain > 0.001) {
-                        var dur = Math.min(ANIM_DURATION * 0.6, ANIM_DURATION * (1 - finalP) * 1.2);
-                        startZoomAnimation(defaultZoom, dur, function() {
-                            zoomLevel = defaultZoom;
+                        var dur = Math.min(state.ANIM_DURATION * 0.6, state.ANIM_DURATION * (1 - finalP) * 1.2);
+                        startZoomAnimation(state.defaultZoom, dur, function() {
+                            state.zoomLevel = state.defaultZoom;
                             applyZoom();
                             exitTimeView(false);
                             state.inertiaStrength = 0.4;
                             infiniteInertia = true;
                             let spinAxis;
-                            if (layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
+                            if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                             else spinAxis = new THREE.Vector3(1, 0, 0);
                             const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                             state.inertiaQ.copy(smallQ);
@@ -535,7 +531,7 @@ updateSphereMinHint();
                         state.inertiaStrength = 0.4;
                         infiniteInertia = true;
                         let spinAxis;
-                        if (layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
+                        if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                         else spinAxis = new THREE.Vector3(1, 0, 0);
                         const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                         state.inertiaQ.copy(smallQ);
@@ -551,9 +547,9 @@ updateSphereMinHint();
                 if (overlay && overlay.style.display === "flex") {
                     overlay.style.display = "none";
                     state.canvas.style.pointerEvents = "auto";
-                    startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
-                        zoomLevel = defaultZoom;
-                        state.zoomLevel = zoomLevel;
+                    startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                        state.zoomLevel = state.defaultZoom;
+                        state.zoomLevel = state.zoomLevel;
                         applyZoom();
                     });
                     return;
@@ -569,8 +565,8 @@ updateSphereMinHint();
                 // 兜底：重置摄像头拉近（保留当前朝向）
                 state.inertiaQ.identity();
                 state.inertiaStrength = 0;
-                startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
-                    zoomLevel = defaultZoom;
+                startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
+                    state.zoomLevel = state.defaultZoom;
                     applyZoom();
                 });
             };
@@ -597,12 +593,12 @@ updateSphereMinHint();
                             const oldSet = {}; for (let j = 0; j < oldPkgs.length; j++) oldSet[oldPkgs[j]] = true;
                             for (let k = 0; k < newPkgs.length; k++) { if (!oldSet[newPkgs[k]]) { changed = true; break; } }
                         }
-                        if (!changed && sprites.length > 0) return; // 没变化，不重建
+                        if (!changed && state.sprites.length > 0) return; // 没变化，不重建
                         state.apps = data.apps;
                         state.loadingEl.textContent = '正在加载图标…';
                         createSprites(state.apps, null);
                         window._allPkgs = newPkgs;
-                        if (state.nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(newPkgs), ICON_RES);
+                        if (state.nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(newPkgs), state.ICON_RES);
                     } else {
                         state.loadingEl.textContent = '没有找到应用';
                         createSprites([], null);
@@ -623,8 +619,8 @@ updateSphereMinHint();
                             if (item.packageName && item.iconUrl) iconMap[item.packageName] = item.iconUrl;
                         }
                     }
-                    for (let j = 0; j < sprites.length; j++) {
-                        const sprite = sprites[j];
+                    for (let j = 0; j < state.sprites.length; j++) {
+                        const sprite = state.sprites[j];
                         if (sprite.userData.isTimeSprite) continue;
                         const app = sprite.userData.app;
                         if (app && iconMap[app.packageName] && !sprite.userData.hasRealIcon) {

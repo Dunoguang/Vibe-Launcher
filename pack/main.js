@@ -1048,7 +1048,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             let animFrameId = null;
             state.animFrameId = animFrameId
             const isBusy = () => {
-                return !!zoomAnimStart || !!rotationAnimData || inertiaStrength > INERTIA_MIN || isDragging || _backProgress >= 0;
+                return !!zoomAnimStart || !!rotationAnimData || inertiaStrength > INERTIA_MIN || isDragging || state._backProgress >= 0;
             };
             const wakeUp = () => {
                 if (!animFrameId) {
