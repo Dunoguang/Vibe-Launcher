@@ -71,7 +71,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun requestAppIcons(packageNamesJson: String, iconRes: Int) {
         val targetSize = iconRes.coerceIn(16, 4096)
         executor.execute {
@@ -114,7 +113,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun launchApp(packageName: String): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -130,7 +128,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun uninstallApp(packageName: String): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -145,7 +142,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun openAppDetails(packageName: String): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -161,7 +157,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun getBatteryLevel(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -175,7 +170,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun isCharging(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -202,7 +196,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun goBack(): String {
         return try {
             webViewRef.get()?.post {
@@ -216,7 +209,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun clearIconCache(): String {
         return try {
             iconCacheDir.listFiles()?.forEach { it.delete() }
@@ -228,7 +220,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun setHotReload(enabled: Boolean): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -243,7 +234,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun getHotReload() {
         executor.execute {
             try {
@@ -271,7 +261,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun log(msg: String) {
         Log.d("VibeLauncher", "[JS] $msg")
         val ctx = contextRef.get() ?: return
@@ -283,7 +272,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun pickWallpaper() {
         Log.d("VibeLauncher", "[wallpaper] pickWallpaper called from JS")
         val ctx = contextRef.get()
@@ -309,7 +297,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun getWallpaperPath(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -323,7 +310,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun removeWallpaper(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -355,7 +341,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun pickTimeBg() {
         Log.d("VibeLauncher", "[timebg] pickTimeBg called")
         val ctx = contextRef.get() ?: return
@@ -367,7 +352,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun getTimeBgPath(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -381,7 +365,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
 
-    @JavascriptInterface
     fun removeTimeBg(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
