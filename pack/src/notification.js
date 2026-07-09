@@ -287,6 +287,19 @@ window._qsToggle = function(which) {
     }
 };
 
+// 快捷打开设置
+window._qsOpenSettings = function() {
+    // 关闭通知面板
+    closeNotificationPanel();
+    // 打开设置面板
+    let overlay = document.getElementById('settings-overlay');
+    if (overlay) overlay.style.display = 'flex';
+    // 触发设置面板的打开逻辑
+    if (typeof window._openSettings === 'function') {
+        window._openSettings();
+    }
+};
+
 export function closeNotificationPanel() {
     const panel = document.getElementById('notification-panel');
     if (!panel) return;

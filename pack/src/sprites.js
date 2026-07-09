@@ -44,6 +44,7 @@ window._totalItems = totalItems;
                 let isRing = (state.layoutMode === 'ring');
                 let isHbar = (state.layoutMode === 'hbar');
                 let isFlatring = (state.layoutMode === 'flatring');
+                let isWaterfall = (state.layoutMode === 'waterfall');
                 // 半球模式：复制透明占位精灵填充后半球
                 if (isHemi) {
                     let bc = totalItems.length;
@@ -74,7 +75,45 @@ window._totalItems = totalItems;
                 let cameraDir = new THREE.Vector3(0, 0, 1);
                 let alignQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
                 let allRotated;
-                if (isRing) {
+                if (isWaterfall) {
+                    // Apple Watch 蜂窝网格布局
+                    allRotated = [];
+                    let iconSize = state.BASE_SCALE * 1.25;
+                    let cols = Math.ceil(Math.sqrt(N * 1.5));
+                    let cx = 0, cy = 0;
+                    // 生成蜂窝网格坐标
+                    let positions = [];
+                    let ringCount = Math.ceil(Math.sqrt(N));
+                    positions.push({x: 0, y: 0}); // 中心
+                    for (let ring = 1; positions.length < N; ring++) {
+                        for (let side = 0; side < 6; side++) {
+                            for (let i = 0; i < ring; i++) {
+                                if (positions.length >= N) break;
+                                let angle = (side * 60 + 30) * Math.PI / 180;
+                                let px = ring * Math.cos(angle) * iconSize * 0.92;
+                                let py = ring * Math.sin(angle) * iconSize * 0.80;
+                                // 偏移修正
+                                positions.push({x: px, y: py});
+                            }
+                        }
+                    }
+                    // 转为3D坐标（XY平面，Z=0）
+                    for (let i = 0; i < N; i++) {
+                        let pos = positions[i] || {x: 0, y: 0};
+                        allRotated.push(new THREE.Vector3(pos.x, pos.y, 0));
+                    }
+                    // 计算合适的缩放和距离
+                    let maxDist = 0;
+                    for (let i = 0; i < allRotated.length; i++) {
+                        let d = allRotated[i].length();
+                        if (d > maxDist) maxDist = d;
+                    }
+                    let viewDist = Math.max(maxDist * 1.6, state.SPHERE_RADIUS * 2);
+                    state.defaultZoom = viewDist;
+                    state.defaultZoom = state.defaultZoom;
+                    state.zoomLevel = state.defaultZoom;
+                    state.applyZoom();
+                } else if (isRing) {
                     allRotated = [];
                     for (let ri2 = 0; ri2 < N; ri2++) {
                         let a = (ri2 / N) * Math.PI * 2;
@@ -255,14 +294,84 @@ state.updateSphereMinHint();
                 }, 500);
                 hideLoadingIfReady();  // 先隐藏loading
                 if (!skipEnter) {
-                    enterTimeView(true, function() {
-                        state.enterAnimationComplete = true;
-                        checkAllIconsLoaded();
-                    });
+                    if (isWaterfall) {
+                        // 瀑布流堆叠入场动画
+                        enterWaterfallAnimation(function() {
+                            state.enterAnimationComplete = true;
+                            checkAllIconsLoaded();
+                        });
+                    } else {
+                        enterTimeView(true, function() {
+                            state.enterAnimationComplete = true;
+                            checkAllIconsLoaded();
+                        });
+                    }
                 } else {
                     state.enterAnimationComplete = true;
                     checkAllIconsLoaded();
                 }
+            }
+            // 瀑布流堆叠入场动画
+            export let enterWaterfallAnimation = function(onComplete) {
+                state.isInTimeView = false;
+                document.body.style.cursor = 'default';
+                let sprites = state.sprites;
+                // 先把所有精灵缩放到0
+                for (let i = 0; i < sprites.length; i++) {
+                    sprites[i].scale.set(0.001, 0.001, 0.001);
+                    sprites[i].material.opacity = 0;
+                    sprites[i].visible = true;
+                }
+                state.sphereGroup.quaternion.identity();
+                state.rotationQuat.identity();
+                // 按距离中心排序
+                let indexed = sprites.map(function(s, i) {
+                    return { sprite: s, dist: s.position.length(), idx: i };
+                });
+                indexed.sort(function(a, b) { return a.dist - b.dist; });
+                // 逐个弹出
+                let duration = 400; // 每个图标的动画时长
+                let delay = 60; // 每个之间的延迟
+                let startTime = performance.now();
+                let total = indexed.length;
+                let completed = 0;
+                function animateStack(now) {
+                    let elapsed = now - startTime;
+                    let allDone = true;
+                    for (let i = 0; i < total; i++) {
+                        let item = indexed[i];
+                        let itemStart = i * delay;
+                        let t = Math.max(0, Math.min(1, (elapsed - itemStart) / duration));
+                        if (t < 1) allDone = false;
+                        // 弹性缓动（overshoot）
+                        let eased;
+                        if (t < 0.7) {
+                            eased = (t / 0.7) * 1.2;
+                        } else if (t < 1) {
+                            let subT = (t - 0.7) / 0.3;
+                            eased = 1.2 - 0.2 * subT;
+                        } else {
+                            eased = 1;
+                        }
+                        let scale = item.sprite.userData.baseScale || state.BASE_SCALE;
+                        let s = scale * eased;
+                        item.sprite.scale.set(s, s, 1);
+                        item.sprite.material.opacity = Math.min(1, t * 2);
+                        item.sprite.material.transparent = true;
+                    }
+                    if (!allDone) {
+                        requestAnimationFrame(animateStack);
+                    } else {
+                        // 恢复最终状态
+                        for (let i = 0; i < sprites.length; i++) {
+                            let s = sprites[i].userData.baseScale || state.BASE_SCALE;
+                            sprites[i].scale.set(s, s, 1);
+                            sprites[i].material.opacity = 1;
+                        }
+                        if (onComplete) onComplete();
+                    }
+                }
+                requestAnimationFrame(animateStack);
             }
             export function loadRealIcon(sprite, iconUrl) {
                 state.pendingIconLoads++;

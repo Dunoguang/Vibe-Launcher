@@ -354,12 +354,11 @@
                     <span class="qs-tile-icon">🔄</span>
                     <span class="qs-tile-label">旋转</span>
                 </div>
-                <div class="qs-tile" id="qs-data" onclick="window._qsToggle && window._qsToggle('data')">
-                    <span class="qs-tile-icon">📡</span>
-                    <span class="qs-tile-label">流量</span>
+                <div class="qs-tile" id="qs-settings" onclick="window._qsOpenSettings && window._qsOpenSettings()">
+                    <span class="qs-tile-icon">⚙</span>
+                    <span class="qs-tile-label">设置</span>
                 </div>
             </div>
-            <div id="qs-data-info" class="qs-data"></div>
             <div class="qs-brightness">
                 <span class="qs-icon">☀</span>
                 <input id="brightness-slider" type="range" min="0" max="255" value="128" class="qs-slider">
@@ -434,6 +433,7 @@
                         <label class="layout-card" onclick="setRadio('layoutMode','hemisphere')"><input type="radio" name="layoutMode" value="hemisphere"><span>🌓 半球</span></label>
                         <label class="layout-card" onclick="setRadio('layoutMode','ring')"><input type="radio" name="layoutMode" value="ring"><span>🔄 竖环</span></label>
                         <label class="layout-card" onclick="setRadio('layoutMode','hbar')"><input type="radio" name="layoutMode" value="hbar"><span>↔ 横环</span></label>
+                        <label class="layout-card" onclick="setRadio('layoutMode','waterfall')"><input type="radio" name="layoutMode" value="waterfall"><span>🐝 蜂窝</span></label>
                     </div>
                 </div>
 
