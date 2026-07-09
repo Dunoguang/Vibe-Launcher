@@ -1,4 +1,4 @@
-            const sphereCoulomb = (N, opts = {}) => {
+            export const sphereCoulomb = (N, opts = {}) => {
                 const { radius = 1, iter = 400, damp = 0.985, dt = 0.03, tol = 1e-6, soft = 0.01 } = opts;
                 if (N <= 0) return [];
                 if (N === 1) return [[0, 0, radius]];

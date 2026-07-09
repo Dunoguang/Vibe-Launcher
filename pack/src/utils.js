@@ -1,4 +1,4 @@
-            function cubicBezier(x1, y1, x2, y2) {
+            export function cubicBezier(x1, y1, x2, y2) {
               const ZERO = 1e-6;
               function sampleCurveX(t) {
                 return ((1 - t) ** 3) * 0 + 3 * ((1 - t) ** 2) * t * x1 + 3 * (1 - t) * (t ** 2) * x2 + (t ** 3) * 1;
@@ -34,9 +34,9 @@
               };
             }
             // ★ Material Design 标准曲线
-            const materialEasing = cubicBezier(0.4, 0.0, 0.2, 1);
+            export const materialEasing = cubicBezier(0.4, 0.0, 0.2, 1);
 
-            function animateValue({ from, to, duration, easing, onUpdate, onComplete }) {
+            export function animateValue({ from, to, duration, easing, onUpdate, onComplete }) {
               const start = performance.now();
               function frame(now) {
                 const t = Math.min((now - start) / duration, 1);
@@ -49,4 +49,4 @@
               requestAnimationFrame(frame);
             }
 
-            const easeOutCubic = (t) => { return 1 - Math.pow(1 - t, 3); };
+            export const easeOutCubic = (t) => { return 1 - Math.pow(1 - t, 3); };
