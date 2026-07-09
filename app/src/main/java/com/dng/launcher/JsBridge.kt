@@ -522,10 +522,18 @@ class JsBridge(context: Context, webView: WebView) {
     fun setWifiEnabled(enabled: Boolean): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false}"""
-            val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-            @Suppress("DEPRECATION")
-            wm.isWifiEnabled = enabled
-            """{"success":true}"""
+            // Android 10+ 不能直接开关WiFi，打开WiFi设置面板
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val intent = android.content.Intent(android.provider.Settings.Panel.ACTION_WIFI)
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+                """{"success":true,"method":"panel"}"""
+            } else {
+                val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+                @Suppress("DEPRECATION")
+                wm.isWifiEnabled = enabled
+                """{"success":true}"""
+            }
         } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
     }
 
@@ -540,6 +548,17 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun setBluetoothEnabled(enabled: Boolean): String {
         return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            // Android 12+ 需要 BLUETOOTH_CONNECT 权限
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                if (ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    // 没权限，打开蓝牙设置页
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
+                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    ctx.startActivity(intent)
+                    return """{"success":false,"error":"need_permission","action":"bluetooth_settings"}"""
+                }
+            }
             val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
             if (adapter == null) return """{"success":false,"error":"no bluetooth"}"""
             @Suppress("DEPRECATION")
@@ -563,6 +582,13 @@ class JsBridge(context: Context, webView: WebView) {
     fun setAutoRotate(enabled: Boolean): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false}"""
+            if (!android.provider.Settings.System.canWrite(ctx)) {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)
+                intent.data = android.net.Uri.parse("package:${ctx.packageName}")
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+                return """{"success":false,"error":"need_write_settings"}"""
+            }
             android.provider.Settings.System.putInt(
                 ctx.contentResolver, "accelerometer_rotation", if (enabled) 1 else 0
             )
@@ -624,7 +650,7 @@ class JsBridge(context: Context, webView: WebView) {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false}"""
             val am = ctx.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-            am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, vol, 0)
+            am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, vol, android.media.AudioManager.FLAG_SHOW_UI)
             """{"success":true}"""
         } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
     }
@@ -662,6 +688,15 @@ class JsBridge(context: Context, webView: WebView) {
     fun setBrightness(value: Int): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            // 检查 WRITE_SETTINGS 权限
+            if (!android.provider.Settings.System.canWrite(ctx)) {
+                // 没有权限，打开设置页
+                val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)
+                intent.data = android.net.Uri.parse("package:${ctx.packageName}")
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+                return """{"success":false,"error":"need_write_settings"}"""
+            }
             val clamped = value.coerceIn(0, 255)
             android.provider.Settings.System.putInt(
                 ctx.contentResolver,
@@ -702,6 +737,38 @@ class JsBridge(context: Context, webView: WebView) {
         } catch (e: Exception) {
             """{"success":false,"error":"${e.message}"}"""
         }
+    }
+
+    // ==================== 权限管理 ====================
+
+    @JavascriptInterface
+    fun checkAllPermissions(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val perms = mutableListOf<Map<String, Any>>()
+            perms.add(mapOf("id" to "write_settings", "name" to "修改系统设置", "granted" to android.provider.Settings.System.canWrite(ctx), "desc" to "亮度/音量/旋转", "action" to android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS))
+            val flat = android.provider.Settings.Secure.getString(ctx.contentResolver, "enabled_notification_listeners") ?: ""
+            perms.add(mapOf("id" to "notification", "name" to "通知读取", "granted" to flat.contains("com.dng.launcher/VibeNotificationListener"), "desc" to "显示通知", "action" to android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            val btGranted = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) == android.content.pm.PackageManager.PERMISSION_GRANTED else true
+            perms.add(mapOf("id" to "bluetooth", "name" to "蓝牙", "granted" to btGranted, "desc" to "开关蓝牙", "action" to android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
+            val locGranted = ctx.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            perms.add(mapOf("id" to "location", "name" to "位置", "granted" to locGranted, "desc" to "WiFi/网络", "action" to android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            gson.toJson(mapOf("success" to true, "permissions" to perms))
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
+    }
+
+    @JavascriptInterface
+    fun requestPermission(action: String): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false}"""
+            val intent = Intent(action)
+            if (action == android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS) {
+                intent.data = Uri.parse("package:${ctx.packageName}")
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(intent)
+            """{"success":true}"""
+        } catch (e: Exception) { """{"success":false,"error":"${e.message}"}""" }
     }
 
     // ==================== 搜索功能 ====================

@@ -258,24 +258,36 @@ window._qsToggle = function(which) {
         if (typeof NativeBridge === 'undefined') return;
         switch (which) {
             case 'wifi': {
-                const r = JSON.parse(NativeBridge.getWifiEnabled());
-                const next = !(r.success && r.enabled);
-                NativeBridge.setWifiEnabled(next);
-                setTileActive('qs-wifi', next);
+                const r = JSON.parse(NativeBridge.setWifiEnabled(true));
+                // Android 10+ 会打开WiFi面板，无法直接切换
+                if (r.method === 'panel') {
+                    // 已打开面板
+                } else if (r.success) {
+                    const state = JSON.parse(NativeBridge.getWifiEnabled());
+                    setTileActive('qs-wifi', state.success && state.enabled);
+                }
                 break;
             }
             case 'bluetooth': {
                 const r = JSON.parse(NativeBridge.getBluetoothEnabled());
                 const next = !(r.success && r.enabled);
-                NativeBridge.setBluetoothEnabled(next);
-                setTileActive('qs-bluetooth', next);
+                const result = JSON.parse(NativeBridge.setBluetoothEnabled(next));
+                if (result.error === 'need_permission') {
+                    // 已跳转蓝牙设置页
+                } else if (result.success) {
+                    setTileActive('qs-bluetooth', next);
+                }
                 break;
             }
             case 'rotate': {
                 const r = JSON.parse(NativeBridge.getAutoRotate());
                 const next = !(r.success && r.enabled);
-                NativeBridge.setAutoRotate(next);
-                setTileActive('qs-rotate', next);
+                const result = JSON.parse(NativeBridge.setAutoRotate(next));
+                if (result.error === 'need_write_settings') {
+                    // 已跳转权限设置页
+                } else if (result.success) {
+                    setTileActive('qs-rotate', next);
+                }
                 break;
             }
             case 'data': {

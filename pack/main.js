@@ -45,6 +45,48 @@ window._hideSmartStack = function() {
 window._trackAppLaunch = trackAppLaunch;
 window._flashAppColor = flashAppColor;
 
+// ==================== 权限管理面板 ====================
+window._openPermPanel = function() {
+    const panel = document.getElementById('perm-panel');
+    if (!panel) return;
+    panel.style.display = 'flex';
+    loadPermissionStatus();
+};
+
+function loadPermissionStatus() {
+    const list = document.getElementById('perm-list');
+    if (!list) return;
+    try {
+        if (typeof NativeBridge === 'undefined') {
+            list.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3)">NativeBridge 不可用</div>';
+            return;
+        }
+        const raw = NativeBridge.checkAllPermissions();
+        const result = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (!result.success) return;
+
+        const icons = { write_settings: '⚙', notification: '🔔', bluetooth: '🔵', location: '📍' };
+        list.innerHTML = '';
+        result.permissions.forEach(function(perm) {
+            const granted = perm.granted;
+            const item = document.createElement('div');
+            item.className = 'perm-item ' + (granted ? 'granted' : 'denied');
+            item.innerHTML = '<div class="perm-icon ' + (granted ? 'granted' : 'denied') + '">' + (icons[perm.id] || '🔑') + '</div>' +
+                '<div class="perm-info"><div class="perm-name">' + perm.name + '</div>' +
+                '<div class="perm-desc">' + perm.desc + '</div></div>' +
+                '<div class="perm-status ' + (granted ? 'granted' : 'denied') + '">' + (granted ? '已授权' : '未授权') + '</div>';
+            if (!granted) {
+                item.addEventListener('click', function() {
+                    try { NativeBridge.requestPermission(perm.action); } catch(e) {}
+                });
+            }
+            list.appendChild(item);
+        });
+    } catch (e) {
+        list.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3)">检查失败: ' + e.message + '</div>';
+    }
+}
+
 // 全局通知面板控制
 window._toggleNotifications = toggleNotificationPanel;
 window._closeNotifications = closeNotificationPanel;
