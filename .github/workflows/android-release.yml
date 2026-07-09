@@ -1,14 +1,15 @@
-name: 🐾 Android 构建流水线 喵～
+name: 🚀 Release APK 喵～
 
 on:
   push:
-    branches: ['**']
-  pull_request:
-    branches: ['**']
-  workflow_dispatch:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:
@@ -46,47 +47,57 @@ jobs:
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
             echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/vibe-launcher.p12"
             echo "ANDROID_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/vibe-launcher.p12" >> "$GITHUB_ENV"
-            echo "ANDROID_SIGNING_STORE_PASSWORD=*** >> "$GITHUB_ENV"
+            echo "ANDROID_SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
             echo "ANDROID_SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-            echo "ANDROID_SIGNING_KEY_PASSWORD=*** >> "$GITHUB_ENV"
+            echo "ANDROID_SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
             echo "✅ 签名配置完成 喵～"
           else
             echo "⚠️ 未检测到签名密钥，使用 Debug 签名 喵～"
           fi
 
-      - name: 🔨 构建 Debug APK 喵～
-        run: gradle --no-daemon :app:assembleDebug
-
       - name: 🔨 构建 Release APK 喵～
         run: gradle --no-daemon :app:assembleRelease
 
-      - name: ⬆️ 上传 Debug APK 喵～
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: app-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 7
+      - name: 🔨 构建 Debug APK 喵～
+        run: gradle --no-daemon :app:assembleDebug
 
-      - name: 🔍 定位签名 Release APK 喵～
+      - name: 📦 定位签名 Release APK 喵～
+        id: apk
         run: |
           SIGNED=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" ! -name "*-unsigned.apk" | head -n 1)
-          echo "RELEASE_APK=$SIGNED" >> "$GITHUB_ENV"
-          ls -lh "$SIGNED"
+          cp "$SIGNED" "VibeLauncher-${{ github.ref_name }}-release.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "VibeLauncher-${{ github.ref_name }}-debug.apk"
+          ls -lh VibeLauncher-*.apk
+          echo "release_apk=VibeLauncher-${{ github.ref_name }}-release.apk" >> "$GITHUB_OUTPUT"
+          echo "debug_apk=VibeLauncher-${{ github.ref_name }}-debug.apk" >> "$GITHUB_OUTPUT"
 
-      - name: ⬆️ 上传 Release APK 喵～
-        uses: actions/upload-artifact@v7.0.1
+      - name: 📎 创建 GitHub Release 喵～
+        uses: softprops/action-gh-release@v2
         with:
-          name: app-release-apk
-          path: ${{ env.RELEASE_APK }}
-          if-no-files-found: error
-          retention-days: 7
+          name: Vibe Launcher ${{ github.ref_name }}
+          body: |
+            ## 🪐 Vibe Launcher ${{ github.ref_name }}
+
+            ### 下载
+            - **Release APK**（签名版，推荐）: `VibeLauncher-${{ github.ref_name }}-release.apk`
+            - **Debug APK**: `VibeLauncher-${{ github.ref_name }}-debug.apk`
+
+            ### 更新内容
+            详见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+
+            ---
+            🐾 自动构建 by GitHub Actions 喵～
+          files: |
+            ${{ steps.apk.outputs.release_apk }}
+            ${{ steps.apk.outputs.debug_apk }}
+          draft: false
+          prerelease: false
 
       - name: 🐾 喵呜～
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "好喵！✨ 全部完成啦～"
+            echo "✨ Release ${{ github.ref_name }} 发布成功喵！"
           else
-            echo "坏掉了呜...😿 主人快来～"
+            echo "😿 Release 构建失败了呜...主人快来～"
           fi
