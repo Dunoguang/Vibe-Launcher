@@ -1,10 +1,10 @@
 import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { materialEasing } from './utils.js';
-            const checkHover = (e) => {
+            let checkHover = (e) => {
                 if (state.isInTimeView) return;
                 state.raycaster.setFromCamera(state.mouse, state.camera);
-                const intersects = state.raycaster.intersectObjects(state.sprites);
+                let intersects = state.raycaster.intersectObjects(state.sprites);
                 let newHovered = null;
                 for (let hi = 0; hi < intersects.length; hi++) {
                     if (intersects[hi].object.userData.isDecor) continue;
@@ -14,7 +14,7 @@ import { materialEasing } from './utils.js';
                 if (state.hoveredSprite !== newHovered) {
                     if (newHovered) {
                         document.body.style.cursor = 'pointer';
-                        const app = state.getAppBySprite(newHovered);
+                        let app = state.getAppBySprite(newHovered);
                         if (app) {
                             state.labelEl.textContent = app.appName;
                             state.labelEl.classList.add('visible');
@@ -33,24 +33,24 @@ import { materialEasing } from './utils.js';
                     state.labelEl.style.top = e.clientY + 'px';
                 }
             }
-            const clearLongPressTimer = () => {
+            let clearLongPressTimer = () => {
                 if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
                 
             }
-            const showContextMenu = (sprite, x, y) => {
-                const menu = document.getElementById('context-menu');
+            let showContextMenu = (sprite, x, y) => {
+                let menu = document.getElementById('context-menu');
                 if (!menu) return;
-                const app = state.getAppBySprite(sprite);
+                let app = state.getAppBySprite(sprite);
                 // 定位菜单，保持在屏幕内
-                const mw = 160, mh = 100;
-                const left = Math.min(x, window.innerWidth - mw);
-                const top = Math.min(y, window.innerHeight - mh);
+                let mw = 160, mh = 100;
+                let left = Math.min(x, window.innerWidth - mw);
+                let top = Math.min(y, window.innerHeight - mh);
                 menu.style.left = Math.max(0, left) + 'px';
                 menu.style.top = Math.max(0, top) + 'px';
                 menu.style.display = 'flex';
             }
-            const hideContextMenu = () => {
-                const menu = document.getElementById('context-menu');
+            let hideContextMenu = () => {
+                let menu = document.getElementById('context-menu');
                 if (menu) menu.style.display = 'none';
                 state.contextMenuOpen = false;
                 state.longPressFired = false;
@@ -64,7 +64,7 @@ import { materialEasing } from './utils.js';
             }
             state.clearHover = clearHover;
             function quatAngle(q) { return 2 * Math.acos(Math.min(1, Math.abs(q.w))); }
-            const startInertiaFromSpeeds = () => {
+            let startInertiaFromSpeeds = () => {
                 if (state.recentSpeeds.length > 0) {
                     let sum = 0;
                     for (let i = 0; i < state.recentSpeeds.length; i++) sum += state.recentSpeeds[i];
@@ -72,7 +72,7 @@ import { materialEasing } from './utils.js';
                 } else state.inertiaStrength = 0.6;
                 state.recentSpeeds = [];
             }
-            const resetAllPointers = () => {
+            let resetAllPointers = () => {
                 state.activePointerIds.clear();
                 state.isDragging = false;
                 state.hasMoved = false;
@@ -80,10 +80,10 @@ import { materialEasing } from './utils.js';
                 state.topSwipeData = null;
                 document.body.style.cursor = state.isInTimeView ? 'default' : (state.hoveredSprite ? 'pointer' : 'grab');
             }
-            const isInBottomZone = (clientY) => {
+            let isInBottomZone = (clientY) => {
                 return clientY > window.innerHeight * (1 - state.BOTTOM_ZONE_RATIO);
             }
-            const isInTopZone = (clientY) => {
+            let isInTopZone = (clientY) => {
                 return clientY < window.innerHeight * state.TOP_ZONE_RATIO;
             }
             function onPointerDown(e) {                 // No longer hide DOM on touch - always show bg-only texture
@@ -96,9 +96,9 @@ import { materialEasing } from './utils.js';
                 }
                 // 菜单打开时：点击画布关闭菜单，不触发拖动
                 if (state.contextMenuOpen) {
-                    const menu = document.getElementById('context-menu');
+                    let menu = document.getElementById('context-menu');
                     if (menu && menu.style.display !== 'none') {
-                        const rect = menu.getBoundingClientRect();
+                        let rect = menu.getBoundingClientRect();
                         if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
                             hideContextMenu();
                         }
@@ -143,7 +143,7 @@ import { materialEasing } from './utils.js';
 state.updateMouse(e.clientX, e.clientY);
                     checkHover(e);
                     // 长按检测：直接定时600ms，到时raycaster检测
-                    const _lpX2 = e.clientX, _lpY2 = e.clientY;
+                    let _lpX2 = e.clientX, _lpY2 = e.clientY;
                     clearLongPressTimer();
                     state.longPressFired = false;
                     if (!state.isInTimeView) {
@@ -154,7 +154,7 @@ state.updateMouse(e.clientX, e.clientY);
                             hits = hits.filter(function(h) { return !h.object.userData.isDecor; });
                             let spr = hits.length > 0 ? hits[0].object : null;
                             if (spr) {
-                                const app = state.getAppBySprite(spr);
+                                let app = state.getAppBySprite(spr);
                                 if (app && app.packageName !== '__settings__' && app.packageName !== '__time__') {
                                     state.longPressFired = true;
                                     state.isDragging = false;
@@ -173,7 +173,7 @@ state.updateMouse(e.clientX, e.clientY);
                     document.body.style.cursor = 'grab';
                 }
             }
-            const onPointerMove = (e) => {
+            let onPointerMove = (e) => {
                 if (state.contextMenuOpen) { state.activePointerIds.delete(e.pointerId); return; }
                 // 可取消动作进行中 + 拖动 = 取消
                 if (state.cancelableAction && state.cancelableAction.phase === 'animating' && state.isDragging && state.hasMoved) {
@@ -181,13 +181,13 @@ state.updateMouse(e.clientX, e.clientY);
                 }
                 state.updateMouse(e.clientX, e.clientY);
                 if (!state.isInTimeView && state.topSwipeData && state.topSwipeData.active && state.topSwipeData.pointerId === e.pointerId && state.activePointerIds.size === 1) {
-                    const dY = e.clientY - state.topSwipeData.startY;
+                    let dY = e.clientY - state.topSwipeData.startY;
                     if (dY > 3 && !state.topSwipeData.confirmed) state.topSwipeData.confirmed = true;
                     if (state.topSwipeData.confirmed || dY > 8) {
                         state.topSwipeData.confirmed = true;
-                        const md = window.innerHeight * 0.6;
-                        const cd = Math.max(0, Math.min(md, dY));
-                        const zr = state.defaultZoom - state.topSwipeData.startTimeViewZoom;
+                        let md = window.innerHeight * 0.6;
+                        let cd = Math.max(0, Math.min(md, dY));
+                        let zr = state.defaultZoom - state.topSwipeData.startTimeViewZoom;
                         state.zoomLevel = Math.max(state.MIN_ZOOM, Math.min(state.defaultZoom, state.topSwipeData.startZoom - (cd/md) * zr));
                         state.applyZoom();
                     }
@@ -195,7 +195,7 @@ state.updateMouse(e.clientX, e.clientY);
                 }
                 if (state.isInTimeView && state.bottomSwipeData && state.bottomSwipeData.active &&
                     state.bottomSwipeData.pointerId === e.pointerId && state.activePointerIds.size === 1) {
-                    const deltaY = state.bottomSwipeData.startY - e.clientY;
+                    let deltaY = state.bottomSwipeData.startY - e.clientY;
                     if (deltaY < -5 && e.clientY < state.bottomSwipeData.minY) {
                         state.bottomSwipeData.minY = e.clientY;
                     }
@@ -205,13 +205,13 @@ state.updateMouse(e.clientX, e.clientY);
                     if (state.bottomSwipeData.confirmed || deltaY > 8) {
                         state.bottomSwipeData.confirmed = true;
                         // 有上滑意图: 立即隐藏原生DOM
-                        const tp = document.getElementById('time-page');
+                        let tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; }
                         state.syncTimeSpriteTexture();
-                        const screenH = window.innerHeight;
-                        const maxDelta = screenH * 0.7;
-                        const clampedDelta = Math.max(0, Math.min(maxDelta, deltaY));
-                        const zoomRange = state.defaultZoom - state.timeViewZoom;
+                        let screenH = window.innerHeight;
+                        let maxDelta = screenH * 0.7;
+                        let clampedDelta = Math.max(0, Math.min(maxDelta, deltaY));
+                        let zoomRange = state.defaultZoom - state.timeViewZoom;
                         let targetZ = state.bottomSwipeData.startZoom + (clampedDelta / maxDelta) * zoomRange * 1.3;
                         targetZ = Math.max(state.timeViewZoom, Math.min(state.defaultZoom * 1.3, targetZ));
                         state.zoomLevel = targetZ;
@@ -226,13 +226,13 @@ state.updateMouse(e.clientX, e.clientY);
                 if (state.cancelSwipeData && state.cancelSwipeData.active &&
                     state.cancelSwipeData.pointerId === e.pointerId && state.activePointerIds.size === 1) {
                     state.cancelSwipeData.confirmed = true;
-                    const dy = state.cancelSwipeData.startY - e.clientY;  // positive = swipe up (zoom out)
-                    const maxD = window.innerHeight * 0.6;
-                    const cd = Math.max(-maxD, Math.min(maxD, dy));
-                    const targetZoom = state.cancelableAction ? state.cancelableAction.zoomTarget : state.defaultZoom;
-                    const zrUp = Math.max(1, state.defaultZoom - targetZoom);  // zoom-out range
-                    const zrDown = Math.max(0.01, state.cancelSwipeData.startZoom - targetZoom);  // zoom-in range
-                    var newZ;
+                    let dy = state.cancelSwipeData.startY - e.clientY;  // positive = swipe up (zoom out)
+                    let maxD = window.innerHeight * 0.6;
+                    let cd = Math.max(-maxD, Math.min(maxD, dy));
+                    let targetZoom = state.cancelableAction ? state.cancelableAction.zoomTarget : state.defaultZoom;
+                    let zrUp = Math.max(1, state.defaultZoom - targetZoom);  // zoom-out range
+                    let zrDown = Math.max(0.01, state.cancelSwipeData.startZoom - targetZoom);  // zoom-in range
+                    let newZ;
                     if (cd >= 0) {
                         // 上滑无上限
                         newZ = state.cancelSwipeData.startZoom + (cd/maxD) * zrUp * 2;
@@ -250,8 +250,8 @@ state.updateMouse(e.clientX, e.clientY);
                 if (!state.isDragging || state.activePointerIds.size !== 1 || state.isInTimeView) {
                     return;
                 }
-                const curr = new THREE.Vector2(e.clientX, e.clientY);
-                const dist = Math.sqrt(state.prevScreen.distanceToSquared(curr));
+                let curr = new THREE.Vector2(e.clientX, e.clientY);
+                let dist = Math.sqrt(state.prevScreen.distanceToSquared(curr));
                 if (!state.hasMoved && dist > state.DRAG_THRESHOLD) {
                     state.hasMoved = true;
                     clearLongPressTimer();
@@ -265,35 +265,35 @@ state.updateMouse(e.clientX, e.clientY);
                     let dx = curr.x - state.prevScreen.x;
                     deltaQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -dx * 0.001);
                 } else {
-                    const p0 = state.screenToSphere(state.prevScreen.x, state.prevScreen.y);
-                    const p1 = state.screenToSphere(curr.x, curr.y);
+                    let p0 = state.screenToSphere(state.prevScreen.x, state.prevScreen.y);
+                    let p1 = state.screenToSphere(curr.x, curr.y);
                     deltaQ = new THREE.Quaternion().setFromUnitVectors(p0, p1);
                     if (state.layoutMode === 'ring') {
-                        const euler = new THREE.Euler().setFromQuaternion(deltaQ);
+                        let euler = new THREE.Euler().setFromQuaternion(deltaQ);
                         deltaQ.setFromEuler(new THREE.Euler(euler.x * 0.25, 0, 0));
                     } else if (state.layoutMode === 'hbar') {
-                        const euler = new THREE.Euler().setFromQuaternion(deltaQ);
+                        let euler = new THREE.Euler().setFromQuaternion(deltaQ);
                         deltaQ.setFromEuler(new THREE.Euler(0, euler.y * 0.25, 0));
                     }
                 }
                 state.rotationQuat.premultiply(deltaQ);
                 state.rotationQuat.normalize();
                 state.sphereGroup.quaternion.copy(state.rotationQuat);
-                const speed = quatAngle(deltaQ);
+                let speed = quatAngle(deltaQ);
                 state.recentSpeeds.push(speed);
                 if (state.recentSpeeds.length > state.SPEED_SAMPLES) state.recentSpeeds.shift();
                 state.inertiaQ.copy(deltaQ);
                 state.prevScreen.copy(curr);
             }
-            const onPointerUp = (e) => {
+            let onPointerUp = (e) => {
                 if (state.contextMenuOpen) { state.activePointerIds.delete(e.pointerId); if (state.activePointerIds.size===0) document.body.style.cursor='default'; return; }
                                 if (state.cancelSwipeData && state.cancelSwipeData.pointerId === e.pointerId && state.cancelSwipeData.active) {
                     state.activePointerIds.delete(e.pointerId);
-                    const sd = state.cancelSwipeData; state.cancelSwipeData = null;
+                    let sd = state.cancelSwipeData; state.cancelSwipeData = null;
                     if (sd.confirmed && state.cancelableAction && !state.cancelableAction.cancelled) {
                         // 上滑超过35% → 取消展开；下滑超过35% → 直接打开
-                        var progressUp = (state.zoomLevel - sd.startZoom) / Math.max(0.001, state.defaultZoom - sd.startZoom);
-                        var progressDown = (sd.startZoom - state.zoomLevel) / Math.max(0.001, sd.startZoom - (state.cancelableAction.zoomTarget || state.defaultZoom));
+                        let progressUp = (state.zoomLevel - sd.startZoom) / Math.max(0.001, state.defaultZoom - sd.startZoom);
+                        let progressDown = (sd.startZoom - state.zoomLevel) / Math.max(0.001, sd.startZoom - (state.cancelableAction.zoomTarget || state.defaultZoom));
                         if (state.zoomLevel >= sd.startZoom && progressUp > 0.35) {
                             // 上滑超过阈值：取消
                             state.cancelCurrentAction('swipe');
@@ -306,9 +306,9 @@ state.updateMouse(e.clientX, e.clientY);
                                     state.cancelableAction.zoomDone = true; state.tryCommitCancelable();
                                 }
                             });
-                            var targetSprite = state.cancelableAction.sprite;
-                            var targetDir = targetSprite.position.clone().normalize();
-                            var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
+                            let targetSprite = state.cancelableAction.sprite;
+                            let targetDir = targetSprite.position.clone().normalize();
+                            let targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
                             state.startRotationAnimation(targetQuat, 150, function() {
                                 if (state.cancelableAction && !state.cancelableAction.cancelled) {
                                     state.cancelableAction.rotDone = true; state.tryCommitCancelable();
@@ -323,9 +323,9 @@ state.updateMouse(e.clientX, e.clientY);
                                     state.cancelableAction.zoomDone = true; state.tryCommitCancelable();
                                 }
                             });
-                            var targetSprite = state.cancelableAction.sprite;
-                            var targetDir = targetSprite.position.clone().normalize();
-                            var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
+                            let targetSprite = state.cancelableAction.sprite;
+                            let targetDir = targetSprite.position.clone().normalize();
+                            let targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
                             state.startRotationAnimation(targetQuat, state.ANIM_DURATION, function() {
                                 if (state.cancelableAction && !state.cancelableAction.cancelled) {
                                     state.cancelableAction.rotDone = true; state.tryCommitCancelable();
@@ -337,7 +337,7 @@ state.updateMouse(e.clientX, e.clientY);
                 }
                 if (!state.isInTimeView && state.topSwipeData && state.topSwipeData.pointerId === e.pointerId && state.topSwipeData.active) {
                     state.activePointerIds.delete(e.pointerId);
-                    const sd = state.topSwipeData; state.topSwipeData = null;
+                    let sd = state.topSwipeData; state.topSwipeData = null;
                     if (sd.confirmed && state.zoomLevel <= sd.startTimeViewZoom + (state.defaultZoom - sd.startTimeViewZoom) * 0.5) {
                         state.returnToTimeView();
                         return;
@@ -357,14 +357,14 @@ state.updateMouse(e.clientX, e.clientY);
                 }
                 if (state.isInTimeView && state.bottomSwipeData && state.bottomSwipeData.pointerId === e.pointerId && state.bottomSwipeData.active) {
                     state.activePointerIds.delete(e.pointerId);
-                    const swipeData = state.bottomSwipeData;
+                    let swipeData = state.bottomSwipeData;
                     state.bottomSwipeData = null;
                 state.topSwipeData = null;
                     document.body.style.cursor = 'default';
                     if (swipeData.confirmed) {
-                        const currentZoom = state.zoomLevel;
-                        const zoomRange = state.defaultZoom - state.timeViewZoom;
-                        const thresholdZoom = state.timeViewZoom + zoomRange * state.exitThresholdRatio;
+                        let currentZoom = state.zoomLevel;
+                        let zoomRange = state.defaultZoom - state.timeViewZoom;
+                        let thresholdZoom = state.timeViewZoom + zoomRange * state.exitThresholdRatio;
                         if (currentZoom >= thresholdZoom) {
                             state.exitTimeView(true, function() {
                                 state.inertiaStrength = 0.4;
@@ -372,7 +372,7 @@ state.updateMouse(e.clientX, e.clientY);
                                 let spinAxis;
                                 if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                                 else spinAxis = new THREE.Vector3(1, 0, 0);
-                                const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
+                                let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                                 state.inertiaQ.copy(smallQ);
                             });
                         } else {
@@ -380,7 +380,7 @@ state.updateMouse(e.clientX, e.clientY);
                                 state.zoomLevel = state.timeViewZoom;
                                 state.applyZoom();
                                 // 恢复原生时间覆盖层
-                                const tp = document.getElementById('time-page');
+                                let tp = document.getElementById('time-page');
                                 if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
                                 state.syncTimeSpriteTexture();
                             });
@@ -390,12 +390,12 @@ state.updateMouse(e.clientX, e.clientY);
                             state.startZoomAnimation(state.timeViewZoom, state.ANIM_DURATION, function() {
                                 state.zoomLevel = state.timeViewZoom;
                                 state.applyZoom();
-                                const tp = document.getElementById('time-page');
+                                let tp = document.getElementById('time-page');
                                 if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
                                 state.syncTimeSpriteTexture();
                             });
                         } else {
-                            const tp = document.getElementById('time-page');
+                            let tp = document.getElementById('time-page');
                             if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; }
                         }
                     }
@@ -407,33 +407,33 @@ state.updateMouse(e.clientX, e.clientY);
                 state.activePointerIds.delete(e.pointerId);
                 clearLongPressTimer();
                 // 点击菜单外部时关闭
-                const menu = document.getElementById('context-menu');
+                let menu = document.getElementById('context-menu');
                 if (menu && menu.style.display !== 'none' && e.target !== menu && !menu.contains(e.target)) {
                     hideContextMenu();
                 }
                 if (state.activePointerIds.size === 0) {
                     if (state.isDragging && !state.hasMoved && state.hoveredSprite && !state.isInTimeView && !state.longPressFired) {
                         state.lastTapOnIcon = true;
-                                                                        const app = state.getAppBySprite(state.hoveredSprite);
-                        const targetDir = state.hoveredSprite.position.clone().normalize();
-                        const targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
-                        const appZoom = state.computeTimeViewZoom();
+                                                                        let app = state.getAppBySprite(state.hoveredSprite);
+                        let targetDir = state.hoveredSprite.position.clone().normalize();
+                        let targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
+                        let appZoom = state.computeTimeViewZoom();
                         if (app && app.packageName === '__settings__') {
                             window._lastSettingsClick = Date.now();
                                                         state.startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
                                 let saved = {};
                                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
-                                const iconInput = document.getElementById('s-icon');
+                                let iconInput = document.getElementById('s-icon');
                                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
-                                const sphereInput = document.getElementById('settings-sphere-input');
+                                let sphereInput = document.getElementById('settings-sphere-input');
                                 if (saved.sphereSize && sphereInput) sphereInput.value = parseFloat(saved.sphereSize);
-                                const animInput = document.getElementById('settings-anim-input');
+                                let animInput = document.getElementById('settings-anim-input');
                                 if (saved.animSpeed && animInput) animInput.value = saved.animSpeed;
                                 else if (animInput) animInput.value = state.ANIM_DURATION;
-                                const hotreloadCb = document.getElementById('s-hotreload');
+                                let hotreloadCb = document.getElementById('s-hotreload');
                                 if (hotreloadCb) hotreloadCb.checked = !!(saved.hotReload);
                                 if (saved.layoutMode) {
-                                    const radios = document.getElementsByName('state.layoutMode');
+                                    let radios = document.getElementsByName('state.layoutMode');
                                     for (let ri = 0; ri < radios.length; ri++) {
                                         if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
                                     }
@@ -447,7 +447,7 @@ state.updateMouse(e.clientX, e.clientY);
                             state.startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
                                 if (app && state.nativeBridgeReady) {
                                     try {
-                                        const result = JSON.parse(NativeBridge.launchApp(app.packageName));
+                                        let result = JSON.parse(NativeBridge.launchApp(app.packageName));
                                         if (result && !result.success) console.warn('启动失败:', result.error);
                                     } catch (err) { console.error('启动应用异常:', err); }
                                 }
@@ -460,19 +460,19 @@ state.updateMouse(e.clientX, e.clientY);
                     document.body.style.cursor = state.hoveredSprite ? 'pointer' : 'grab';
                 }
             }
-            const onPointerLeave = (e) => {
+            let onPointerLeave = (e) => {
                 if (state.activePointerIds.has(e.pointerId) && state.activePointerIds.size === 1 && state.isDragging && !state.hasMoved && !state.isInTimeView) {
                     clearHover();
                 }
                 if (state.isInTimeView && state.bottomSwipeData && state.bottomSwipeData.pointerId === e.pointerId && state.bottomSwipeData.active) {
                     state.activePointerIds.delete(e.pointerId);
-                    const bsd = state.bottomSwipeData;
+                    let bsd = state.bottomSwipeData;
                     state.bottomSwipeData = null;
                 state.topSwipeData = null;
                     if (bsd.confirmed && state.zoomLevel > state.timeViewZoom + 0.1) {
-                        const currentZoom = state.zoomLevel;
-                        const zoomRange = state.defaultZoom - state.timeViewZoom;
-                        const thresholdZoom = state.timeViewZoom + zoomRange * state.exitThresholdRatio;
+                        let currentZoom = state.zoomLevel;
+                        let zoomRange = state.defaultZoom - state.timeViewZoom;
+                        let thresholdZoom = state.timeViewZoom + zoomRange * state.exitThresholdRatio;
                         if (currentZoom >= thresholdZoom) {
                             state.exitTimeView(true);
                         } else {
@@ -484,16 +484,16 @@ state.updateMouse(e.clientX, e.clientY);
                     document.body.style.cursor = 'default';
                 }
             }
-            const onPointerCancel = (e) => {
+            let onPointerCancel = (e) => {
                 state.activePointerIds.delete(e.pointerId);
                 if (state.isInTimeView && state.bottomSwipeData && state.bottomSwipeData.pointerId === e.pointerId) {
-                    const bsd = state.bottomSwipeData;
+                    let bsd = state.bottomSwipeData;
                     state.bottomSwipeData = null;
                 state.topSwipeData = null;
                     if (bsd.confirmed && state.zoomLevel > state.timeViewZoom + 0.1) {
-                        const currentZoom = state.zoomLevel;
-                        const zoomRange = state.defaultZoom - state.timeViewZoom;
-                        const thresholdZoom = state.timeViewZoom + zoomRange * state.exitThresholdRatio;
+                        let currentZoom = state.zoomLevel;
+                        let zoomRange = state.defaultZoom - state.timeViewZoom;
+                        let thresholdZoom = state.timeViewZoom + zoomRange * state.exitThresholdRatio;
                         if (currentZoom >= thresholdZoom) {
                             state.exitTimeView(true);
                         } else {
@@ -512,7 +512,7 @@ state.updateMouse(e.clientX, e.clientY);
                 }
             }
             // ========== 缩放 ==========
-            const onWheel = (e) => {
+            let onWheel = (e) => {
                 if (state.isInTimeView) return;
                 if (e.cancelable) e.preventDefault();
                 state.zoomLevel += e.deltaY * 0.01;
@@ -521,11 +521,11 @@ state.updateMouse(e.clientX, e.clientY);
             }
 let pinchStartDist = 0, pinchStartZoom = state.zoomLevel, wasPinching = false;
             state.wasPinching = wasPinching;
-            const getTouchDist = (touches) => {
+            let getTouchDist = (touches) => {
 let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touches[1].clientY;
                 return Math.sqrt(dx * dx + dy * dy);
             }
-            const onTouchStart = (e) => {
+            let onTouchStart = (e) => {
                 if (e.touches.length === 2) {
                     pinchStartDist = getTouchDist(e.touches);
                     pinchStartZoom = state.zoomLevel;
@@ -540,12 +540,12 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     state.activePointerIds.clear();
                 }
             }
-            const onTouchMove = (e) => {
+            let onTouchMove = (e) => {
                 if (e.touches.length === 2) {
                     if (e.cancelable) e.preventDefault();
-                    const dist = getTouchDist(e.touches);
+                    let dist = getTouchDist(e.touches);
                     if (pinchStartDist > 0) {
-                        const ratio = pinchStartDist / dist;
+                        let ratio = pinchStartDist / dist;
                         state.zoomLevel = pinchStartZoom * ratio;
                         state.zoomLevel = Math.max(state.MIN_ZOOM, state.zoomLevel);
                         if (state.isInTimeView) {
@@ -555,14 +555,14 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     }
                 }
             }
-            const onTouchEnd = (e) => {
+            let onTouchEnd = (e) => {
                 // ====== 双击复位检测 ======
                 if (!state.isInTimeView && !state.wasPinching && e.touches.length === 0) {
-                    const now = Date.now();
+                    let now = Date.now();
                     if (now - state.lastTap < 300 && !state.isDragging && !state.lastTapOnIcon && !state._prevTapOnIcon) {
                         if (e.changedTouches && e.changedTouches[0]) {
-                            var dx = e.changedTouches[0].clientX - state.lastTapX;
-                            var dy = e.changedTouches[0].clientY - state.lastTapY;
+                            let dx = e.changedTouches[0].clientX - state.lastTapX;
+                            let dy = e.changedTouches[0].clientY - state.lastTapY;
                             if (dx * dx + dy * dy > 2500) {
                                 state.lastTap = now;
                                 state.lastTapX = e.changedTouches[0].clientX;
@@ -590,8 +590,8 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                 }
                 if (e.touches.length < 2) {
                     if (state.wasPinching && state.isInTimeView && state.zoomLevel > state.timeViewZoom + 0.15) {
-                        const zoomRange = state.defaultZoom - state.timeViewZoom;
-                        const thresholdZoom = state.timeViewZoom + zoomRange * state.exitThresholdRatio;
+                        let zoomRange = state.defaultZoom - state.timeViewZoom;
+                        let thresholdZoom = state.timeViewZoom + zoomRange * state.exitThresholdRatio;
                         if (state.zoomLevel >= thresholdZoom) {
                             state.exitTimeView(true);
                         } else {

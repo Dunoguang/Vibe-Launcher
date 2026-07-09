@@ -3,17 +3,17 @@ import html2canvas from 'html2canvas';
 import { state } from './state.js';
 import { drawTimeCircleBackground, drawCircleFrame } from './textures.js';
 export let timeTextureUpdateInterval = null;
-            export const updateTimeSpriteBgOnly = function() {
+            export let updateTimeSpriteBgOnly = function() {
                 state._texVersion++;
                 if (!state.timeSprite || !state.timeSprite.material) return;
-                var s = Math.max(window.innerWidth, window.innerHeight);
-                var c = document.createElement('canvas');
+                let s = Math.max(window.innerWidth, window.innerHeight);
+                let c = document.createElement('canvas');
                 c.width = s; c.height = s;
-                var ctx = c.getContext('2d');
-                var cx = s/2, cy = s/2, r = s * 0.44;
+                let ctx = c.getContext('2d');
+                let cx = s/2, cy = s/2, r = s * 0.44;
                 drawTimeCircleBackground(ctx, cx, cy, r, s);
-                var oldMap = state.timeSprite.material.map;
-                var tex = new THREE.CanvasTexture(c);
+                let oldMap = state.timeSprite.material.map;
+                let tex = new THREE.CanvasTexture(c);
                 tex.minFilter = THREE.LinearFilter;
                 tex.magFilter = THREE.LinearFilter;
                 if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
@@ -23,11 +23,11 @@ export let timeTextureUpdateInterval = null;
                 if (state.renderer) state.renderer.render(state.scene, state.camera);
             };
             // 状态机：DOM可见 → bg-only，DOM隐藏 → full
-            export const syncTimeSpriteTexture = function() {
+            export let syncTimeSpriteTexture = function() {
                 updateTimeSpriteBgOnly();
             };
-            const drawCircleBackground = function(ctx, cx, cy, r, s) {
-                var bg = _wallpaperImg;
+            let drawCircleBackground = function(ctx, cx, cy, r, s) {
+                let bg = _wallpaperImg;
                 if (bg) {
                     ctx.save();
                     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
@@ -39,44 +39,44 @@ export let timeTextureUpdateInterval = null;
                 }
                 drawCircleFrame(ctx, cx, cy, r, s);
             };
-            export const createTimeTexture = () => {
-                const s = Math.max(window.innerWidth, window.innerHeight);
+            export let createTimeTexture = () => {
+                let s = Math.max(window.innerWidth, window.innerHeight);
                 let c = document.createElement('canvas');
                 c.width = s;
                 c.height = s;
-                const ctx = c.getContext('2d');
+                let ctx = c.getContext('2d');
 let cx = s / 2, cy = s / 2, r = s * 0.44;
                 drawTimeCircleBackground(ctx, cx, cy, r, s);
-                const tex = new THREE.CanvasTexture(c);
+                let tex = new THREE.CanvasTexture(c);
                 tex.minFilter = THREE.LinearFilter;
                 tex.magFilter = THREE.LinearFilter;
                 if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
                 return tex;
             }
-            export const updateTimeSpriteTexture = () => {
+            export let updateTimeSpriteTexture = () => {
                 if (!state.timeSprite || !state.timeSprite.material) return;
-                const newTex = createTimeTexture();
+                let newTex = createTimeTexture();
                 if (state.timeSprite.material.map) {
                     state.timeSprite.material.map.dispose();
                 }
                 state.timeSprite.material.map = newTex;
                 state.timeSprite.material.needsUpdate = true;
             }
-            export const scheduleMinuteUpdate = () => {
+            export let scheduleMinuteUpdate = () => {
                 if (timeTextureUpdateInterval) clearTimeout(timeTextureUpdateInterval);
-                const now = new Date();
-                const sec = now.getSeconds();
-                const ms = now.getMilliseconds();
-                const wait = (60 - sec) * 1000 - ms + 50;
+                let now = new Date();
+                let sec = now.getSeconds();
+                let ms = now.getMilliseconds();
+                let wait = (60 - sec) * 1000 - ms + 50;
                 timeTextureUpdateInterval = setTimeout(() => {
                     // 先刷新DOM，确保截图是最新分钟
-                    const el = document.getElementById('time-page-clock');
+                    let el = document.getElementById('time-page-clock');
                     if (el) {
-                        const n = new Date();
+                        let n = new Date();
                         el.textContent = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
-                        const de = document.getElementById('time-page-date');
+                        let de = document.getElementById('time-page-date');
                         if (de) {
-                            const wd = ['周日','周一','周二','周三','周四','周五','周六'];
+                            let wd = ['周日','周一','周二','周三','周四','周五','周六'];
                             de.textContent = (n.getMonth()+1) + '月' + n.getDate() + '日 ' + wd[n.getDay()];
                         }
                     }
@@ -85,15 +85,15 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     scheduleMinuteUpdate();
                 }, wait);
             };
-            export const startTimeTextureUpdates = () => {
+            export let startTimeTextureUpdates = () => {
                 syncTimeSpriteTexture();
                 scheduleMinuteUpdate();
             };
-            export const stopTimeTextureUpdates = () => {
+            export let stopTimeTextureUpdates = () => {
                 // 不再清除全局分钟调度器，仅保留接口兼容
             };
             // ========== 进入/退出时间视图 ==========
-            export const enterTimeView = (animate, onComplete) => {
+            export let enterTimeView = (animate, onComplete) => {
                 if (state.isInTimeView || !state.timeSprite) return;
                 state.isInTimeView = true;
                 state.cancelZoomAnimation();
@@ -103,7 +103,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 state.recentSpeeds = [];
                 state.clearHover();
                 document.body.style.cursor = 'default';
-                const targetZoom = state.computeTimeViewZoom();
+                let targetZoom = state.computeTimeViewZoom();
                 state.timeViewZoom = targetZoom;
                 if (animate) {
                     state.startZoomAnimation(targetZoom, state.ANIM_DURATION, function() {
@@ -111,7 +111,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                         state.applyZoom();
                         if (onComplete) onComplete();
                         // 显示原生时间页面覆盖层（最高分辨率）
-                        const tp = document.getElementById('time-page');
+                        let tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
                         syncTimeSpriteTexture();
                     });
@@ -119,16 +119,16 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     state.zoomLevel = targetZoom;
                     state.applyZoom();
                     if (onComplete) onComplete();
-                    const tp = document.getElementById('time-page');
+                    let tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
                     syncTimeSpriteTexture();
                 }
             }
-            export const exitTimeView = (animate, callback) => {
+            export let exitTimeView = (animate, callback) => {
                 if (!state.isInTimeView) { NativeBridge.log('EXIT skipped isInTimeView=' + state.isInTimeView); return; }
                 state.isInTimeView = false;
                 // 隐藏原生时间页面
-                const tp = document.getElementById('time-page');
+                let tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
                 syncTimeSpriteTexture()
                 state.cancelZoomAnimation();
@@ -141,7 +141,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     state.timeSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
                 }
                 state._pointerDownCount = 0;
-                const targetZoom = state.defaultZoom;
+                let targetZoom = state.defaultZoom;
                 if (animate) {
                     state.startZoomAnimation(targetZoom, state.ANIM_DURATION, function() {
                         state.zoomLevel = targetZoom;
@@ -155,7 +155,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 }
             }
             // 点击时间图标返回时间视图
-            export const returnToTimeView = () => {
+            export let returnToTimeView = () => {
                 if (state.isInTimeView || !state.timeSprite) { NativeBridge.log('RTTV skipped: isInTimeView=' + state.isInTimeView + ' sprite=' + !!state.timeSprite); return; }
                 state.isInTimeView = true;
                 state._timeEnteredAt = performance.now();
@@ -168,17 +168,17 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 state.clearHover();
                 document.body.style.cursor = 'default';
                 // 计算需要旋转的目标四元数：使时间图标正对摄像机
-                const timePos = state.timeSprite.position.clone();
-                const targetDir = timePos.clone().normalize();
-                const cameraDir = new THREE.Vector3(0, 0, 1);
-                const targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
+                let timePos = state.timeSprite.position.clone();
+                let targetDir = timePos.clone().normalize();
+                let cameraDir = new THREE.Vector3(0, 0, 1);
+                let targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
                 // 同时执行旋转和缩放动画
 let zoomComplete = false, rotationComplete = false;
-                const targetZoom = state.computeTimeViewZoom();
+                let targetZoom = state.computeTimeViewZoom();
                 state.timeViewZoom = targetZoom;
-                const checkBothComplete = () => {
+                let checkBothComplete = () => {
                     if (zoomComplete && rotationComplete) {
-                        const tp = document.getElementById('time-page');
+                        let tp = document.getElementById('time-page');
                         if (tp) { NativeBridge.log('RTTV showing DOM'); tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
                         else { NativeBridge.log('RTTV DOM element not found'); }
                         syncTimeSpriteTexture();
@@ -196,20 +196,20 @@ let zoomComplete = false, rotationComplete = false;
                 });
             }
             // ========== 纹理生成 ==========
-            export const renderTimePageToTexture = () => {
-                const page = document.getElementById('time-page');
+            export let renderTimePageToTexture = () => {
+                let page = document.getElementById('time-page');
                 if (!page || !state.timeSprite || !state.timeSprite.material || typeof html2canvas === 'undefined') return;
-                const s = Math.max(window.innerWidth, window.innerHeight);
-                var ver = ++state._texVersion;
-                var _wasHidden = page.style.visibility === 'hidden';
+                let s = Math.max(window.innerWidth, window.innerHeight);
+                let ver = ++state._texVersion;
+                let _wasHidden = page.style.visibility === 'hidden';
                 page.style.visibility = 'visible';
                 html2canvas(page, { scale: 1, useCORS: true, backgroundColor: null }).then(function(domCanvas) {
                     // 检查是否用户已松手（DOM被pointerUpTimeView显示），在恢复隐藏之前保存
-                    const _userShowed = _wasHidden && page.style.visibility === 'visible';
+                    let _userShowed = _wasHidden && page.style.visibility === 'visible';
                     // 从缓存绘制背景圆，再覆盖DOM截图
-                    const texCanvas = document.createElement('canvas');
+                    let texCanvas = document.createElement('canvas');
                     texCanvas.width = s; texCanvas.height = s;
-                    const ctx = texCanvas.getContext('2d');
+                    let ctx = texCanvas.getContext('2d');
                     let cx = s/2, cy = s/2, r = s * 0.44;
                     // 如果用户已松手，不应用完整纹理
                     if (_userShowed) {
@@ -227,15 +227,15 @@ let zoomComplete = false, rotationComplete = false;
                     // 裁切圆内，绘制 DOM 截图
                     ctx.save();
                     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
-                    const aspect = window.innerWidth / window.innerHeight;
-                    const diag = Math.sqrt(aspect*aspect + 1);
-                    const rectW = 2 * r * (aspect / diag);
-                    const rectH = 2 * r * (1 / diag);
+                    let aspect = window.innerWidth / window.innerHeight;
+                    let diag = Math.sqrt(aspect*aspect + 1);
+                    let rectW = 2 * r * (aspect / diag);
+                    let rectH = 2 * r * (1 / diag);
                     ctx.drawImage(domCanvas, cx - rectW/2, cy - rectH/2, rectW, rectH);
                     ctx.restore();
-                    const ts = new Date();
-                    const oldMap = state.timeSprite.material.map;
-                    const tex = new THREE.CanvasTexture(texCanvas);
+                    let ts = new Date();
+                    let oldMap = state.timeSprite.material.map;
+                    let tex = new THREE.CanvasTexture(texCanvas);
                     tex.minFilter = THREE.LinearFilter;
                     tex.magFilter = THREE.LinearFilter;
                     if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;

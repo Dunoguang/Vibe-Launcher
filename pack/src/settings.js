@@ -2,17 +2,17 @@ import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { createGearTexture } from './textures.js';
 import { createSprites } from './sprites.js';
-            export const initSettingsPanel = () => {
-            const wallpaperPickBtn = document.getElementById('s-wallpaper-pick');
-            const wallpaperRemoveBtn = document.getElementById('s-wallpaper-remove');
+            export let initSettingsPanel = () => {
+            let wallpaperPickBtn = document.getElementById('s-wallpaper-pick');
+            let wallpaperRemoveBtn = document.getElementById('s-wallpaper-remove');
             window._onWallpaperPicked = function(json) {
-                try { var r = typeof json === 'string' ? JSON.parse(json) : json;
+                try { let r = typeof json === 'string' ? JSON.parse(json) : json;
                     if (r.success) {
-                        var cb = '?t=' + Date.now();
+                        let cb = '?t=' + Date.now();
                         document.body.style.backgroundImage = 'url(' + r.path + cb + ')';
                         document.body.style.backgroundSize = 'cover';
                         document.body.style.backgroundPosition = 'center';
-                        var img = new Image();
+                        let img = new Image();
                         img.onload = function() { state._wallpaperImg = img; state.updateTimeSpriteBgOnly(true); };
                         img.src = r.path;
                     }
@@ -20,8 +20,8 @@ import { createSprites } from './sprites.js';
             };
             (function initWallpaper() {
                 if (typeof NativeBridge !== 'undefined') {
-                    try { var raw = NativeBridge.getWallpaperPath(); var r = JSON.parse(raw);
-                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + '?t=' + Date.now() + ')'; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; wallpaperPickBtn.textContent = '重新选择'; var img = new Image(); img.onload = function() { state._wallpaperImg = img; }; img.src = r.path; }
+                    try { let raw = NativeBridge.getWallpaperPath(); let r = JSON.parse(raw);
+                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + '?t=' + Date.now() + ')'; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; wallpaperPickBtn.textContent = '重新选择'; let img = new Image(); img.onload = function() { state._wallpaperImg = img; }; img.src = r.path; }
                     } catch(e) {}
                 }
             })();
@@ -37,20 +37,20 @@ import { createSprites } from './sprites.js';
                 if (typeof NativeBridge !== 'undefined') NativeBridge.removeWallpaper();
             };
             // 时间页面背景
-            var timeBgPickBtn = document.getElementById('s-timebg-pick');
-            var timeBgRemoveBtn = document.getElementById('s-timebg-remove');
+            let timeBgPickBtn = document.getElementById('s-timebg-pick');
+            let timeBgRemoveBtn = document.getElementById('s-timebg-remove');
             window._onTimeBgPicked = function(json) {
-                try { var r = typeof json === 'string' ? JSON.parse(json) : json;
+                try { let r = typeof json === 'string' ? JSON.parse(json) : json;
                     if (r.success) {
                         state._timeBgPath = r.path;
                         // 用XHR加载本地文件，绕过可能的file://限制
-                        var xhr = new XMLHttpRequest();
+                        let xhr = new XMLHttpRequest();
                         xhr.open('GET', r.path, true);
                         xhr.responseType = 'blob';
                         xhr.onload = function() {
                             if (xhr.status === 0 || xhr.status === 200) {
-                                var url = URL.createObjectURL(xhr.response);
-                                var img = new Image();
+                                let url = URL.createObjectURL(xhr.response);
+                                let img = new Image();
                                 img.onload = function() {
                                     URL.revokeObjectURL(url);
                                     state._timeBgImg = img;
@@ -62,7 +62,7 @@ import { createSprites } from './sprites.js';
                         };
                         xhr.onerror = function() {
                             // fallback: 直接img.src
-                            var img = new Image();
+                            let img = new Image();
                             img.onload = function() { state._timeBgImg = img; state.updateTimeSpriteBgOnly(true); state.renderTimePageToTexture(); };
                             img.src = r.path;
                         };
@@ -81,35 +81,35 @@ import { createSprites } from './sprites.js';
                 timeBgPickBtn.textContent = '选择图片';
                 if (typeof NativeBridge !== 'undefined') NativeBridge.removeTimeBg();
             };
-                const overlay = document.getElementById('settings-overlay');
-                const backBtn = document.getElementById('settings-close-btn');
-                const saveBtn = document.getElementById('s-save');
+                let overlay = document.getElementById('settings-overlay');
+                let backBtn = document.getElementById('settings-close-btn');
+                let saveBtn = document.getElementById('s-save');
                 // Load from localStorage
                 let saved = {};
                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
                 // Setup radio button clicks
                 // Apply saved values
-                const iconInput = document.getElementById('s-icon');
+                let iconInput = document.getElementById('s-icon');
                 if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
-                const sphereInput = document.getElementById('settings-sphere-input');
+                let sphereInput = document.getElementById('settings-sphere-input');
                 if (saved.sphereSize && sphereInput) sphereInput.value = parseFloat(saved.sphereSize);
                 if (saved.layoutMode) {
-                    const radios = document.getElementsByName('layoutMode');
+                    let radios = document.getElementsByName('layoutMode');
                     for (let ri = 0; ri < radios.length; ri++) {
                         if (radios[ri].value === saved.layoutMode) radios[ri].checked = true;
                     }
                 }
                 // FPS显示开关
-                const fpsCb = document.getElementById('s-fps');
+                let fpsCb = document.getElementById('s-fps');
                 if (fpsCb) {
                     fpsCb.checked = !!(saved.showFps);
                     fpsCb.onchange = function() {
                         state._fpsShow = this.checked;
-                        const fpsEl = document.getElementById('fps-counter');
+                        let fpsEl = document.getElementById('fps-counter');
                         if (fpsEl) fpsEl.style.display = this.checked ? 'block' : 'none';
                         // 即时保存
                         try {
-                            const s = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
+                            let s = JSON.parse(localStorage.getItem('vibe-settings') || '{}');
                             s.showFps = this.checked;
                             localStorage.setItem('vibe-settings', JSON.stringify(s));
                         } catch(e) {}
@@ -129,7 +129,7 @@ import { createSprites } from './sprites.js';
                         state.applyZoom();
                     });
                 });
-                const clearBtn = document.getElementById('s-clear-cache');
+                let clearBtn = document.getElementById('s-clear-cache');
                 clearBtn.addEventListener('click', function() {
                     if (state.nativeBridgeReady) {
                         NativeBridge.clearIconCache();
@@ -144,11 +144,11 @@ import { createSprites } from './sprites.js';
                     }
                 });
                 saveBtn.addEventListener('click', function() {
-                    const iconRes = document.getElementById('s-icon');
-                    const sphereSizeInput = document.getElementById('settings-sphere-input');
+                    let iconRes = document.getElementById('s-icon');
+                    let sphereSizeInput = document.getElementById('settings-sphere-input');
                     let sphereSize = sphereSizeInput ? sphereSizeInput.value : '2.5';
                     // 最小半径校验
-                    const minR = state.updateSphereMinHint();
+                    let minR = state.updateSphereMinHint();
                     let inputR = parseFloat(sphereSize);
                     if (isNaN(inputR) || inputR <= 0) inputR = 2.5;
                     if (inputR < minR) {
@@ -162,18 +162,18 @@ import { createSprites } from './sprites.js';
                         }, 2000);
                     }
                     sphereSize = '' + inputR;
-                    const layoutRadios = document.getElementsByName('layoutMode');
+                    let layoutRadios = document.getElementsByName('layoutMode');
                     let layoutVal = 'sphere';
                     for (let lr = 0; lr < layoutRadios.length; lr++) {
                         if (layoutRadios[lr].checked) { layoutVal = layoutRadios[lr].value; break; }
                     }
-                    const animInput = document.getElementById('settings-anim-input');
-                    const animSpeedVal = animInput ? parseInt(animInput.value) || 250 : 250;
+                    let animInput = document.getElementById('settings-anim-input');
+                    let animSpeedVal = animInput ? parseInt(animInput.value) || 250 : 250;
                     if (animSpeedVal < 10) animInput.value = 10;
                     if (animSpeedVal > 5000) animInput.value = 5000;
-                    const hotreloadCb = document.getElementById('s-hotreload');
-                    const hotreloadEnabled = hotreloadCb ? hotreloadCb.checked : false;
-                    const settings = {
+                    let hotreloadCb = document.getElementById('s-hotreload');
+                    let hotreloadEnabled = hotreloadCb ? hotreloadCb.checked : false;
+                    let settings = {
                         iconRes: iconRes ? iconRes.value : '512',
                         sphereSize: sphereSize || '2.5',
                         layoutMode: layoutVal,
@@ -185,10 +185,10 @@ import { createSprites } from './sprites.js';
                     state.ANIM_DURATION = animSpeedVal;
                     try { NativeBridge.setHotReload(hotreloadEnabled); } catch(e) {}
                     // 统一：应用所有更改，无需刷新页面
-                    const prevIconRes = state.ICON_RES;
+                    let prevIconRes = state.ICON_RES;
                     state.ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
-                    const layoutChanged = state.layoutMode !== layoutVal;
-                    const sphereChanged = Math.abs(state.SPHERE_RADIUS - inputR) > 0.001;
+                    let layoutChanged = state.layoutMode !== layoutVal;
+                    let sphereChanged = Math.abs(state.SPHERE_RADIUS - inputR) > 0.001;
                     state.layoutMode = layoutVal;
                     state.SPHERE_RADIUS = inputR;
                     if (layoutChanged || sphereChanged) {
@@ -213,7 +213,7 @@ import { createSprites } from './sprites.js';
                                     spr.material.map = createGearTexture();
                                 } else if (spr.userData._iconUrl) {
                                     (function(s) {
-                                        const img = new Image();
+                                        let img = new Image();
                                         img.onload = function() {
                                             s.material.map = state.createIconTextureFromImage(img);
                                             s.material.needsUpdate = true;
@@ -229,10 +229,10 @@ import { createSprites } from './sprites.js';
                         if (state.sphereGroup && inputR > 0) {
                             // 仅球体大小变化（布局不变），重新分布位置
                             let rawPoints = state.sphereCoulomb(window._totalItems.length, { radius: state.SPHERE_RADIUS, iter: 500 });
-                            const timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
+                            let timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
                             if (timeIdx >= 0) {
-                                const timePos = new THREE.Vector3(rawPoints[timeIdx][0], rawPoints[timeIdx][1], rawPoints[timeIdx][2]);
-                                const alignQ = new THREE.Quaternion().setFromUnitVectors(timePos.clone().normalize(), new THREE.Vector3(0,0,1));
+                                let timePos = new THREE.Vector3(rawPoints[timeIdx][0], rawPoints[timeIdx][1], rawPoints[timeIdx][2]);
+                                let alignQ = new THREE.Quaternion().setFromUnitVectors(timePos.clone().normalize(), new THREE.Vector3(0,0,1));
                                 rawPoints = rawPoints.map(function(p) {
                                     let v = new THREE.Vector3(p[0],p[1],p[2]);
                                     v.applyQuaternion(alignQ);

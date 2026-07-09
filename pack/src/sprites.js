@@ -3,10 +3,10 @@ import { state } from './state.js';
 import { sphereCoulomb } from './sphere-coulomb.js';
 import { createGearTexture, createPlaceholderTexture, createIconTextureFromImage, drawCircleFrame, drawTimeCircleBackground } from './textures.js';
 import { enterTimeView, exitTimeView, createTimeTexture, syncTimeSpriteTexture, scheduleMinuteUpdate, stopTimeTextureUpdates } from './time.js';
-            export const clearAllSprites = () => {
+            export let clearAllSprites = () => {
                 stopTimeTextureUpdates();
                 for (let i = 0; i < state.sprites.length; i++) {
-                    const s = state.sprites[i];
+                    let s = state.sprites[i];
                     if (s.material) {
                         if (s.material.map) s.material.map.dispose();
                         s.material.dispose();
@@ -19,9 +19,9 @@ import { enterTimeView, exitTimeView, createTimeTexture, syncTimeSpriteTexture, 
             }
 state.pendingIconLoads = 0;
 state.enterAnimationComplete = false;
-            export const createSprites = (appList, iconMap, skipEnter) => {
+            export let createSprites = (appList, iconMap, skipEnter) => {
                 clearAllSprites();
-                const totalItems = [];
+                let totalItems = [];
 window._totalItems = totalItems;
                 totalItems.push({
                     type: 'time',
@@ -40,13 +40,13 @@ window._totalItems = totalItems;
                         colorIndex: i + 2
                     });
                 }
-                const isHemi = (state.layoutMode === 'hemisphere');
-                const isRing = (state.layoutMode === 'ring');
-                const isHbar = (state.layoutMode === 'hbar');
-                const isFlatring = (state.layoutMode === 'flatring');
+                let isHemi = (state.layoutMode === 'hemisphere');
+                let isRing = (state.layoutMode === 'ring');
+                let isHbar = (state.layoutMode === 'hbar');
+                let isFlatring = (state.layoutMode === 'flatring');
                 // 半球模式：复制透明占位精灵填充后半球
                 if (isHemi) {
-                    const bc = totalItems.length;
+                    let bc = totalItems.length;
                     for (let ri = 0; ri < bc; ri++) {
                         totalItems.push({
                             type: 'redTest',
@@ -55,7 +55,7 @@ window._totalItems = totalItems;
                         });
                     }
                 }
-                const N = totalItems.length;
+                let N = totalItems.length;
                 let ringRadius = 0;
                 if (isRing || isHbar || isFlatring) {
                     ringRadius = Math.max(state.SPHERE_RADIUS, (N * state.BASE_SCALE * 1.1) / (2 * Math.PI));
@@ -67,29 +67,29 @@ window._totalItems = totalItems;
                     state.applyZoom();
                 }
                 let rawPoints = sphereCoulomb(N, { radius: state.SPHERE_RADIUS, iter: 500 });
-                const timeItemIndex = totalItems.findIndex(function(item) { return item.type === 'time'; });
-                const timeRaw = rawPoints[timeItemIndex];
-                const timePos = new THREE.Vector3(timeRaw[0], timeRaw[1], timeRaw[2]);
-                const targetDir = timePos.clone().normalize();
-                const cameraDir = new THREE.Vector3(0, 0, 1);
-                const alignQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
+                let timeItemIndex = totalItems.findIndex(function(item) { return item.type === 'time'; });
+                let timeRaw = rawPoints[timeItemIndex];
+                let timePos = new THREE.Vector3(timeRaw[0], timeRaw[1], timeRaw[2]);
+                let targetDir = timePos.clone().normalize();
+                let cameraDir = new THREE.Vector3(0, 0, 1);
+                let alignQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, cameraDir);
                 let allRotated;
                 if (isRing) {
                     allRotated = [];
                     for (let ri2 = 0; ri2 < N; ri2++) {
-                        const a = (ri2 / N) * Math.PI * 2;
+                        let a = (ri2 / N) * Math.PI * 2;
                         allRotated.push(new THREE.Vector3(0, Math.sin(a) * ringRadius, Math.cos(a) * ringRadius));
                     }
                 } else if (isHbar) {
                     allRotated = [];
                     for (let ri2 = 0; ri2 < N; ri2++) {
-                        const a = (ri2 / N) * Math.PI * 2;
+                        let a = (ri2 / N) * Math.PI * 2;
                         allRotated.push(new THREE.Vector3(Math.sin(a) * ringRadius, 0, Math.cos(a) * ringRadius));
                     }
                 } else if (isFlatring) {
                     allRotated = [];
                     for (let ri2 = 0; ri2 < N; ri2++) {
-                        const a = (ri2 / N) * Math.PI * 2 + Math.PI / 2;
+                        let a = (ri2 / N) * Math.PI * 2 + Math.PI / 2;
                         allRotated.push(new THREE.Vector3(Math.cos(a) * ringRadius, Math.sin(a) * ringRadius, 0));
                     }
                 } else {
@@ -102,15 +102,15 @@ window._totalItems = totalItems;
                         allRotated.sort(function(a, b) { return b.z - a.z; });
                     }
                 }
-                const rotatedPoints = allRotated;
+                let rotatedPoints = allRotated;
                 // 确保 time 和 settings 始终占据最靠近摄像机的两个位置
                 {
-                    const indexed = rotatedPoints.map((p, i) => ({ p, i }));
+                    let indexed = rotatedPoints.map((p, i) => ({ p, i }));
                     indexed.sort((a, b) => b.p.z - a.p.z);
-                    const newPts = indexed.map(x => x.p);
-                    const newItems = indexed.map(x => totalItems[x.i]);
+                    let newPts = indexed.map(x => x.p);
+                    let newItems = indexed.map(x => totalItems[x.i]);
                     // 分离 time/settings 和其他 app
-                    const frontItems = [], restItems = [];
+                    let frontItems = [], restItems = [];
                     for (let zi = 0; zi < newItems.length; zi++) {
                         if (newItems[zi].type === 'time' || newItems[zi].type === 'settings') {
                             frontItems.push(newItems[zi]);
@@ -121,7 +121,7 @@ window._totalItems = totalItems;
                     // time 排最前, settings 第二
                     frontItems.sort((a, b) => (a.type === 'time' ? -1 : (b.type === 'time' ? 1 : 0)));
                     // 重组: frontItems 拿最靠近摄像机的点 (newPts[0..]), restItems 拿其余点
-                    const merged = [];
+                    let merged = [];
                     for (let zi = 0; zi < frontItems.length; zi++) {
                         merged.push({ pt: newPts[zi], item: frontItems[zi] });
                     }
@@ -134,42 +134,42 @@ window._totalItems = totalItems;
                     }
                 }
                 for (let j = 0; j < N; j++) {
-                    const item = totalItems[j];
+                    let item = totalItems[j];
                     let p = rotatedPoints[j];
                     if (item.type === 'settings') {
-                        const gearTex = createGearTexture();
-                        const gearMat = new THREE.SpriteMaterial({ map: gearTex, transparent: true, depthTest: true, depthWrite: true });
-                        const gearSprite = new THREE.Sprite(gearMat);
+                        let gearTex = createGearTexture();
+                        let gearMat = new THREE.SpriteMaterial({ map: gearTex, transparent: true, depthTest: true, depthWrite: true });
+                        let gearSprite = new THREE.Sprite(gearMat);
                         gearSprite.position.copy(p);
                         gearSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
                         gearSprite.userData = { isTimeSprite: false, app: item.data, baseScale: state.BASE_SCALE };
                         state.sphereGroup.add(gearSprite);
                         state.sprites.push(gearSprite);
                     } else if (item.type === 'redTest') {
-                        const redC = document.createElement('canvas');
+                        let redC = document.createElement('canvas');
                         redC.width = state.ICON_RES; redC.height = state.ICON_RES;
-                        const rtx = redC.getContext('2d');
+                        let rtx = redC.getContext('2d');
                         rtx.fillStyle = '#ff0000';
                         rtx.fillRect(0, 0, state.ICON_RES, state.ICON_RES);
-                        const redTex = new THREE.CanvasTexture(redC);
+                        let redTex = new THREE.CanvasTexture(redC);
                         redTex.minFilter = THREE.LinearFilter;
                         redTex.magFilter = THREE.LinearFilter;
-                        const redMat = new THREE.SpriteMaterial({ map: redTex, transparent: true, depthTest: true, depthWrite: true, opacity: 0 });
-                        const redSprite = new THREE.Sprite(redMat);
+                        let redMat = new THREE.SpriteMaterial({ map: redTex, transparent: true, depthTest: true, depthWrite: true, opacity: 0 });
+                        let redSprite = new THREE.Sprite(redMat);
                         redSprite.position.copy(p);
                         redSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
                         redSprite.userData = { isTimeSprite: false, app: item.data, baseScale: state.BASE_SCALE, isDecor: true };
                         state.sphereGroup.add(redSprite);
                         state.sprites.push(redSprite);
                     } else if (item.type === 'time') {
-                        const timeTex = createTimeTexture();
-                        const timeMat = new THREE.SpriteMaterial({
+                        let timeTex = createTimeTexture();
+                        let timeMat = new THREE.SpriteMaterial({
                             map: timeTex,
                             transparent: true,
                             depthTest: true,
                             depthWrite: true
                         });
-                        const sprite = new THREE.Sprite(timeMat);
+                        let sprite = new THREE.Sprite(timeMat);
                         sprite.position.copy(p);
                         sprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
                         sprite.userData = {
@@ -182,16 +182,16 @@ window._totalItems = totalItems;
                         state.timeSprite = sprite;
                         state.timeSprite = sprite;
                     } else {
-                        const app = item.data;
-                        const color = state.placeholderColors[item.colorIndex % state.placeholderColors.length];
-                        const placeholderTex = createPlaceholderTexture(app.appName, color);
-                        const mat = new THREE.SpriteMaterial({
+                        let app = item.data;
+                        let color = state.placeholderColors[item.colorIndex % state.placeholderColors.length];
+                        let placeholderTex = createPlaceholderTexture(app.appName, color);
+                        let mat = new THREE.SpriteMaterial({
                             map: placeholderTex,
                             transparent: true,
                             depthTest: true,
                             depthWrite: true
                         });
-                        const appSprite = new THREE.Sprite(mat);
+                        let appSprite = new THREE.Sprite(mat);
                         appSprite.position.copy(p);
                         appSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
                         appSprite.userData = {
@@ -211,7 +211,7 @@ window._totalItems = totalItems;
                 state.rotationQuat.identity();
                 state.sphereGroup.quaternion.identity();
                 if (state.layoutMode === 'flatring' && state.sprites.length > 0) {
-                    const tw = new THREE.Vector3();
+                    let tw = new THREE.Vector3();
                     state.sprites[0].getWorldPosition(tw);
                     state.camera.lookAt(tw);
                 }
@@ -224,10 +224,10 @@ state.updateSphereMinHint();
                         // state.sphereGroup now uses Coulomb points directly, no need for scale
                         // 重新分布
                         let rawPts = sphereCoulomb(totalItems.length, { radius: state.SPHERE_RADIUS, iter: 500 });
-                        const tIdx = totalItems.findIndex(function(it) { return it.type === 'time'; });
+                        let tIdx = totalItems.findIndex(function(it) { return it.type === 'time'; });
                         if (tIdx >= 0) {
-                            const tp = new THREE.Vector3(rawPts[tIdx][0], rawPts[tIdx][1], rawPts[tIdx][2]);
-                            const aq = new THREE.Quaternion().setFromUnitVectors(tp.clone().normalize(), new THREE.Vector3(0,0,1));
+                            let tp = new THREE.Vector3(rawPts[tIdx][0], rawPts[tIdx][1], rawPts[tIdx][2]);
+                            let aq = new THREE.Quaternion().setFromUnitVectors(tp.clone().normalize(), new THREE.Vector3(0,0,1));
                             rawPts = rawPts.map(function(pt) {
                                 let v = new THREE.Vector3(pt[0],pt[1],pt[2]);
                                 v.applyQuaternion(aq);
@@ -266,10 +266,10 @@ state.updateSphereMinHint();
             }
             export function loadRealIcon(sprite, iconUrl) {
                 state.pendingIconLoads++;
-                const img = new Image();
+                let img = new Image();
                 img.onload = function() {
                     try {
-                        const tex = createIconTextureFromImage(img);
+                        let tex = createIconTextureFromImage(img);
                         if (sprite.material && sprite.material.map && !sprite.userData.hasRealIcon) {
                             sprite.material.map.dispose();
                         }
@@ -298,7 +298,7 @@ state.updateSphereMinHint();
                 }
             }
             // ========== NativeBridge ==========
-            export const tryLoadApps = () => {
+            export let tryLoadApps = () => {
                 if (typeof NativeBridge !== 'undefined' && NativeBridge.requestInstalledApps) {
                     state.nativeBridgeReady = true;
                     NativeBridge.requestInstalledApps();
@@ -315,12 +315,12 @@ state.updateSphereMinHint();
                 }
             }
             export function createDemoApps() {
-                const demoNames = [
+                let demoNames = [
                     '微信', 'QQ', '淘宝', '支付宝', '抖音', '美团', '饿了么', 'B站', '知乎', '微博',
                     '网易云', '高德', '百度', '京东', '拼多多', '小红书', '快手', '滴滴', '闲鱼', '携程',
                     '酷狗', 'UC', 'WPS', '钉钉', '飞书',
                 ];
-                const demoApps = [];
+                let demoApps = [];
                 for (let i = 0; i < demoNames.length; i++) {
                     demoApps.push({
                         packageName: 'com.demo.' + demoNames[i].toLowerCase(),
@@ -333,7 +333,7 @@ state.updateSphereMinHint();
             }
             // Back gesture state managed via state.js
             window._onBackStarted = function() {
-                var overlay = document.getElementById('settings-overlay');
+                let overlay = document.getElementById('settings-overlay');
                 if (overlay && overlay.style.display === 'flex') {
                     state._backType = 'settings';
                     state._backProgress = 0;
@@ -369,7 +369,7 @@ state.updateSphereMinHint();
                 state.cancelZoomAnimation();
                 state.rotationAnimData = null;
                 if (!state.animFrameId) state.animFrameId = requestAnimationFrame(state.animate);
-                var tp = document.getElementById('time-page');
+                let tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
                 syncTimeSpriteTexture();
             };
@@ -377,11 +377,11 @@ state.updateSphereMinHint();
                 if (state._backProgress < 0) return;
                 state._backProgress = p;
                 if (state._backType === 'settings') {
-                    var overlay = document.getElementById('settings-overlay');
+                    let overlay = document.getElementById('settings-overlay');
                     if (overlay) overlay.style.opacity = 1 - state.materialEasing(p);
-                    var card = document.getElementById('settings-card');
+                    let card = document.getElementById('settings-card');
                     if (card) {
-                        var s = Math.max(0.01, 1 - state.materialEasing(p) * 2);
+                        let s = Math.max(0.01, 1 - state.materialEasing(p) * 2);
                         card.style.transform = 'scale(' + s + ')';
                     }
                     state.zoomLevel = state._backStartZoom + (state.defaultZoom - state._backStartZoom) * state.materialEasing(p);
@@ -393,8 +393,8 @@ state.updateSphereMinHint();
                     state.zoomLevel = state._backStartZoom + (state.defaultZoom - state._backStartZoom) * state.materialEasing(p);
                     state.applyZoom();
                 } else {
-                    var t = state.materialEasing(p);
-                    var z = state._backStartZoom + (state.defaultZoom - state._backStartZoom) * t;
+                    let t = state.materialEasing(p);
+                    let z = state._backStartZoom + (state.defaultZoom - state._backStartZoom) * t;
                     state.zoomLevel = z;
                     state.applyZoom();
                 }
@@ -404,12 +404,12 @@ state.updateSphereMinHint();
             window._onProgress = window._onBackProgress;
             window._onBackCancelled = function() {
                 if (state._backProgress < 0) return;
-                var _cancelP = state._backProgress;
+                let _cancelP = state._backProgress;
                 state._backProgress = -1;
                 if (state._backType === 'settings') {
-                    var overlay = document.getElementById('settings-overlay');
+                    let overlay = document.getElementById('settings-overlay');
                     if (overlay) overlay.style.opacity = '1';
-                    var card = document.getElementById('settings-card');
+                    let card = document.getElementById('settings-card');
                     if (card) card.style.transform = 'scale(1)';
                     state.zoomLevel = state._backStartZoom;
                     state.applyZoom();
@@ -417,9 +417,9 @@ state.updateSphereMinHint();
                     if (_cancelP < 0.3 && state.cancelableAction) {
                         // Resume opening from saved state
                         state.cancelableAction.cancelled = false;
-                        var targetSprite = state.cancelableAction.sprite;
-                        var targetDir = targetSprite.position.clone().normalize();
-                        var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
+                        let targetSprite = state.cancelableAction.sprite;
+                        let targetDir = targetSprite.position.clone().normalize();
+                        let targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
                         state.startRotationAnimation(targetQuat, state.ANIM_DURATION, function() {
                             if (state.cancelableAction && !state.cancelableAction.cancelled) {
                                 state.cancelableAction.rotDone = true; state.tryCommitCancelable();
@@ -438,15 +438,15 @@ state.updateSphereMinHint();
                         });
                     }
                 } else {
-                    var tp = document.getElementById('time-page');
+                    let tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
                     state.zoomLevel = state._backStartZoom;
                     state.applyZoom();
                     // Restart entry animation if was in progress (DOM wasn't shown before gesture)
-                    var timePos = state.timeSprite ? state.timeSprite.position.clone() : null;
+                    let timePos = state.timeSprite ? state.timeSprite.position.clone() : null;
                     if (timePos) {
-                        var td = timePos.clone().normalize();
-                        var tq = new THREE.Quaternion().setFromUnitVectors(td, new THREE.Vector3(0, 0, 1));
+                        let td = timePos.clone().normalize();
+                        let tq = new THREE.Quaternion().setFromUnitVectors(td, new THREE.Vector3(0, 0, 1));
                         state.startRotationAnimation(tq, state.ANIM_DURATION, function() {});
                         state.startZoomAnimation(state.timeViewZoom || state.computeTimeViewZoom(), state.ANIM_DURATION, function() {
                             state.zoomLevel = state.timeViewZoom; state.applyZoom();
@@ -460,9 +460,9 @@ state.updateSphereMinHint();
                 if (state._backProgress >= 0 && state._backType === 'settings') {
                     state._backProgress = -1;
                     state._backType = '';
-                    var overlay = document.getElementById('settings-overlay');
+                    let overlay = document.getElementById('settings-overlay');
                     if (overlay) { overlay.style.display = 'none'; overlay.style.opacity = '1'; }
-                    var card = document.getElementById('settings-card');
+                    let card = document.getElementById('settings-card');
                     if (card) card.style.transform = 'scale(1)';
                     state.canvas.style.pointerEvents = 'auto';
                     state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
@@ -484,15 +484,15 @@ state.updateSphereMinHint();
                     return;
                 }
                 if (state._backProgress >= 0 && state.isInTimeView) {
-                    var finalP = state._backProgress;
+                    let finalP = state._backProgress;
                     state._backProgress = -1;
                     state._backType = '';
                     // 忽略系统误触发的返回手势（progress接近0的轻触不算）
                     if (finalP < 0.2) { state.isInTimeView = false; return; }
-                    var curZ = state.zoomLevel;
-                    var remain = (state.defaultZoom - curZ);
+                    let curZ = state.zoomLevel;
+                    let remain = (state.defaultZoom - curZ);
                     if (remain > 0.001) {
-                        var dur = Math.min(state.ANIM_DURATION * 0.6, state.ANIM_DURATION * (1 - finalP) * 1.2);
+                        let dur = Math.min(state.ANIM_DURATION * 0.6, state.ANIM_DURATION * (1 - finalP) * 1.2);
                         state.startZoomAnimation(state.defaultZoom, dur, function() {
                             state.zoomLevel = state.defaultZoom;
                             state.applyZoom();
@@ -502,7 +502,7 @@ state.updateSphereMinHint();
                             let spinAxis;
                             if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                             else spinAxis = new THREE.Vector3(1, 0, 0);
-                            const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
+                            let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                             state.inertiaQ.copy(smallQ);
                         });
                     } else {
@@ -512,7 +512,7 @@ state.updateSphereMinHint();
                         let spinAxis;
                         if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                         else spinAxis = new THREE.Vector3(1, 0, 0);
-                        const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
+                        let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                         state.inertiaQ.copy(smallQ);
                     }
                     return;
@@ -522,7 +522,7 @@ state.updateSphereMinHint();
                     state.hideContextMenu();
                     return;
                 }
-                var overlay = document.getElementById("settings-overlay");
+                let overlay = document.getElementById("settings-overlay");
                 if (overlay && overlay.style.display === "flex") {
                     overlay.style.display = "none";
                     state.canvas.style.pointerEvents = "auto";
@@ -551,23 +551,23 @@ state.updateSphereMinHint();
             };
             window._onHotReloadLoaded = function(json) {
                 try {
-                    const data = typeof json === 'string' ? JSON.parse(json) : json;
+                    let data = typeof json === 'string' ? JSON.parse(json) : json;
                     if (data.success) {
-                        const cb = document.getElementById('s-hotreload');
+                        let cb = document.getElementById('s-hotreload');
                         if (cb) cb.checked = data.enabled;
                     }
                 } catch(e) {}
             };
             window._onAppsLoaded = function(json) {
                 try {
-                    const data = typeof json === 'string' ? JSON.parse(json) : json;
+                    let data = typeof json === 'string' ? JSON.parse(json) : json;
                     if (data.success && data.apps && data.apps.length > 0) {
-                        const newPkgs = [];
+                        let newPkgs = [];
                         for (let i = 0; i < data.apps.length; i++) newPkgs.push(data.apps[i].packageName);
-                        const oldPkgs = window._allPkgs || [];
+                        let oldPkgs = window._allPkgs || [];
                         let changed = newPkgs.length !== oldPkgs.length;
                         if (!changed) {
-                            const oldSet = {}; for (let j = 0; j < oldPkgs.length; j++) oldSet[oldPkgs[j]] = true;
+                            let oldSet = {}; for (let j = 0; j < oldPkgs.length; j++) oldSet[oldPkgs[j]] = true;
                             for (let k = 0; k < newPkgs.length; k++) { if (!oldSet[newPkgs[k]]) { changed = true; break; } }
                         }
                         if (!changed && state.sprites.length > 0) return; // 没变化，不重建
@@ -586,18 +586,18 @@ state.updateSphereMinHint();
             };
             window._onIconsLoaded = function(json) {
                 try {
-                    const iconData = typeof json === 'string' ? JSON.parse(json) : json;
-                    const iconMap = {};
+                    let iconData = typeof json === 'string' ? JSON.parse(json) : json;
+                    let iconMap = {};
                     if (Array.isArray(iconData)) {
                         for (let i = 0; i < iconData.length; i++) {
-                            const item = iconData[i];
+                            let item = iconData[i];
                             if (item.packageName && item.iconUrl) iconMap[item.packageName] = item.iconUrl;
                         }
                     }
                     for (let j = 0; j < state.sprites.length; j++) {
-                        const sprite = state.sprites[j];
+                        let sprite = state.sprites[j];
                         if (sprite.userData.isTimeSprite) continue;
-                        const app = sprite.userData.app;
+                        let app = sprite.userData.app;
                         if (app && iconMap[app.packageName] && !sprite.userData.hasRealIcon) {
                             loadRealIcon(sprite, iconMap[app.packageName]);
                         }

@@ -1,9 +1,9 @@
 import * as THREE from 'three/webgpu';
 import { state } from './state.js';
-            export const createGearTexture = () => {
-                const s = Math.max(16, state.ICON_RES), ca = document.createElement('canvas');
+            export let createGearTexture = () => {
+                let s = Math.max(16, state.ICON_RES), ca = document.createElement('canvas');
                 ca.width = s; ca.height = s;
-                const ctx = ca.getContext('2d'), cx = s/2, cy = s/2, rr = s * 0.44;
+                let ctx = ca.getContext('2d'), cx = s/2, cy = s/2, rr = s * 0.44;
                 ctx.fillStyle = '#000000';
                 ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI*2); ctx.fill();
                 ctx.strokeStyle = 'rgba(255,255,255,0.25)';
@@ -13,7 +13,7 @@ import { state } from './state.js';
                 ctx.font = 'bold ' + (s * 0.45) + 'px sans-serif';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText('⚙', cx, cy);
-                const tex = new THREE.CanvasTexture(ca);
+                let tex = new THREE.CanvasTexture(ca);
                 tex.minFilter = THREE.LinearFilter;
                 tex.magFilter = THREE.LinearFilter;
                 if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
@@ -27,26 +27,26 @@ import { state } from './state.js';
             state._timeBgPath = _timeBgPath;
             (function preloadWallpaper() {
                 if (typeof NativeBridge !== 'undefined') {
-                    try { var raw = NativeBridge.getWallpaperPath(); var r = JSON.parse(raw);
-                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + '?t=' + Date.now() + ')'; var img = new Image(); img.onload = function() { _wallpaperImg = img; state._wallpaperImg = img; state.updateTimeSpriteBgOnly(true); }; img.src = r.path; }
+                    try { let raw = NativeBridge.getWallpaperPath(); let r = JSON.parse(raw);
+                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + '?t=' + Date.now() + ')'; let img = new Image(); img.onload = function() { _wallpaperImg = img; state._wallpaperImg = img; state.updateTimeSpriteBgOnly(true); }; img.src = r.path; }
                     } catch(e) {}
-                    try { var raw2 = NativeBridge.getTimeBgPath(); var r2 = JSON.parse(raw2);
-                        if (r2.success) { var img2 = new Image(); img2.onload = function() { _timeBgImg = img2; state._timeBgImg = img2; state.updateTimeSpriteBgOnly(true); }; img2.src = r2.path; }
+                    try { let raw2 = NativeBridge.getTimeBgPath(); let r2 = JSON.parse(raw2);
+                        if (r2.success) { let img2 = new Image(); img2.onload = function() { _timeBgImg = img2; state._timeBgImg = img2; state.updateTimeSpriteBgOnly(true); }; img2.src = r2.path; }
                     } catch(e) {}
                     // Update time bg button text after DOM ready
                     setTimeout(function() {
-                        var tbb = document.getElementById('s-timebg-pick');
+                        let tbb = document.getElementById('s-timebg-pick');
                         if (tbb && _timeBgImg) tbb.textContent = '重新选择';
                     }, 100);
                 }
             })();
-            export const drawCircleFrame = function(ctx, cx, cy, r, s) {
+            export let drawCircleFrame = function(ctx, cx, cy, r, s) {
                 ctx.strokeStyle = 'rgba(255,255,255,0.25)';
                 ctx.lineWidth = s * 0.012;
                 ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
             };
-            export const drawCircleBackground = function(ctx, cx, cy, r, s) {
-                var bg = state._wallpaperImg;
+            export let drawCircleBackground = function(ctx, cx, cy, r, s) {
+                let bg = state._wallpaperImg;
                 if (bg) {
                     ctx.save();
                     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
@@ -58,8 +58,8 @@ import { state } from './state.js';
                 }
                 drawCircleFrame(ctx, cx, cy, r, s);
             };
-            export const drawTimeCircleBackground = function(ctx, cx, cy, r, s) {
-                var bg = state._timeBgImg || state._wallpaperImg;
+            export let drawTimeCircleBackground = function(ctx, cx, cy, r, s) {
+                let bg = state._timeBgImg || state._wallpaperImg;
                 if (bg) {
                     ctx.save();
                     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
@@ -71,12 +71,12 @@ import { state } from './state.js';
                 }
                 drawCircleFrame(ctx, cx, cy, r, s);
             };
-            export const createPlaceholderTexture = (appName, colorHex) => {
-                const s = Math.max(16, state.ICON_RES),
+            export let createPlaceholderTexture = (appName, colorHex) => {
+                let s = Math.max(16, state.ICON_RES),
                     c = document.createElement('canvas');
                 c.width = s;
                 c.height = s;
-                const ctx = c.getContext('2d'),
+                let ctx = c.getContext('2d'),
                     cx = s / 2,
                     cy = s / 2,
                     r = s * 0.44;
@@ -89,7 +89,7 @@ import { state } from './state.js';
                 ctx.beginPath();
                 ctx.arc(cx, cy, r, 0, Math.PI * 2);
                 ctx.stroke();
-                const initial = (appName || '?').charAt(0).toUpperCase();
+                let initial = (appName || '?').charAt(0).toUpperCase();
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold ' + (s * 0.5) + 'px "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
                 ctx.textAlign = 'center';
@@ -98,27 +98,27 @@ import { state } from './state.js';
                 ctx.shadowBlur = s * 0.1;
                 ctx.fillText(initial, cx, cy);
                 ctx.shadowBlur = 0;
-                const tex = new THREE.CanvasTexture(c);
+                let tex = new THREE.CanvasTexture(c);
                 tex.minFilter = THREE.LinearFilter;
                 tex.magFilter = THREE.LinearFilter;
                 if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
                 return tex;
             }
-            export const createIconTextureFromImage = (img) => {
-                const s = 512,
+            export let createIconTextureFromImage = (img) => {
+                let s = 512,
                     cx = s / 2,
                     cy = s / 2,
                     r = s * 0.44,
                     margin = s * 0.04;
-                const c2 = document.createElement('canvas');
+                let c2 = document.createElement('canvas');
                 c2.width = s;
                 c2.height = s;
-                const ctx2 = c2.getContext('2d');
+                let ctx2 = c2.getContext('2d');
                 ctx2.beginPath();
                 ctx2.arc(cx, cy, r, 0, Math.PI * 2);
                 ctx2.clip();
-                const imgSize = Math.min(img.width, img.height);
-                const sx = (img.width - imgSize) / 2,
+                let imgSize = Math.min(img.width, img.height);
+                let sx = (img.width - imgSize) / 2,
                     sy = (img.height - imgSize) / 2;
                 ctx2.drawImage(img, sx, sy, imgSize, imgSize, margin, margin, s - margin * 2, s - margin * 2);
                 ctx2.beginPath();
@@ -126,7 +126,7 @@ import { state } from './state.js';
                 ctx2.strokeStyle = 'rgba(255,255,255,0.35)';
                 ctx2.lineWidth = s * 0.025;
                 ctx2.stroke();
-                const tex = new THREE.CanvasTexture(c2);
+                let tex = new THREE.CanvasTexture(c2);
                 tex.minFilter = THREE.LinearFilter;
                 tex.magFilter = THREE.LinearFilter;
                 if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
