@@ -160,7 +160,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 if (state.timeSprite) {
                     state.timeSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
                 }
-                _pointerDownCount = 0;
+                state._pointerDownCount = 0;
                 const targetZoom = state.defaultZoom;
                 if (animate) {
                     state.startZoomAnimation(targetZoom, state.ANIM_DURATION, function() {

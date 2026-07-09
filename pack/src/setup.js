@@ -101,6 +101,8 @@ console.log("IIFE starting, THREE:", typeof THREE);
             state.longPressTimer = longPressTimer;
             // LONG_PRESS_MS moved to config.js
             let lastTap = 0, lastTapX = 0, lastTapY = 0, lastTapOnIcon = false, _prevTapOnIcon = false;
+            var _pointerDownCount = 0;
+            state._pointerDownCount = _pointerDownCount;
             let _timePageTimer = null;
             state._timePageTimer = _timePageTimer;
 

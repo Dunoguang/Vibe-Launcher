@@ -103,7 +103,7 @@ import { materialEasing } from './utils.js';
                     var tp = document.getElementById('time-page');
                     if (tp && tp.style.visibility === 'visible' && tp.style.zIndex === '100') {
                         tp.style.visibility = 'hidden'; tp.style.zIndex = '-1';
-                        _pointerDownCount++;
+                        state._pointerDownCount++;
                         syncTimeSpriteTexture();
                     }
                 }
