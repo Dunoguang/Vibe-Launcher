@@ -19,7 +19,8 @@ import { enterTimeView, createTimeTexture, syncTimeSpriteTexture, scheduleMinute
                 state.timeSprite = null;
             }
 
-let pendingIconLoads = 0, enterAnimationComplete = false;
+state.pendingIconLoads = 0;
+let enterAnimationComplete = false;
 
             export const createSprites = (appList, iconMap, skipEnter) => {
                 clearAllSprites();
@@ -221,7 +222,7 @@ window._totalItems = totalItems;
                     }
                 }
 
-                rotationQuat.identity();
+                state.rotationQuat.identity();
                 sphereGroup.quaternion.identity();
                 if (layoutMode === 'flatring' && sprites.length > 0) {
                     const tw = new THREE.Vector3();
@@ -284,7 +285,7 @@ updateSphereMinHint();
             }
 
             export function loadRealIcon(sprite, iconUrl) {
-                pendingIconLoads++;
+                state.pendingIconLoads++;
                 const img = new Image();
                 img.onload = function() {
                     try {
@@ -297,24 +298,24 @@ updateSphereMinHint();
                         sprite.userData.hasRealIcon = true;
                         sprite.userData._iconUrl = iconUrl;
                     } catch (e) { console.warn('图标处理失败:', iconUrl, e); }
-                    pendingIconLoads--;
+                    state.pendingIconLoads--;
                     checkAllIconsLoaded();
                 };
-                img.onerror = function() { console.warn('图标加载失败:', iconUrl); pendingIconLoads--; checkAllIconsLoaded(); };
+                img.onerror = function() { console.warn('图标加载失败:', iconUrl); state.pendingIconLoads--; checkAllIconsLoaded(); };
                 img.src = iconUrl;
             }
 
             export function checkAllIconsLoaded() {
                 state.checkAllIconsLoaded = checkAllIconsLoaded;
-                if (pendingIconLoads <= 0 && enterAnimationComplete) {
-                    loadingEl.style.opacity = '0';
-                    setTimeout(function() { loadingEl.textContent = ''; }, 500);
+                if (state.pendingIconLoads <= 0 && enterAnimationComplete) {
+                    state.loadingEl.style.opacity = '0';
+                    setTimeout(function() { state.loadingEl.textContent = ''; }, 500);
                 }
             }
             export function hideLoadingIfReady() {
                 state.hideLoadingIfReady = hideLoadingIfReady;
-                if (loadingEl) {
-                    loadingEl.style.display = 'none';
+                if (state.loadingEl) {
+                    state.loadingEl.style.display = 'none';
                 }
             }
 
@@ -330,7 +331,7 @@ updateSphereMinHint();
                             state.nativeBridgeReady = true;
                             NativeBridge.requestInstalledApps();
                         } else {
-                            loadingEl.textContent = 'NativeBridge 不可用，使用演示数据';
+                            state.loadingEl.textContent = 'NativeBridge 不可用，使用演示数据';
                             createDemoApps();
                         }
                     }, 800);
@@ -351,7 +352,7 @@ updateSphereMinHint();
                         isSystem: false
                     });
                 }
-                apps = demoApps;
+                state.apps = demoApps;
                 createSprites(demoApps, null);
             }
 
@@ -368,17 +369,17 @@ updateSphereMinHint();
                     state._backType = 'settings';
                     state._backProgress = 0;
                     state._backStartZoom = zoomLevel;
-                    if (!animFrameId) animFrameId = requestAnimationFrame(animate);
+                    if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
                     return;
                 }
-                if (cancelableAction && cancelableAction.phase === 'animating') {
+                if (state.cancelableAction && state.cancelableAction.phase === 'animating') {
                     state._backType = 'cancelable';
                     state._backProgress = 0;
                     state._backStartZoom = zoomLevel;
                     _backSavedQuat = sphereGroup.quaternion.clone();
                     cancelZoomAnimation();
                     rotationAnimData = null;
-                    if (!animFrameId) animFrameId = requestAnimationFrame(animate);
+                    if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
                     return;
                 }
                 if (!state.isInTimeView) {
@@ -392,7 +393,7 @@ updateSphereMinHint();
                 // Cancel in-progress returnToTimeView animations
                 cancelZoomAnimation();
                 rotationAnimData = null;
-                if (!animFrameId) animFrameId = requestAnimationFrame(animate);
+                if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
                 var tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
                 syncTimeSpriteTexture();
@@ -412,8 +413,8 @@ updateSphereMinHint();
                     zoomLevel = state._backStartZoom + (defaultZoom - state._backStartZoom) * materialEasing(p);
                     applyZoom();
                 } else if (state._backType === 'cancelable') {
-                    if (cancelableAction && !cancelableAction.cancelled) {
-                        cancelableAction.cancelled = true;
+                    if (state.cancelableAction && !state.cancelableAction.cancelled) {
+                        state.cancelableAction.cancelled = true;
                     }
                     zoomLevel = state._backStartZoom + (defaultZoom - state._backStartZoom) * materialEasing(p);
                     applyZoom();
@@ -423,7 +424,7 @@ updateSphereMinHint();
                     zoomLevel = z;
                     applyZoom();
                 }
-                if (!animFrameId) animFrameId = requestAnimationFrame(animate);
+                if (!state.animFrameId) state.animFrameId = requestAnimationFrame(animate);
             };
             // Installed APK has bug: calls _onProgress instead of _onBackProgress
             window._onProgress = window._onBackProgress;
@@ -440,25 +441,25 @@ updateSphereMinHint();
                     zoomLevel = state._backStartZoom;
                     applyZoom();
                 } else if (state._backType === 'cancelable') {
-                    if (_cancelP < 0.3 && cancelableAction) {
+                    if (_cancelP < 0.3 && state.cancelableAction) {
                         // Resume opening from saved state
-                        cancelableAction.cancelled = false;
-                        var targetSprite = cancelableAction.sprite;
+                        state.cancelableAction.cancelled = false;
+                        var targetSprite = state.cancelableAction.sprite;
                         var targetDir = targetSprite.position.clone().normalize();
                         var targetQuat = new THREE.Quaternion().setFromUnitVectors(targetDir, new THREE.Vector3(0, 0, 1));
                         startRotationAnimation(targetQuat, ANIM_DURATION, function() {
-                            if (cancelableAction && !cancelableAction.cancelled) {
-                                cancelableAction.rotDone = true; tryCommitCancelable();
+                            if (state.cancelableAction && !state.cancelableAction.cancelled) {
+                                state.cancelableAction.rotDone = true; tryCommitCancelable();
                             }
                         });
-                        startZoomAnimation(cancelableAction.zoomTarget, ANIM_DURATION, function() {
-                            if (cancelableAction && !cancelableAction.cancelled) {
-                                zoomLevel = cancelableAction.zoomTarget; applyZoom();
-                                cancelableAction.zoomDone = true; tryCommitCancelable();
+                        startZoomAnimation(state.cancelableAction.zoomTarget, ANIM_DURATION, function() {
+                            if (state.cancelableAction && !state.cancelableAction.cancelled) {
+                                zoomLevel = state.cancelableAction.zoomTarget; applyZoom();
+                                state.cancelableAction.zoomDone = true; tryCommitCancelable();
                             }
                         });
                     } else {
-                        cancelableAction = null;
+                        state.cancelableAction = null;
                         startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
                             zoomLevel = defaultZoom; applyZoom();
                         });
@@ -490,7 +491,7 @@ updateSphereMinHint();
                     if (overlay) { overlay.style.display = 'none'; overlay.style.opacity = '1'; }
                     var card = document.getElementById('settings-card');
                     if (card) card.style.transform = 'scale(1)';
-                    canvas.style.pointerEvents = 'auto';
+                    state.canvas.style.pointerEvents = 'auto';
                     startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
                         zoomLevel = defaultZoom;
                         state.zoomLevel = zoomLevel;
@@ -501,7 +502,7 @@ updateSphereMinHint();
                 if (state._backProgress >= 0 && state._backType === 'cancelable') {
                     state._backProgress = -1;
                     state._backType = '';
-                    cancelableAction = null;
+                    state.cancelableAction = null;
                     startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
                         zoomLevel = defaultZoom;
                         state.zoomLevel = zoomLevel;
@@ -521,35 +522,35 @@ updateSphereMinHint();
                             zoomLevel = defaultZoom;
                             applyZoom();
                             exitTimeView(false);
-                            inertiaStrength = 0.4;
+                            state.inertiaStrength = 0.4;
                             infiniteInertia = true;
                             let spinAxis;
                             if (layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                             else spinAxis = new THREE.Vector3(1, 0, 0);
                             const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
-                            inertiaQ.copy(smallQ);
+                            state.inertiaQ.copy(smallQ);
                         });
                     } else {
                         exitTimeView(false);
-                        inertiaStrength = 0.4;
+                        state.inertiaStrength = 0.4;
                         infiniteInertia = true;
                         let spinAxis;
                         if (layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                         else spinAxis = new THREE.Vector3(1, 0, 0);
                         const smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
-                        inertiaQ.copy(smallQ);
+                        state.inertiaQ.copy(smallQ);
                     }
                     return;
                 }
                 // 优先级：菜单 > 设置 > 动画 > 时间视图 > 重置摄像头
-                if (contextMenuOpen) {
+                if (state.contextMenuOpen) {
                     hideContextMenu();
                     return;
                 }
                 var overlay = document.getElementById("settings-overlay");
                 if (overlay && overlay.style.display === "flex") {
                     overlay.style.display = "none";
-                    canvas.style.pointerEvents = "auto";
+                    state.canvas.style.pointerEvents = "auto";
                     startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
                         zoomLevel = defaultZoom;
                         state.zoomLevel = zoomLevel;
@@ -557,7 +558,7 @@ updateSphereMinHint();
                     });
                     return;
                 }
-                if (cancelableAction && cancelableAction.phase === 'animating') {
+                if (state.cancelableAction && state.cancelableAction.phase === 'animating') {
                     cancelCurrentAction('back');
                     return;
                 }
@@ -566,8 +567,8 @@ updateSphereMinHint();
                     return;
                 }
                 // 兜底：重置摄像头拉近（保留当前朝向）
-                inertiaQ.identity();
-                inertiaStrength = 0;
+                state.inertiaQ.identity();
+                state.inertiaStrength = 0;
                 startZoomAnimation(defaultZoom, ANIM_DURATION, function() {
                     zoomLevel = defaultZoom;
                     applyZoom();
@@ -597,18 +598,18 @@ updateSphereMinHint();
                             for (let k = 0; k < newPkgs.length; k++) { if (!oldSet[newPkgs[k]]) { changed = true; break; } }
                         }
                         if (!changed && sprites.length > 0) return; // 没变化，不重建
-                        apps = data.apps;
-                        loadingEl.textContent = '正在加载图标…';
-                        createSprites(apps, null);
+                        state.apps = data.apps;
+                        state.loadingEl.textContent = '正在加载图标…';
+                        createSprites(state.apps, null);
                         window._allPkgs = newPkgs;
                         if (state.nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(newPkgs), ICON_RES);
                     } else {
-                        loadingEl.textContent = '没有找到应用';
+                        state.loadingEl.textContent = '没有找到应用';
                         createSprites([], null);
                     }
                 } catch (e) {
                     console.error('解析应用列表失败:', e);
-                    loadingEl.textContent = '加载失败';
+                    state.loadingEl.textContent = '加载失败';
                 }
             };
 

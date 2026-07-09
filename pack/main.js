@@ -19,6 +19,7 @@ console.log("IIFE starting, THREE:", typeof THREE);
             // ========== 球面库仑斥力分布（Thomson 问题）==========
             const labelEl = document.getElementById('appLabel');
             const loadingEl = document.getElementById('loadingIndicator');
+            state.loadingEl = loadingEl;
 
             // ========== 场景（从 scene.js 导入）==========
             const sceneInit = await initScene(loadingEl);
@@ -99,6 +100,8 @@ console.log("IIFE starting, THREE:", typeof THREE);
             raycaster.params.Sprite = { threshold: 0.8 };
             const mouse = new THREE.Vector2();
             let hoveredSprite = null, longPressTimer = null, longPressFired = false, contextMenuOpen = false;
+            state.hoveredSprite = hoveredSprite;
+            state.longPressTimer = longPressTimer;
             const LONG_PRESS_MS = 600;
             let lastTap = 0, lastTapX = 0, lastTapY = 0, lastTapOnIcon = false, _prevTapOnIcon = false;
             let _timePageTimer = null;
@@ -330,6 +333,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
             }
 
             let apps = [], sprites = [];
+            state.apps = apps; state.sprites = sprites;
             state.apps = apps;
             state.sprites = sprites;
 
