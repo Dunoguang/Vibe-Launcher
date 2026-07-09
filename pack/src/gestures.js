@@ -545,6 +545,7 @@ state.updateMouse(e.clientX, e.clientY);
             }
 
 let pinchStartDist = 0, pinchStartZoom = state.zoomLevel, wasPinching = false;
+            state.wasPinching = wasPinching;
 
             const getTouchDist = (touches) => {
 let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touches[1].clientY;
@@ -559,7 +560,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     state.hasMoved = false;
                     clearLongPressTimer();
                     clearHover();
-                    wasPinching = true;
+                    state.wasPinching = true;
                     cancelZoomAnimation();
                     state.bottomSwipeData = null;
                 state.topSwipeData = null;
@@ -585,7 +586,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
 
             const onTouchEnd = (e) => {
                 if (e.touches.length < 2) {
-                    if (wasPinching && state.isInTimeView && state.zoomLevel > state.timeViewZoom + 0.15) {
+                    if (state.wasPinching && state.isInTimeView && state.zoomLevel > state.timeViewZoom + 0.15) {
                         const zoomRange = state.defaultZoom - state.timeViewZoom;
                         const thresholdZoom = state.timeViewZoom + zoomRange * exitThresholdRatio;
                         if (state.zoomLevel >= thresholdZoom) {
@@ -595,7 +596,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                         }
                     }
                     pinchStartDist = 0;
-                    if (wasPinching) setTimeout(async function() { wasPinching = false; }, 400);
+                    if (wasPinching) setTimeout(async function() { state.wasPinching = false; }, 400);
                 }
             }
 
