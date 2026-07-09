@@ -316,7 +316,11 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 return tex;
             }
 
-            const updateSphereMinHint = () => {
+            let apps = [], sprites = [];
+            state.apps = apps;
+            state.sprites = sprites;
+
+                        const updateSphereMinHint = () => {
                 const iconCount = window._totalItems ? window._totalItems.length : (sprites.length || 100);
                 const iconVisRadius = BASE_SCALE * 0.44 * 1.1;
                 const minR = iconVisRadius / Math.sqrt(Math.PI / Math.max(1, iconCount));
