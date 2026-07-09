@@ -108,9 +108,8 @@ let zoomLevel = computeInitDistance(), defaultZoom = zoomLevel;
             camera.position.set(0, 0, zoomLevel);
 
             function applyZoom() { camera.position.z = zoomLevel; }
-                state.applyZoom = applyZoom;
-
-            const computeTimeViewZoom = () => {
+            state.applyZoom = applyZoom;
+                const computeTimeViewZoom = () => {
                 const R = BASE_SCALE * 0.44;
                 const fovHalfRad = THREE.MathUtils.degToRad(camera.fov / 2);
                 const aspect = window.innerWidth / window.innerHeight;
@@ -170,7 +169,6 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
 
 
             function startZoomAnimation(targetVal, duration, callback) {
-                state.startZoomAnimation = startZoomAnimation;
                 zoomAnimStart = performance.now();
                 wakeUp();
                 zoomAnimDuration = duration || 250;
@@ -180,14 +178,15 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
                 zoomTarget = targetVal;
                 zoomAnimCallback = callback || null;
             }
+            state.startZoomAnimation = startZoomAnimation;
 
             function cancelZoomAnimation() {
-                state.cancelZoomAnimation = cancelZoomAnimation;
                 zoomTarget = null;
                 zoomAnimStart = null;
                 zoomAnimDuration = 0;
                 zoomAnimCallback = null;
             }
+            state.cancelZoomAnimation = cancelZoomAnimation;
 
             // ====== 三次贝塞尔求解器 ======
             // ====== 通用动画函数 ======
@@ -1044,13 +1043,13 @@ let nx = (sx - rect.left) / rect.width, ny = (sy - rect.top) / rect.height, v = 
             }
 
             function clearHover() {
-                state.clearHover = clearHover;
                 if (hoveredSprite && hoveredSprite.userData.baseScale) {
                     hoveredSprite.scale.set(hoveredSprite.userData.baseScale, hoveredSprite.userData.baseScale, 1);
                     hoveredSprite = null;
                 }
                 labelEl.classList.remove('visible');
             }
+            state.clearHover = clearHover;
 
             function quatAngle(q) { return 2 * Math.acos(Math.min(1, Math.abs(q.w))); }
 
