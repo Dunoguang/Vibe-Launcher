@@ -31,10 +31,11 @@ import { state } from './state.js';
             (function preloadWallpaper() {
                 if (typeof NativeBridge !== 'undefined') {
                     try { var raw = NativeBridge.getWallpaperPath(); var r = JSON.parse(raw);
-                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + '?t=' + Date.now() + ')'; var img = new Image(); img.onload = function() { _wallpaperImg = img; updateTimeSpriteBgOnly(); }; img.src = r.path; }
+                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + '?t=' + Date.now() + ')'; var img = new Image(); img.onload = function() { _wallpaperImg = img; state._wallpaperImg = img; state.updateTimeSpriteBgOnly(); }; img.src = r.path; }
                     } catch(e) {}
                     try { var raw2 = NativeBridge.getTimeBgPath(); var r2 = JSON.parse(raw2);
-                        if (r2.success) { var img2 = new Image(); img2.onload = function() { _timeBgImg = img2; }; img2.src = r2.path; }
+                        console.log('[TBG] getTimeBgPath success='+r2.success+' path='+(r2.path||'none'));
+                        if (r2.success) { var img2 = new Image(); img2.onload = function() { console.log('[TBG] image loaded'); _timeBgImg = img2; state._timeBgImg = img2; state.updateTimeSpriteBgOnly(); }; img2.src = r2.path; } else { console.log('[TBG] no time bg set'); }
                     } catch(e) {}
                     // Update time bg button text after DOM ready
                     setTimeout(function() {
@@ -51,7 +52,7 @@ import { state } from './state.js';
             };
 
             export const drawCircleBackground = function(ctx, cx, cy, r, s) {
-                var bg = _wallpaperImg;
+                var bg = state._wallpaperImg;
                 if (bg) {
                     ctx.save();
                     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
@@ -65,7 +66,8 @@ import { state } from './state.js';
             };
 
             export const drawTimeCircleBackground = function(ctx, cx, cy, r, s) {
-                var bg = _timeBgImg || _wallpaperImg;
+                var bg = state._timeBgImg || state._wallpaperImg;
+                console.log('[DTBG] bg=' + (bg ? (bg===state._timeBgImg?'timeBg':'wallpaper') : 'none') + ' _timeBgImg=' + !!state._timeBgImg + ' _wallpaperImg=' + !!state._wallpaperImg);
                 if (bg) {
                     ctx.save();
                     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();

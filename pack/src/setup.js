@@ -164,26 +164,7 @@ let timeViewZoom = computeTimeViewZoom(), isInTimeView = false, timeSprite = nul
 
             state.startRotationAnimation = startRotationAnimation;
 
-            // ========== 设置纹理 ==========
-            let _wallpaperImg = null, _timeBgImg = null, _timeBgPath = null;
-            state._wallpaperImg = _wallpaperImg;
-            state._timeBgImg = _timeBgImg;
-            state._timeBgPath = _timeBgPath;
-            (function preloadWallpaper() {
-                if (typeof NativeBridge !== 'undefined') {
-                    try { var raw = NativeBridge.getWallpaperPath(); var r = JSON.parse(raw);
-                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + '?t=' + Date.now() + ')'; var img = new Image(); img.onload = function() { _wallpaperImg = img; updateTimeSpriteBgOnly(); }; img.src = r.path; }
-                    } catch(e) {}
-                    try { var raw2 = NativeBridge.getTimeBgPath(); var r2 = JSON.parse(raw2);
-                        if (r2.success) { var img2 = new Image(); img2.onload = function() { _timeBgImg = img2; }; img2.src = r2.path; }
-                    } catch(e) {}
-                    // Update time bg button text after DOM ready
-                    setTimeout(function() {
-                        var tbb = document.getElementById('s-timebg-pick');
-                        if (tbb && _timeBgImg) tbb.textContent = '重新选择';
-                    }, 100);
-                }
-            })();
+            // ========== 壁纸(由textures.js处理) ==========
 
             let apps = [], sprites = [];
             state.apps = apps; state.sprites = sprites;
@@ -243,7 +224,7 @@ let isDragging = false, hasMoved = false;
             window.addEventListener('pointerup', function onPointerUpTimeView() {
                 if (state.isInTimeView && !state.isDragging && activePointerIds.size === 0 && !state.bottomSwipeData && !state.topSwipeData) {
                     var tp = document.getElementById('time-page');
-                    if (tp && _pointerDownCount > 0) {
+                    if (tp && state._pointerDownCount > 0) {
                         tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none';
                         state.syncTimeSpriteTexture();
                     }

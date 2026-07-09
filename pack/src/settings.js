@@ -15,7 +15,7 @@ import { createSprites } from './sprites.js';
                         document.body.style.backgroundSize = 'cover';
                         document.body.style.backgroundPosition = 'center';
                         var img = new Image();
-                        img.onload = function() { _wallpaperImg = img; state.updateTimeSpriteBgOnly(); };
+                        img.onload = function() { state._wallpaperImg = img; state.updateTimeSpriteBgOnly(); };
                         img.src = r.path;
                     }
                 } catch(e) {}
@@ -23,7 +23,7 @@ import { createSprites } from './sprites.js';
             (function initWallpaper() {
                 if (typeof NativeBridge !== 'undefined') {
                     try { var raw = NativeBridge.getWallpaperPath(); var r = JSON.parse(raw);
-                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + '?t=' + Date.now() + ')'; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; wallpaperPickBtn.textContent = '重新选择'; var img = new Image(); img.onload = function() { _wallpaperImg = img; }; img.src = r.path; }
+                        if (r.success) { document.body.style.backgroundImage = 'url(' + r.path + '?t=' + Date.now() + ')'; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; wallpaperPickBtn.textContent = '重新选择'; var img = new Image(); img.onload = function() { state._wallpaperImg = img; }; img.src = r.path; }
                     } catch(e) {}
                 }
             })();
@@ -33,7 +33,7 @@ import { createSprites } from './sprites.js';
             };
             wallpaperRemoveBtn.onclick = function() {
                 document.body.style.backgroundImage = 'none';
-                _wallpaperImg = null;
+                state._wallpaperImg = null;
                 state.updateTimeSpriteBgOnly();
                 state.renderTimePageToTexture();
                 wallpaperPickBtn.textContent = '选择图片';
@@ -46,7 +46,7 @@ import { createSprites } from './sprites.js';
             window._onTimeBgPicked = function(json) {
                 try { var r = typeof json === 'string' ? JSON.parse(json) : json;
                     if (r.success) {
-                        _timeBgPath = r.path;
+                        state._timeBgPath = r.path;
                         // 用XHR加载本地文件，绕过可能的file://限制
                         var xhr = new XMLHttpRequest();
                         xhr.open('GET', r.path, true);
@@ -57,7 +57,7 @@ import { createSprites } from './sprites.js';
                                 var img = new Image();
                                 img.onload = function() {
                                     URL.revokeObjectURL(url);
-                                    _timeBgImg = img;
+                                    state._timeBgImg = img;
                                     state.updateTimeSpriteBgOnly();
                                     state.renderTimePageToTexture();
                                 };
@@ -67,7 +67,7 @@ import { createSprites } from './sprites.js';
                         xhr.onerror = function() {
                             // fallback: 直接img.src
                             var img = new Image();
-                            img.onload = function() { _timeBgImg = img; state.updateTimeSpriteBgOnly(); state.renderTimePageToTexture(); };
+                            img.onload = function() { state._timeBgImg = img; state.updateTimeSpriteBgOnly(); state.renderTimePageToTexture(); };
                             img.src = r.path;
                         };
                         xhr.send();
@@ -79,7 +79,7 @@ import { createSprites } from './sprites.js';
                 if (typeof NativeBridge !== 'undefined') NativeBridge.pickTimeBg();
             };
             timeBgRemoveBtn.onclick = function() {
-                _timeBgImg = null; _timeBgPath = null;
+                state._timeBgImg = null; state._timeBgPath = null;
                 state.updateTimeSpriteBgOnly();
                 state.renderTimePageToTexture();
                 timeBgPickBtn.textContent = '选择图片';
@@ -110,7 +110,7 @@ import { createSprites } from './sprites.js';
 
                 backBtn.addEventListener('click', function() {
                     overlay.style.display = 'none';
-                    canvas.style.pointerEvents = 'auto';
+                    state.canvas.style.pointerEvents = 'auto';
                     state.startZoomAnimation(state.defaultZoom, state.ANIM_DURATION, function() {
                         state.zoomLevel = state.defaultZoom;
                         state.zoomLevel = state.zoomLevel;
@@ -198,7 +198,7 @@ import { createSprites } from './sprites.js';
                         // 仅分辨率/速度等变化，原地重建纹理
                         if (state.ICON_RES !== prevIconRes) {
                             console.log('Rebuilding textures at ICON_RES:', state.ICON_RES);
-                            sprites.forEach(function(spr) {
+                            state.sprites.forEach(function(spr) {
                                 if (spr.userData.isTimeSprite) {
                                     spr.material.map = state.createTimeTexture();
                                 } else if (spr.userData.app && spr.userData.app.packageName === '__settings__') {
@@ -220,7 +220,7 @@ import { createSprites } from './sprites.js';
                         }
                         if (state.sphereGroup && inputR > 0) {
                             // 仅球体大小变化（布局不变），重新分布位置
-                            let rawPoints = sphereCoulomb(window._totalItems.length, { radius: state.SPHERE_RADIUS, iter: 500 });
+                            let rawPoints = state.sphereCoulomb(window._totalItems.length, { radius: state.SPHERE_RADIUS, iter: 500 });
                             const timeIdx = window._totalItems.findIndex(function(it) { return it.type === 'time'; });
                             if (timeIdx >= 0) {
                                 const timePos = new THREE.Vector3(rawPoints[timeIdx][0], rawPoints[timeIdx][1], rawPoints[timeIdx][2]);
@@ -232,9 +232,9 @@ import { createSprites } from './sprites.js';
                                 });
                                 rawPoints.sort(function(a, b) { return b.z - a.z; });
                             }
-                            for (let k = 0; k < sprites.length; k++) {
+                            for (let k = 0; k < state.sprites.length; k++) {
                                 if (k < rawPoints.length) {
-                                    sprites[k].position.copy(rawPoints[k]);
+                                    state.sprites[k].position.copy(rawPoints[k]);
                                 }
                             }
                             state.sphereGroup.quaternion.copy(state.rotationQuat);
@@ -249,7 +249,7 @@ import { createSprites } from './sprites.js';
                     // 纹理重建（布局变更时createSprites已经做了，不需要重复）
                     if (!layoutChanged && !sphereChanged && state.ICON_RES !== prevIconRes) {
                         if (state.nativeBridgeReady) NativeBridge.clearIconCache();
-                        sprites.forEach(function(spr) { spr.userData.hasRealIcon = false; });
+                        state.sprites.forEach(function(spr) { spr.userData.hasRealIcon = false; });
                         if (window._allPkgs && state.nativeBridgeReady) {
                             NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), state.ICON_RES);
                         }
