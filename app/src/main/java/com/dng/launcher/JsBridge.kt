@@ -348,14 +348,6 @@ class JsBridge(context: Context, webView: WebView) {
                 @Suppress("DEPRECATION")
                 wifi.isWifiEnabled = enabled
             }
-                val intent = Intent(android.provider.Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                ctx.startActivity(intent)
-                return """{"success":false,"error":"redirecting to panel"}"""
-            } else {
-                @Suppress("DEPRECATION")
-                wifi.isWifiEnabled = enabled
-            }
             """{"success":true}"""
         } catch (e: Exception) {
             """{"success":false,"error":"${e.message}"}"""
