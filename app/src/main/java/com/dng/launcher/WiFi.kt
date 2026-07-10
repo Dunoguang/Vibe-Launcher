@@ -9,183 +9,291 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.lang.reflect.Method
 
-// ==================== 设备信息获取 ====================
+// ==================== 1. 检测数据 ====================
 
-fun getDeviceInfo(context: Context): Map<String, Any> {
+data class WifiCapability(
+    val apiLevel: Int,
+    val isWifiEnabled: Boolean,
+    val hasChangeWifiStatePerm: Boolean,
+    val isDeviceOwner: Boolean,
+    val canDpmSetWifi: Boolean,
+    val hasWriteSecureSettings: Boolean,
+    val isRoot: Boolean,
+    val uid: Int,
+    val uidLabel: String,
+    val hasWifiManagerSetEnabled: Boolean,      // WifiManager.setWifiEnabled 是否存在
+    val hasDpmSetWifiMethod: Boolean,           // DPM.setWifiEnabled 反射是否存在
+    val hasSettingsPanelWifi: Boolean,          // Settings.Panel.ACTION_WIFI 是否存在
+    val hasSettingsGlobalWifiOn: Boolean        // Settings.Global.WIFI_ON 是否存在
+)
+
+fun getWifiCapability(context: Context): WifiCapability {
     val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
     val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    val isDeviceOwner = dpm.isDeviceOwnerApp(context.packageName)
+    val isDO = dpm.isDeviceOwnerApp(context.packageName)
 
-    return mapOf(
-        "apiRange" to when {
-            Build.VERSION.SDK_INT <= 9 -> "API 1-9"
-            Build.VERSION.SDK_INT == 10 -> "API 10"
-            else -> "API 11+"
+    return WifiCapability(
+        apiLevel = Build.VERSION.SDK_INT,
+        isWifiEnabled = wifiManager.isWifiEnabled,
+        hasChangeWifiStatePerm = context.checkSelfPermission(Manifest.permission.CHANGE_WIFI_STATE) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED,
+        isDeviceOwner = isDO,
+        canDpmSetWifi = isDO && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N,
+        hasWriteSecureSettings = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.System.canWrite(context),
+        isRoot = checkRoot(),
+        uid = Process.myUid(),
+        uidLabel = when (Process.myUid()) {
+            0 -> "root"
+            2000 -> "shell"
+            else -> "app"
         },
-        "wifiEnabled" to wifiManager.isWifiEnabled,
-        "canChangeWifiState" to (context.checkSelfPermission(Manifest.permission.CHANGE_WIFI_STATE) ==
-                android.content.pm.PackageManager.PERMISSION_GRANTED),
-        "canDpmSetWifi" to (isDeviceOwner && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N),
-        "canWriteSecureSettings" to (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                Settings.System.canWrite(context)),
-        "isDeviceOwner" to isDeviceOwner,
-        "uid" to when (Process.myUid()) {
-            0 -> "0(root)"
-            2000 -> "2000(shell)"
-            else -> "其他(${Process.myUid()})"
-        }
+        hasWifiManagerSetEnabled = checkWifiManagerSetEnabledExists(),
+        hasDpmSetWifiMethod = checkDpmSetWifiMethodExists(),
+        hasSettingsPanelWifi = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q,
+        hasSettingsGlobalWifiOn = checkSettingsGlobalWifiOnExists()
     )
 }
 
-// ==================== WiFi 开关方法合集 ====================
-
 /**
- * 方式1：WifiManager.setWifiEnabled()（Android 9-）
+ * 检测 WifiManager.setWifiEnabled 方法是否存在
  */
-@Suppress("DEPRECATION")
-fun toggleWifiViaManager(context: Context, enable: Boolean): Boolean {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return false  // Android 10+ 封杀
-    val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-    return wifiManager.setWifiEnabled(enable)
+private fun checkWifiManagerSetEnabledExists(): Boolean {
+    return try {
+        WifiManager::class.java.getMethod("setWifiEnabled", Boolean::class.java)
+        true
+    } catch (e: NoSuchMethodException) {
+        false
+    }
 }
 
 /**
- * 方式2：DevicePolicyManager.setWifiEnabled()（DO 特权，Android 11+）
+ * 检测 DevicePolicyManager.setWifiEnabled 方法是否存在（反射）
  */
-fun toggleWifiViaDpm(context: Context, adminComponent: ComponentName, enable: Boolean): Boolean {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
-    val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    if (!dpm.isDeviceOwnerApp(context.packageName)) return false
+private fun checkDpmSetWifiMethodExists(): Boolean {
     return try {
-        val m = dpm.javaClass.getMethod("setWifiEnabled", ComponentName::class.java, Boolean::class.java)
-        m.invoke(dpm, adminComponent, enable) as Boolean
+        DevicePolicyManager::class.java.getMethod("setWifiEnabled", ComponentName::class.java, Boolean::class.java)
+        true
+    } catch (e: NoSuchMethodException) {
+        false
+    }
+}
+
+/**
+ * 检测 Settings.Global.WIFI_ON 常量是否存在
+ */
+private fun checkSettingsGlobalWifiOnExists(): Boolean {
+    return try {
+        Settings.Global::class.java.getField("WIFI_ON")
+        true
+    } catch (e: NoSuchFieldException) {
+        false
+    }
+}
+
+/**
+ * 检测是否 Root
+ */
+fun checkRoot(): Boolean {
+    return try {
+        Runtime.getRuntime().exec("su -c echo test").waitFor() == 0
+    } catch (e: Exception) {
+        false
+    }
+}
+
+// ==================== 2. 执行方法（带完整保护） ====================
+
+/**
+ * 方式1：WifiManager.setWifiEnabled()
+ * 保护：方法存在性 + Android 版本 + 权限 + 异常捕获
+ */
+@Suppress("DEPRECATION")
+fun execWifiManager(context: Context, enable: Boolean): Boolean {
+    // 1. 方法存在性检查
+    if (!checkWifiManagerSetEnabledExists()) {
+        return false
+    }
+    
+    // 2. Android 版本检查（Android 10+ 此方法无效但不会崩溃，但为了逻辑清晰还是检查）
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        return false
+    }
+    
+    // 3. 执行
+    return try {
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        wifiManager.setWifiEnabled(enable)
+    } catch (e: SecurityException) {
+        false  // 无 CHANGE_WIFI_STATE 权限
     } catch (e: Exception) {
         false
     }
 }
 
 /**
- * 方式3：Settings.Global.putInt()（需 WRITE_SECURE_SETTINGS）
+ * 方式2：DevicePolicyManager.setWifiEnabled()
+ * 保护：反射方法存在性 + DO 权限 + Android 版本 + 异常捕获
  */
-fun toggleWifiViaSettings(context: Context, enable: Boolean): Boolean {
-    return Settings.Global.putInt(
-        context.contentResolver,
-        Settings.Global.WIFI_ON,
-        if (enable) 1 else 0
-    )
-}
-
-/**
- * 方式4：Settings.Panel.ACTION_WIFI 悬浮窗（Android 10+，需用户点击）
- */
-fun openWifiPanel(context: Context) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        val intent = Intent(Settings.Panel.ACTION_WIFI)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+fun execDpmWifi(context: Context, adminComponent: ComponentName, enable: Boolean): Boolean {
+    // 1. 方法存在性检查
+    if (!checkDpmSetWifiMethodExists()) {
+        return false
+    }
+    
+    // 2. Android 版本检查
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+        return false
+    }
+    
+    // 3. DO 权限检查
+    val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+    if (!dpm.isDeviceOwnerApp(context.packageName)) {
+        return false
+    }
+    
+    // 4. 执行（反射）
+    return try {
+        val method = DevicePolicyManager::class.java.getMethod("setWifiEnabled", ComponentName::class.java, Boolean::class.java)
+        method.invoke(dpm, adminComponent, enable) as Boolean
+    } catch (e: Exception) {
+        false
     }
 }
 
 /**
- * 方式4降级：Settings.ACTION_WIFI_SETTINGS（所有版本，需用户手动翻）
+ * 方式3：Settings.Global.putInt()
+ * 保护：常量存在性 + WRITE_SECURE_SETTINGS 权限 + 异常捕获
  */
-fun openWifiSettings(context: Context) {
-    val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
-    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    context.startActivity(intent)
+fun execSettingsGlobal(context: Context, enable: Boolean): Boolean {
+    // 1. 常量存在性检查
+    if (!checkSettingsGlobalWifiOnExists()) {
+        return false
+    }
+    
+    // 2. 权限检查
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.System.canWrite(context)) {
+        return false
+    }
+    
+    // 3. 执行
+    return try {
+        Settings.Global.putInt(
+            context.contentResolver,
+            Settings.Global.WIFI_ON,
+            if (enable) 1 else 0
+        )
+    } catch (e: SecurityException) {
+        false  // 无 WRITE_SECURE_SETTINGS 权限
+    } catch (e: Exception) {
+        false
+    }
 }
 
 /**
- * 方式5：svc wifi 命令（需 Root）
+ * 方式4a：弹出 WiFi 悬浮面板
+ * 保护：Android 版本 + Intent 可用性 + 异常捕获
  */
-fun toggleWifiViaSvc(enable: Boolean): Boolean {
+fun execOpenWifiPanel(context: Context): Boolean {
+    // 1. Android 版本检查
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        return false
+    }
+    
+    // 2. Intent 可用性检查
+    return try {
+        val intent = Intent(Settings.Panel.ACTION_WIFI)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        
+        // 检查是否有 Activity 处理此 Intent
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(intent)
+            true
+        } else {
+            false
+        }
+    } catch (e: Exception) {
+        false
+    }
+}
+
+/**
+ * 方式4b：跳转 WiFi 设置页
+ * 保护：Intent 可用性 + 异常捕获
+ */
+fun execOpenWifiSettings(context: Context): Boolean {
+    return try {
+        val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(intent)
+            true
+        } else {
+            false
+        }
+    } catch (e: Exception) {
+        false
+    }
+}
+
+/**
+ * 方式5：svc wifi 命令（Root）
+ * 保护：Root 检测 + 命令执行异常捕获
+ */
+fun execSvcWifi(enable: Boolean): Boolean {
+    // 1. Root 检查
+    if (!checkRoot()) {
+        return false
+    }
+    
+    // 2. 执行
     return execShell("su -c svc wifi ${if (enable) "enable" else "disable"}")
 }
 
 /**
- * 方式6：settings put global 命令（需 Root 或 ADB Shell）
+ * 方式6：settings put global 命令（Root/ADB）
+ * 保护：Root 检测 + 命令执行异常捕获
  */
-fun toggleWifiViaShellSettings(enable: Boolean): Boolean {
+fun execShellSettingsWifi(enable: Boolean): Boolean {
+    // 1. Root 检查
+    if (!checkRoot()) {
+        return false
+    }
+    
+    // 2. 执行
     return execShell("su -c settings put global wifi_on ${if (enable) 1 else 0}")
 }
 
-// ==================== 统一智能开关 WiFi ====================
-
 /**
- * 智能切换 WiFi（按优先级自动选择可用方式）
+ * 方式7：API 1-9 专用简单切换
+ * 保护：版本检查 + 方法存在性 + 异常捕获
  */
-fun smartToggleWifi(context: Context, adminComponent: ComponentName? = null, enable: Boolean): String {
-    // 1. 尝试 WifiManager（API 9-）
-    try {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {  // Android 9- 可用
-            if (toggleWifiViaManager(context, enable)) return "WifiManager 切换成功"
-        }
-    } catch (e: Exception) {
-        // ignore
+@Suppress("DEPRECATION")
+fun execWifiToggleSimple(context: Context): Boolean {
+    // 1. 版本检查
+    if (Build.VERSION.SDK_INT > 9) {
+        return false
     }
-
-    // 2. 尝试 DevicePolicyManager（DO 特权）
-    try {
-        if (adminComponent != null && toggleWifiViaDpm(context, adminComponent, enable)) {
-            return "DevicePolicyManager 切换成功"
-        }
-    } catch (e: Exception) {
-        // ignore
+    
+    // 2. 方法存在性检查
+    if (!checkWifiManagerSetEnabledExists()) {
+        return false
     }
-
-    // 3. 尝试 Settings.Global（需 WRITE_SECURE_SETTINGS 权限，仅系统/DO应用可用）
-    try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkWriteSecureSettings(context)) {
-            if (toggleWifiViaSettings(context, enable)) return "Settings.Global 切换成功"
-        }
-    } catch (e: SecurityException) {
-        // 无 WRITE_SECURE_SETTINGS 权限，跳过
-    }
-
-    // 4. 尝试 Root 命令
-    try {
-        if (toggleWifiViaSvc(enable)) return "Root svc 命令切换成功"
-        if (toggleWifiViaShellSettings(enable)) return "Root settings 命令切换成功"
+    
+    // 3. 执行
+    return try {
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        wifiManager.setWifiEnabled(!wifiManager.isWifiEnabled)
+        true
     } catch (e: Exception) {
-        // ignore
-    }
-
-    // 5. 兜底：弹出悬浮窗或跳转设置页
-    try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            openWifiPanel(context)
-            return "已弹出 WiFi 悬浮面板，请手动操作"
-        } else {
-            openWifiSettings(context)
-            return "已跳转 WiFi 设置页，请手动操作"
-        }
-    } catch (e: Exception) {
-        return "兜底失败: ${e.message}"
+        false
     }
 }
 
 // ==================== 工具方法 ====================
 
-/**
- * 执行 Shell 命令（需 Root）
- */
-/**
- * 检查是否有 WRITE_SECURE_SETTINGS 权限
- */
-fun checkWriteSecureSettings(context: Context): Boolean {
-    return try {
-        Settings.System.canWrite(context)
-    } catch (e: Exception) {
-        false
-    }
-}
-
-/**
- * 执行 Shell 命令（需 Root）
- */
 fun execShell(command: String): Boolean {
     return try {
         val process = Runtime.getRuntime().exec(command)
@@ -193,16 +301,5 @@ fun execShell(command: String): Boolean {
         process.exitValue() == 0
     } catch (e: Exception) {
         false
-    }
-}
-
-/**
- * API 1-9 专用：直接切换 WiFi
- */
-@Suppress("DEPRECATION")
-fun toggleWifiSimple(context: Context) {  // 简单切换，不依赖权限
-    if (Build.VERSION.SDK_INT <= 9) {
-        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        wifiManager.setWifiEnabled(!wifiManager.isWifiEnabled)
     }
 }

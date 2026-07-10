@@ -1,5 +1,6 @@
 package com.dng.launcher
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -28,11 +29,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.lang.ref.WeakReference
 import java.text.Collator
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
-import android.content.SharedPreferences
 
 class JsBridge(context: Context, webView: WebView) {
 
@@ -45,6 +43,7 @@ class JsBridge(context: Context, webView: WebView) {
 
     @Volatile private var appListCache: List<AppInfo>? = null
     private var torchEnabled = false
+    private var adminComponent: ComponentName? = null  // 用于 DPM 方式
 
     data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
     data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
@@ -333,39 +332,122 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-    // ========== 控制中心 API ==========
+    // ========== WiFi API（纯检测 + 纯执行，不含任何判断逻辑） ==========
 
+    /**
+     * 获取 WiFi 能力检测信息
+     * 前端根据返回数据自行决定使用哪种执行方式
+     */
     @JavascriptInterface
-    fun getWifiEnabled(): String {
+    fun getWifiCapability(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val wifi = ctx.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-            """{"success":true,"enabled":${wifi.isWifiEnabled}}"""
+            val cap = getWifiCapability(ctx)
+            gson.toJson(
+                mapOf(
+                    "success" to true,
+                    "data" to mapOf(
+                        "apiLevel" to cap.apiLevel,
+                        "isWifiEnabled" to cap.isWifiEnabled,
+                        "hasChangeWifiStatePerm" to cap.hasChangeWifiStatePerm,
+                        "isDeviceOwner" to cap.isDeviceOwner,
+                        "canDpmSetWifi" to cap.canDpmSetWifi,
+                        "hasWriteSecureSettings" to cap.hasWriteSecureSettings,
+                        "isRoot" to cap.isRoot,
+                        "uid" to cap.uid,
+                        "uidLabel" to cap.uidLabel,
+                        "hasWifiManagerSetEnabled" to cap.hasWifiManagerSetEnabled,
+                        "hasDpmSetWifiMethod" to cap.hasDpmSetWifiMethod,
+                        "hasSettingsPanelWifi" to cap.hasSettingsPanelWifi,
+                        "hasSettingsGlobalWifiOn" to cap.hasSettingsGlobalWifiOn
+                    )
+                )
+            )
         } catch (e: Exception) {
             """{"success":false,"error":"${e.message}"}"""
         }
     }
 
+    /**
+     * 设置 WiFi 开关（纯执行，不做任何判断）
+     * @param method 指定方式: "manager" | "dpm" | "settings" | "svc" | "shell" | "panel" | "settingsPage"
+     * @param enable true=开, false=关
+     */
     @JavascriptInterface
-    fun setWifiEnabled(enabled: Boolean): String {
+    fun setWifiByMethod(method: String, enable: Boolean): String {
         return try {
-            val ctx = contextRef.get() ?: return "{\"success\":false,\"error\":\"context lost\"}"
-            // 记录切换前 WiFi 状态
-            val wifi = ctx.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-            val wasEnabled = wifi.isWifiEnabled
-
-            val result = smartToggleWifi(ctx, null, enabled)
-
-            // 检查 WiFi 是否真的改变了
-            val isNowEnabled = wifi.isWifiEnabled
-            val actuallyChanged = wasEnabled != isNowEnabled
-            val panelOpened = result.contains("面板") || result.contains("设置页")
-
-            "{\"success\":$actuallyChanged,\"method\":\"$result\",\"panelOpened\":$panelOpened}"
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            
+            val result = when (method) {
+                "manager" -> execWifiManager(ctx, enable)
+                "dpm" -> {
+                    if (adminComponent == null) {
+                        return """{"success":false,"error":"adminComponent not set, call setAdminComponent first"}"""
+                    }
+                    execDpmWifi(ctx, adminComponent!!, enable)
+                }
+                "settings" -> execSettingsGlobal(ctx, enable)
+                "svc" -> execSvcWifi(enable)
+                "shell" -> execShellSettingsWifi(enable)
+                "panel" -> {
+                    execOpenWifiPanel(ctx)
+                    true
+                }
+                "settingsPage" -> {
+                    execOpenWifiSettings(ctx)
+                    true
+                }
+                else -> {
+                    return """{"success":false,"error":"unknown method: $method, available: manager|dpm|settings|svc|shell|panel|settingsPage"}"""
+                }
+            }
+            
+            gson.toJson(
+                mapOf(
+                    "success" to result,
+                    "method" to method,
+                    "enable" to enable
+                )
+            )
         } catch (e: Exception) {
-            "{\"success\":false,\"error\":\"${e.message}\"}"
+            """{"success":false,"error":"${e.message}"}"""
         }
     }
+
+    /**
+     * 设置 DeviceOwner 组件（仅当使用 dpm 方式时需要）
+     */
+    @JavascriptInterface
+    fun setAdminComponent(packageName: String, className: String): String {
+        return try {
+            adminComponent = ComponentName(packageName, className)
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    /**
+     * 获取当前 WiFi 状态（纯查询）
+     */
+    @JavascriptInterface
+    fun getWifiState(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val wifi = ctx.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            gson.toJson(
+                mapOf(
+                    "success" to true,
+                    "enabled" to wifi.isWifiEnabled,
+                    "wifiState" to wifi.wifiState
+                )
+            )
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    // ========== 控制中心 API（其他系统控制，不含 WiFi） ==========
 
     @JavascriptInterface
     fun getMobileDataEnabled(): String {
@@ -386,7 +468,6 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-    // 新增：移动数据“设置”跳转（普通应用无法直接切换）
     @JavascriptInterface
     fun setMobileDataEnabled(enabled: Boolean): String {
         return try {
@@ -428,7 +509,6 @@ class JsBridge(context: Context, webView: WebView) {
                 val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 ctx.startActivity(intent)
-                // 返回字段增加 needPermission，方便前端提示
                 return """{"success":false,"error":"WRITE_SETTINGS not granted","needPermission":true}"""
             }
             Settings.System.putInt(
@@ -481,6 +561,7 @@ class JsBridge(context: Context, webView: WebView) {
             "{\"success\":false,\"error\":\"${e.message}\"}"
         }
     }
+
     @JavascriptInterface
     fun getFlashlightState(): String {
         return try {
@@ -489,6 +570,7 @@ class JsBridge(context: Context, webView: WebView) {
             "{\"success\":false,\"error\":\"${e.message}\"}"
         }
     }
+
     @JavascriptInterface
     fun setFlashlight(enabled: Boolean): String {
         return try {
@@ -531,7 +613,6 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-    // 新增：跳转到飞行模式设置
     @JavascriptInterface
     fun openAirplaneModeSettings(): String {
         return try {
@@ -680,7 +761,7 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-    // ========== 内部 ==========
+    // ========== 内部方法 ==========
 
     private fun callback(funcName: String, jsonArg: String) {
         webViewRef.get()?.let { wv ->

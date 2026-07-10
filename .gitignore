@@ -13,3 +13,7 @@ vibe-launcher.p12.b64
 *.jks
 pack/dist/
 pack/node_modules/
+-e 
+# APK & logs
+*.apk
+logcat_*.txt
