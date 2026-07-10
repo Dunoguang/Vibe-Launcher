@@ -211,7 +211,7 @@ class JsBridge(context: Context, webView: WebView) {
         Log.d("VibeLauncher", "[web] $msg")
         val ctx = contextRef.get() ?: return
         try {
-            val file = File(ctx.filesDir, currentLogFileName) ?: ""
+            val file = File(ctx.filesDir, currentLogFileName ?: "")
             if (file.exists() && file.length() > 5 * 1024 * 1024) return
             FileOutputStream(file, true).use { it.write("$msg\n".toByteArray()) }
         } catch (_: Exception) {}
