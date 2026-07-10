@@ -359,8 +359,9 @@ class JsBridge(context: Context, webView: WebView) {
             // 检查 WiFi 是否真的改变了
             val isNowEnabled = wifi.isWifiEnabled
             val actuallyChanged = wasEnabled != isNowEnabled
+            val panelOpened = result.contains("面板") || result.contains("设置页")
 
-            "{\"success\":$actuallyChanged,\"method\":\"$result\"}"
+            "{\"success\":$actuallyChanged,\"method\":\"$result\",\"panelOpened\":$panelOpened}"
         } catch (e: Exception) {
             "{\"success\":false,\"error\":\"${e.message}\"}"
         }
