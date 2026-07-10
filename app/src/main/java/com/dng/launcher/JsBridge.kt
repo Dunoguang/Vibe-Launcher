@@ -1,5 +1,7 @@
 package com.dng.launcher
 
+import android.Manifest
+import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -15,9 +17,11 @@ import android.media.session.MediaSessionManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.PowerManager
+import android.os.Process
 import android.os.SystemClock
 import android.provider.Settings
 import android.telephony.TelephonyManager
@@ -43,11 +47,323 @@ class JsBridge(context: Context, webView: WebView) {
 
     @Volatile private var appListCache: List<AppInfo>? = null
     private var torchEnabled = false
-    private var adminComponent: ComponentName? = null  // 用于 DPM 方式
+    private var adminComponent: ComponentName? = null
 
     data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
     data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
     data class IconResult(val packageName: String, val iconUrl: String)
+
+    // ==================== WiFi 检测方法 ====================
+
+    /**
+     * 检测 WifiManager.setWifiEnabled 方法是否存在
+     */
+    private fun checkWifiManagerSetEnabledExists(): Boolean {
+        return try {
+            WifiManager::class.java.getMethod("setWifiEnabled", Boolean::class.java)
+            true
+        } catch (e: NoSuchMethodException) {
+            false
+        }
+    }
+
+    /**
+     * 检测 DevicePolicyManager.setWifiEnabled 方法是否存在
+     */
+    private fun checkDpmSetWifiMethodExists(): Boolean {
+        return try {
+            DevicePolicyManager::class.java.getMethod("setWifiEnabled", ComponentName::class.java, Boolean::class.java)
+            true
+        } catch (e: NoSuchMethodException) {
+            false
+        }
+    }
+
+    /**
+     * 检测 Settings.Global.WIFI_ON 常量是否存在
+     */
+    private fun checkSettingsGlobalWifiOnExists(): Boolean {
+        return try {
+            Settings.Global::class.java.getField("WIFI_ON")
+            true
+        } catch (e: NoSuchFieldException) {
+            false
+        }
+    }
+
+    /**
+     * 检测是否已通过 ADB 授予 WRITE_SECURE_SETTINGS 权限
+     */
+    private fun hasWriteSecureSettings(context: Context): Boolean {
+        return try {
+            context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) ==
+                    PackageManager.PERMISSION_GRANTED
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 检测是否 Root
+     */
+    private fun checkRoot(): Boolean {
+        return try {
+            val process = Runtime.getRuntime().exec("su -c echo test")
+            val exitCode = process.waitFor()
+            process.destroy()
+            exitCode == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 获取 WiFi 能力检测信息
+     */
+    @JavascriptInterface
+    fun getWifiCapability(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val wifiManager = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val dpm = ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val isDO = dpm.isDeviceOwnerApp(ctx.packageName)
+
+            val cap = mapOf(
+                "apiLevel" to Build.VERSION.SDK_INT,
+                "isWifiEnabled" to wifiManager.isWifiEnabled,
+                "hasChangeWifiStatePerm" to (ctx.checkSelfPermission(Manifest.permission.CHANGE_WIFI_STATE) == PackageManager.PERMISSION_GRANTED),
+                "hasAccessWifiStatePerm" to (ctx.checkSelfPermission(Manifest.permission.ACCESS_WIFI_STATE) == PackageManager.PERMISSION_GRANTED),
+                "isDeviceOwner" to isDO,
+                "canDpmSetWifi" to (isDO && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R),
+                "hasWriteSecureSettings" to hasWriteSecureSettings(ctx),
+                "isRoot" to checkRoot(),
+                "uid" to Process.myUid(),
+                "uidLabel" to when (Process.myUid()) {
+                    0 -> "root"
+                    2000 -> "shell"
+                    else -> "app"
+                },
+                "hasWifiManagerSetEnabled" to checkWifiManagerSetEnabledExists(),
+                "hasDpmSetWifiMethod" to checkDpmSetWifiMethodExists(),
+                "hasSettingsPanelWifi" to (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q),
+                "hasSettingsGlobalWifiOn" to checkSettingsGlobalWifiOnExists()
+            )
+
+            gson.toJson(mapOf("success" to true, "data" to cap))
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    // ==================== WiFi 执行方法 ====================
+
+    /**
+     * 方式1：WifiManager.setWifiEnabled()
+     * 适用：Android 9-（API 28 及以下）
+     * 权限：CHANGE_WIFI_STATE
+     */
+    @Suppress("DEPRECATION")
+    private fun execWifiManager(context: Context, enable: Boolean): Boolean {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) return false
+        if (!checkWifiManagerSetEnabledExists()) return false
+        return try {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            wifiManager.setWifiEnabled(enable)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 方式2：DevicePolicyManager.setWifiEnabled()
+     * 适用：Android 11+（API 30+）
+     * 前提：应用已激活为 Device Owner
+     */
+    private fun execDpmWifi(context: Context, adminComponent: ComponentName, enable: Boolean): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+        if (!checkDpmSetWifiMethodExists()) return false
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        if (!dpm.isDeviceOwnerApp(context.packageName)) return false
+        return try {
+            val method = DevicePolicyManager::class.java.getMethod(
+                "setWifiEnabled",
+                ComponentName::class.java,
+                Boolean::class.java
+            )
+            method.invoke(dpm, adminComponent, enable) as Boolean
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 方式3：Settings.Global.putInt()
+     * 适用：所有版本
+     * 权限：WRITE_SECURE_SETTINGS（需 ADB 授予）
+     */
+    private fun execSettingsGlobal(context: Context, enable: Boolean): Boolean {
+        if (!checkSettingsGlobalWifiOnExists()) return false
+        if (!hasWriteSecureSettings(context)) return false
+        return try {
+            Settings.Global.putInt(
+                context.contentResolver,
+                Settings.Global.WIFI_ON,
+                if (enable) 1 else 0
+            )
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 方式4：svc wifi 命令
+     * 适用：所有版本
+     * 前提：Root 权限
+     */
+    private fun execSvcWifi(enable: Boolean): Boolean {
+        if (!checkRoot()) return false
+        return execShell("su -c svc wifi ${if (enable) "enable" else "disable"}")
+    }
+
+    /**
+     * 方式5：settings put global 命令
+     * 适用：所有版本
+     * 前提：Root 权限
+     */
+    private fun execShellSettingsWifi(enable: Boolean): Boolean {
+        if (!checkRoot()) return false
+        return execShell("su -c settings put global wifi_on ${if (enable) 1 else 0}")
+    }
+
+    /**
+     * 方式6：悬浮窗 - Settings.Panel.ACTION_WIFI
+     * 适用：Android 10+（API 29+）
+     * 权限：无
+     */
+    private fun execOpenWifiPanel(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        return try {
+            val intent = Intent(Settings.Panel.ACTION_WIFI)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(intent)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 方式7：跳转 WiFi 设置页 - Settings.ACTION_WIFI_SETTINGS
+     * 适用：所有版本
+     * 权限：无
+     */
+    private fun execOpenWifiSettings(context: Context): Boolean {
+        return try {
+            val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(intent)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 执行 Shell 命令
+     */
+    private fun execShell(command: String): Boolean {
+        return try {
+            val process = Runtime.getRuntime().exec(command)
+            val exitCode = process.waitFor()
+            process.destroy()
+            exitCode == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * 设置 WiFi 开关（纯执行，不做任何判断）
+     * @param method 指定方式: "manager" | "dpm" | "settings" | "svc" | "shell" | "panel" | "settingsPage"
+     * @param enable true=开, false=关
+     */
+    @JavascriptInterface
+    fun setWifiByMethod(method: String, enable: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+
+            val result = when (method) {
+                "manager" -> execWifiManager(ctx, enable)
+                "dpm" -> {
+                    if (adminComponent == null) {
+                        return """{"success":false,"error":"adminComponent not set, call setAdminComponent first"}"""
+                    }
+                    execDpmWifi(ctx, adminComponent!!, enable)
+                }
+                "settings" -> execSettingsGlobal(ctx, enable)
+                "svc" -> execSvcWifi(enable)
+                "shell" -> execShellSettingsWifi(enable)
+                "panel" -> execOpenWifiPanel(ctx)
+                "settingsPage" -> execOpenWifiSettings(ctx)
+                else -> {
+                    return """{"success":false,"error":"unknown method: $method, available: manager|dpm|settings|svc|shell|panel|settingsPage"}"""
+                }
+            }
+
+            gson.toJson(
+                mapOf(
+                    "success" to result,
+                    "method" to method,
+                    "enable" to enable
+                )
+            )
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    /**
+     * 设置 DeviceOwner 组件（仅当使用 dpm 方式时需要）
+     */
+    @JavascriptInterface
+    fun setAdminComponent(packageName: String, className: String): String {
+        return try {
+            adminComponent = ComponentName(packageName, className)
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    /**
+     * 获取当前 WiFi 状态（纯查询）
+     */
+    @JavascriptInterface
+    fun getWifiState(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val wifi = ctx.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            gson.toJson(
+                mapOf(
+                    "success" to true,
+                    "enabled" to wifi.isWifiEnabled,
+                    "wifiState" to wifi.wifiState
+                )
+            )
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    // ==================== 原有方法 ====================
 
     @JavascriptInterface
     fun setHotReload(enabled: Boolean): String {
@@ -332,122 +648,7 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-    // ========== WiFi API（纯检测 + 纯执行，不含任何判断逻辑） ==========
-
-    /**
-     * 获取 WiFi 能力检测信息
-     * 前端根据返回数据自行决定使用哪种执行方式
-     */
-    @JavascriptInterface
-    fun getWifiCapability(): String {
-        return try {
-            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val cap = getWifiCapability(ctx)
-            gson.toJson(
-                mapOf(
-                    "success" to true,
-                    "data" to mapOf(
-                        "apiLevel" to cap.apiLevel,
-                        "isWifiEnabled" to cap.isWifiEnabled,
-                        "hasChangeWifiStatePerm" to cap.hasChangeWifiStatePerm,
-                        "isDeviceOwner" to cap.isDeviceOwner,
-                        "canDpmSetWifi" to cap.canDpmSetWifi,
-                        "hasWriteSecureSettings" to cap.hasWriteSecureSettings,
-                        "isRoot" to cap.isRoot,
-                        "uid" to cap.uid,
-                        "uidLabel" to cap.uidLabel,
-                        "hasWifiManagerSetEnabled" to cap.hasWifiManagerSetEnabled,
-                        "hasDpmSetWifiMethod" to cap.hasDpmSetWifiMethod,
-                        "hasSettingsPanelWifi" to cap.hasSettingsPanelWifi,
-                        "hasSettingsGlobalWifiOn" to cap.hasSettingsGlobalWifiOn
-                    )
-                )
-            )
-        } catch (e: Exception) {
-            """{"success":false,"error":"${e.message}"}"""
-        }
-    }
-
-    /**
-     * 设置 WiFi 开关（纯执行，不做任何判断）
-     * @param method 指定方式: "manager" | "dpm" | "settings" | "svc" | "shell" | "panel" | "settingsPage"
-     * @param enable true=开, false=关
-     */
-    @JavascriptInterface
-    fun setWifiByMethod(method: String, enable: Boolean): String {
-        return try {
-            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            
-            val result = when (method) {
-                "manager" -> execWifiManager(ctx, enable)
-                "dpm" -> {
-                    if (adminComponent == null) {
-                        return """{"success":false,"error":"adminComponent not set, call setAdminComponent first"}"""
-                    }
-                    execDpmWifi(ctx, adminComponent!!, enable)
-                }
-                "settings" -> execSettingsGlobal(ctx, enable)
-                "svc" -> execSvcWifi(enable)
-                "shell" -> execShellSettingsWifi(enable)
-                "panel" -> {
-                    execOpenWifiPanel(ctx)
-                    true
-                }
-                "settingsPage" -> {
-                    execOpenWifiSettings(ctx)
-                    true
-                }
-                else -> {
-                    return """{"success":false,"error":"unknown method: $method, available: manager|dpm|settings|svc|shell|panel|settingsPage"}"""
-                }
-            }
-            
-            gson.toJson(
-                mapOf(
-                    "success" to result,
-                    "method" to method,
-                    "enable" to enable
-                )
-            )
-        } catch (e: Exception) {
-            """{"success":false,"error":"${e.message}"}"""
-        }
-    }
-
-    /**
-     * 设置 DeviceOwner 组件（仅当使用 dpm 方式时需要）
-     */
-    @JavascriptInterface
-    fun setAdminComponent(packageName: String, className: String): String {
-        return try {
-            adminComponent = ComponentName(packageName, className)
-            """{"success":true}"""
-        } catch (e: Exception) {
-            """{"success":false,"error":"${e.message}"}"""
-        }
-    }
-
-    /**
-     * 获取当前 WiFi 状态（纯查询）
-     */
-    @JavascriptInterface
-    fun getWifiState(): String {
-        return try {
-            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val wifi = ctx.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-            gson.toJson(
-                mapOf(
-                    "success" to true,
-                    "enabled" to wifi.isWifiEnabled,
-                    "wifiState" to wifi.wifiState
-                )
-            )
-        } catch (e: Exception) {
-            """{"success":false,"error":"${e.message}"}"""
-        }
-    }
-
-    // ========== 控制中心 API（其他系统控制，不含 WiFi） ==========
+    // ========== 控制中心 API ==========
 
     @JavascriptInterface
     fun getMobileDataEnabled(): String {
@@ -460,7 +661,8 @@ class JsBridge(context: Context, webView: WebView) {
                 caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
             } else {
                 @Suppress("DEPRECATION")
-                val method = cm.javaClass.getMethod("getMobileDataEnabled"); method.invoke(cm) as Boolean
+                val method = cm.javaClass.getMethod("getMobileDataEnabled")
+                method.invoke(cm) as Boolean
             }
             """{"success":true,"enabled":$enabled}"""
         } catch (e: Exception) {
@@ -473,11 +675,11 @@ class JsBridge(context: Context, webView: WebView) {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val intent = Intent(android.provider.Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
+                val intent = Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 ctx.startActivity(intent)
             } else {
-                val intent = Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)
+                val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 ctx.startActivity(intent)
             }
@@ -575,7 +777,7 @@ class JsBridge(context: Context, webView: WebView) {
     fun setFlashlight(enabled: Boolean): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager;
+            val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager
             torchEnabled = enabled
             val cameraId = camera.cameraIdList[0]
             camera.setTorchMode(cameraId, enabled)
