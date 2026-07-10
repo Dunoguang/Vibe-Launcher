@@ -46,16 +46,16 @@ jobs:
           # 准备签名
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASSWORD" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/vibe-launcher.p12"
-            echo "ANDROID_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/vibe-launcher.p12" >> "$GITHUB_ENV"
-            echo "ANDROID_SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "ANDROID_SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-            echo "ANDROID_SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+            export ANDROID_SIGNING_KEYSTORE_PATH="$RUNNER_TEMP/vibe-launcher.p12"
+            export ANDROID_SIGNING_STORE_PASSWORD="$STORE_PASSWORD"
+            export ANDROID_SIGNING_KEY_ALIAS="$KEY_ALIAS"
+            export ANDROID_SIGNING_KEY_PASSWORD="$KEY_PASSWORD"
             echo "✅ 签名配置完成 喵～"
           else
             echo "⚠️ 无签名密钥，将使用 Debug 签名 喵～"
           fi
           
-          # 现在在根目录，可以正常构建
+          # 构建
           gradle --no-daemon :app:assembleRelease
 
       - name: ☁️ 上传并写入 Summary 喵～
