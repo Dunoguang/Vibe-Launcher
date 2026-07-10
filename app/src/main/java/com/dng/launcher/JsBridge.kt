@@ -32,6 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
+import android.content.SharedPreferences
 
 class JsBridge(context: Context, webView: WebView) {
 
@@ -47,6 +48,18 @@ class JsBridge(context: Context, webView: WebView) {
     data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
     data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
     data class IconResult(val packageName: String, val iconUrl: String)
+
+    @JavascriptInterface
+    fun setHotReload(enabled: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return "{\"success\":false,\"error\":\"context lost\"}"
+            val prefs = ctx.getSharedPreferences("vibe_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("hot_reload_enabled", enabled).apply()
+            "{\"success\":true}"
+        } catch (e: Exception) {
+            "{\"success\":false,\"error\":\"${e.message}\"}"
+        }
+    }
 
     @JavascriptInterface
     fun crashTest() {
