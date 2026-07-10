@@ -71,8 +71,7 @@ import { materialEasing } from './utils.js';
                     state.inertiaStrength = Math.min(1.5, Math.max(0.3, (sum / state.recentSpeeds.length) * 80));
                 } else state.inertiaStrength = 0.6;
                 state.recentSpeeds = [];
-                state.infiniteInertia = false;
-            }
+                            }
             let resetAllPointers = () => {
                 state.activePointerIds.clear();
                 state.isDragging = false;
@@ -254,7 +253,6 @@ state.updateMouse(e.clientX, e.clientY);
                 let dist = Math.sqrt(state.prevScreen.distanceToSquared(curr));
                 if (!state.hasMoved && dist > state.DRAG_THRESHOLD) {
                     state.hasMoved = true;
-                    if (!state._exitingTimeView) state.infiniteInertia = false;
                     clearLongPressTimer();
                     clearHover();
                     document.body.style.cursor = 'grabbing';

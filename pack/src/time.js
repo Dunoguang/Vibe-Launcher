@@ -125,10 +125,9 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 }
             }
             export let exitTimeView = (animate, callback) => {
-                if (!state.isInTimeView) { NativeBridge.log('EXIT skipped isInTimeView=' + state.isInTimeView); return; }
+                if (!state.isInTimeView) { return; }
                 state.isInTimeView = false;
-                state._exitingTimeView = true;
-                // 隐藏原生时间页面
+                                // 隐藏原生时间页面
                 let tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
                 syncTimeSpriteTexture()
@@ -147,18 +146,27 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     state.startZoomAnimation(targetZoom, state.ANIM_DURATION, function() {
                         state.zoomLevel = targetZoom;
                         state.applyZoom();
+                                                state.infiniteInertia = true;
+                        state.inertiaStrength = 0.4;
+                        let spinAxis = state.layoutMode === 'hbar' ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+                        state.inertiaQ.copy(new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015));
+                        state.wakeUp();
                         if (callback) callback();
                     });
                 } else {
                     state.zoomLevel = targetZoom;
                     state.applyZoom();
-                    state._exitingTimeView = false;
+                                        state.infiniteInertia = true;
+                    state.inertiaStrength = 0.4;
+                    let spinAxis = state.layoutMode === 'hbar' ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+                    state.inertiaQ.copy(new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015));
+                    state.wakeUp();
                     if (callback) callback();
                 }
             }
             // 点击时间图标返回时间视图
             export let returnToTimeView = () => {
-                if (state.isInTimeView || !state.timeSprite) { NativeBridge.log('RTTV skipped: isInTimeView=' + state.isInTimeView + ' sprite=' + !!state.timeSprite); return; }
+                if (state.isInTimeView || !state.timeSprite) { return; }
                 state.isInTimeView = true;
                 state._timeEnteredAt = performance.now();
                 // 取消当前所有动画
@@ -181,8 +189,8 @@ let zoomComplete = false, rotationComplete = false;
                 let checkBothComplete = () => {
                     if (zoomComplete && rotationComplete) {
                         let tp = document.getElementById('time-page');
-                        if (tp) { NativeBridge.log('RTTV showing DOM'); tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                        else { NativeBridge.log('RTTV DOM element not found'); }
+                        if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
+                        else { }
                         syncTimeSpriteTexture();
                     }
                 }
