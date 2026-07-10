@@ -38,7 +38,10 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
     fun crashTest() {
-        throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
+        // 在新线程抛异常，绕过 WebView JS Bridge 的异常捕获
+        Thread {
+            throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
+        }.start()
     }
 
     @JavascriptInterface
