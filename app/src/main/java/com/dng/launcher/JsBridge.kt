@@ -353,7 +353,7 @@ class JsBridge(context: Context, webView: WebView) {
                 caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
             } else {
                 @Suppress("DEPRECATION")
-                cm.getMobileDataEnabled()
+                val method = cm.javaClass.getMethod("getMobileDataEnabled"); method.invoke(cm) as Boolean
             }
             """{"success":true,"enabled":$enabled}"""
         } catch (e: Exception) {
@@ -428,7 +428,7 @@ class JsBridge(context: Context, webView: WebView) {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
             val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager
             val cameraId = camera.cameraIdList[0]
-            val current = camera.getTorchMode(cameraId)
+            val current = try { val m = camera.javaClass.getMethod("getTorchMode", String::class.java); m.invoke(camera, cameraId) as Boolean } catch(_: NoSuchMethodException) { false }
             camera.setTorchMode(cameraId, !current)
             """{"success":true}"""
         } catch (e: Exception) {
@@ -442,7 +442,7 @@ class JsBridge(context: Context, webView: WebView) {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
             val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager
             val cameraId = camera.cameraIdList[0]
-            """{"success":true,"enabled":${camera.getTorchMode(cameraId)}}"""
+            """{"success":true,"enabled":${try { val m = camera.javaClass.getMethod("getTorchMode", String::class.java); m.invoke(camera, cameraId) as Boolean } catch(_: NoSuchMethodException) { false }}}"""
         } catch (e: Exception) {
             """{"success":false,"error":"${e.message}"}"""
         }
@@ -464,16 +464,18 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun lockScreen(): String {
         return try {
+        return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val activity = ctx as? MainActivity ?: return """{"success":false,"error":"not activity context"}"""
             val pm = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
-            pm.goToSleep(SystemClock.uptimeMillis())
+            try {
+                val method = pm.javaClass.getMethod("goToSleep", Long::class.javaPrimitiveType)
+                method.invoke(pm, SystemClock.uptimeMillis())
+            } catch (_: NoSuchMethodException) {}
             """{"success":true}"""
         } catch (e: Exception) {
             """{"success":false,"error":"${e.message}"}"""
         }
     }
-
     @JavascriptInterface
     fun openSettings(): String {
         return try {
