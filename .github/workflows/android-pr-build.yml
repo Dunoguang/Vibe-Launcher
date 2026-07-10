@@ -15,96 +15,73 @@ jobs:
       - name: 📥 叼取代码 喵～
         uses: actions/checkout@v7.0.0
 
-      - name: 📦 准备 Node.js 环境 喵～
+      - name: 🛠️ 环境准备 喵～
         uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-
-      - name: 🏗️ Vite 构建前端 喵～
-        run: |
-          cd pack
-          npm ci
-          npm run build
-          mkdir -p ../app/src/main/assets && cp dist/index.html ../app/src/main/assets/index.html
-
-      - name: ☕ 准备 JDK 25 喵～
-        uses: actions/setup-java@v5.4.0
+        with: { node-version: '24' }
+      
+      - uses: actions/setup-java@v5.4.0
         with:
           distribution: temurin
           java-version: '25'
 
-      - name: 🐘 配置 Gradle 喵～
-        uses: gradle/actions/setup-gradle@v6.2.0
+      - uses: gradle/actions/setup-gradle@v6.2.0
 
-      - name: 🔐 准备签名配置 喵～
+      - name: 🏗️ 构建前端 + 签名 + 打包 喵～
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/vibe-launcher.p12"
+          cd pack && npm ci && npm run build
+          mkdir -p ../app/src/main/assets
+          cp dist/index.html ../app/src/main/assets/index.html
+          
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASSWORD" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/vibe-launcher.p12"
             echo "ANDROID_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/vibe-launcher.p12" >> "$GITHUB_ENV"
             echo "ANDROID_SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
             echo "ANDROID_SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
             echo "ANDROID_SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
             echo "✅ 签名配置完成 喵～"
           else
-            echo "⚠️ 未检测到签名密钥，使用 Debug 签名 喵～"
+            echo "⚠️ 无签名密钥，将使用 Debug 签名 喵～"
           fi
+          
+          gradle --no-daemon :app:assembleRelease
 
-      - name: 🔨 构建 Debug APK 喵～
-        run: gradle --no-daemon :app:assembleDebug
-
-      - name: 🔨 构建 Release APK 喵～
-        run: gradle --no-daemon :app:assembleRelease
-
-      - name: 🔍 定位签名 Release APK 喵～
+      - name: ☁️ 上传并写入 Summary 喵～
+        if: success()
         run: |
-          SIGNED=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" ! -name "*-unsigned.apk" | head -n 1)
-          echo "RELEASE_APK=$SIGNED" >> "$GITHUB_ENV"
-          ls -lh "$SIGNED"
-
-      - name: ☁️ 上传 Release APK 到临时文件 喵～
-        run: |
-          echo "正在上传 Release APK 喵～"
-          RESP=$(curl -sS -X POST https://tempfile.org/api/upload/local -F "files=@${{ env.RELEASE_APK }}" -F "expiryHours=72")
-          URL=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('files',[{}])[0].get('url','FAIL'))")
-          echo "Release: $URL"
-          echo "$URL" > /tmp/release-tempfile-url.txt
-
-      - name: ☁️ 上传 Debug APK 到临时文件 喵～
-        run: |
-          echo "正在上传 Debug APK 喵～"
-          RESP=$(curl -sS -X POST https://tempfile.org/api/upload/local -F "files=@app/build/outputs/apk/debug/app-debug.apk" -F "expiryHours=72")
-          URL=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('files',[{}])[0].get('url','FAIL'))")
-          echo "Debug: $URL"
-          echo "$URL" > /tmp/debug-tempfile-url.txt
-
-      - name: 📎 保存临时文件链接 喵～
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: tempfile-links
-          path: /tmp/*-tempfile-url.txt
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: 📋 上传构建报告 喵～
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: build-reports
-          path: |
-            app/build/reports/
-            build/reports/
-          if-no-files-found: warn
-          retention-days: 7
+          APK=$(find app/build/outputs/apk/release -name "*.apk" ! -name "*-unsigned.apk" | head -1)
+          
+          if [ ! -f "$APK" ]; then
+            echo "❌ 没找到 Release APK 喵..." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          echo "📤 上传中..."
+          RESP=$(curl -sS -X POST https://tempfile.org/api/upload/local \
+            -F "files=@${APK}" -F "expiryHours=48")
+          URL=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['files'][0]['url'])")
+          
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🐾 构建完成 喵～
+          
+          | 📦 产物 | 🔗 链接 | 📏 大小 | ⏰ 有效期 |
+          |---------|---------|---------|-----------|
+          | Release APK | [点击下载](${URL}) | $(du -h "$APK" | cut -f1) | 48 小时 |
+          
+          > \`${URL}\`
+          EOF
+          
+          echo "✅ Summary 已生成 喵～"
 
       - name: 🐾 喵呜～
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "好喵！✨ 全部完成啦～"
+            echo "✨ 好喵！去 Summary 看链接吧～" >> $GITHUB_STEP_SUMMARY
           else
-            echo "坏掉了呜...😿 主人快来～"
+            echo "😿 坏掉了呜...主人快来～" >> $GITHUB_STEP_SUMMARY
           fi
