@@ -174,9 +174,13 @@ let isDragging = false, hasMoved = false;
                     const decay = (state.isDragging && state.hasMoved) ? INERTIA_FAST_DECAY : INERTIA_DECAY;
                     const factor = Math.min(state.inertiaStrength, 1.0);
                     const applyQ = new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(), state.inertiaQ, factor);
+                    let oldQuat = state.rotationQuat.clone();
                     state.rotationQuat.premultiply(applyQ);
                     state.rotationQuat.normalize();
                     state.sphereGroup.quaternion.copy(state.rotationQuat);
+                    let angleRad = oldQuat.angleTo(state.rotationQuat);
+                    let pendingAngle = applyQ.angleTo(new THREE.Quaternion());
+                    NativeBridge.log('INERTIA_ANGLE applyAngle=' + (pendingAngle * 180 / Math.PI).toFixed(4) + 'deg actualAngle=' + (angleRad * 180 / Math.PI).toFixed(4) + 'deg strength=' + state.inertiaStrength.toFixed(4));
                     if (!state.infiniteInertia) {
                         state.inertiaStrength *= decay;
                         if (state.inertiaStrength < INERTIA_MIN) {

@@ -487,6 +487,7 @@ state.updateSphereMinHint();
                     let finalP = state._backProgress;
                     state._backProgress = -1;
                     state._backType = '';
+                    NativeBridge.log('BACKPRESSED finalP=' + finalP + ' zoom=' + state.zoomLevel.toFixed(2) + ' inertiaStr=' + state.inertiaStrength + ' infinite=' + state.infiniteInertia + ' rotData=' + !!state.rotationAnimData + ' zoomStart=' + !!state.zoomAnimStart + ' animFrame=' + !!state.animFrameId);
                     // 忽略系统误触发的返回手势（progress接近0的轻触不算）
                     if (finalP < 0.2) {
                         exitTimeView(true);
@@ -495,7 +496,7 @@ state.updateSphereMinHint();
                         let spinAxis;
                         if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                         else spinAxis = new THREE.Vector3(1, 0, 0);
-                        let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
+                        let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.05);
                         state.inertiaQ.copy(smallQ);
                         state.wakeUp();
                         return;
@@ -508,13 +509,15 @@ state.updateSphereMinHint();
                             state.zoomLevel = state.defaultZoom;
                             state.applyZoom();
                             exitTimeView(false);
+                            NativeBridge.log('BACK_INERTIA1 isInTimeView=' + state.isInTimeView + ' zoomStart=' + !!state.zoomAnimStart + ' rotData=' + !!state.rotationAnimData + ' inertiaStr=' + state.inertiaStrength);
                             state.inertiaStrength = 0.4;
                             state.infiniteInertia = true;
                             let spinAxis;
                             if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                             else spinAxis = new THREE.Vector3(1, 0, 0);
-                            let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
+                            let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.05);
                             state.inertiaQ.copy(smallQ);
+                            NativeBridge.log('BACK_INERTIA1 done inertiaStr=' + state.inertiaStrength + ' animFrame=' + !!state.animFrameId);
                             state.wakeUp();
                         });
                     } else {
@@ -524,7 +527,7 @@ state.updateSphereMinHint();
                         let spinAxis;
                         if (state.layoutMode === 'hbar') spinAxis = new THREE.Vector3(0, 1, 0);
                         else spinAxis = new THREE.Vector3(1, 0, 0);
-                        let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
+                        let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.05);
                         state.inertiaQ.copy(smallQ);
                         state.wakeUp();
                     }

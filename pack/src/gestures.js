@@ -108,7 +108,6 @@ import { materialEasing } from './utils.js';
                     state.longPressFired = false;
                     return;
                 }
-                state.infiniteInertia = false;
                 if (!state.isInTimeView && state.activePointerIds.size === 0 && isInTopZone(e.clientY)) {
                     state.topSwipeData = { pointerId: e.pointerId, startY: e.clientY, startZoom: state.zoomLevel, active: true, confirmed: false, startTimeViewZoom: state.computeTimeViewZoom() };
                     state.activePointerIds.add(e.pointerId);
