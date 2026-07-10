@@ -44,7 +44,7 @@ fun getDeviceInfo(context: Context): Map<String, Any> {
  * 方式1：WifiManager.setWifiEnabled()（Android 9-）
  */
 fun toggleWifiViaManager(context: Context, enable: Boolean): Boolean {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return false  // Android 12+ 封杀
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return false  // Android 10+ 封杀
     val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
     return wifiManager.setWifiEnabled(enable)
 }
@@ -111,7 +111,7 @@ fun toggleWifiViaShellSettings(enable: Boolean): Boolean {
  */
 fun smartToggleWifi(context: Context, adminComponent: ComponentName? = null, enable: Boolean): String {
     // 1. 尝试 WifiManager（API 9-）
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {  // Android 11- 可用
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {  // Android 9- 可用
         if (toggleWifiViaManager(context, enable)) return "WifiManager 切换成功"
     }
 
