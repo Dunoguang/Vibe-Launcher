@@ -46,6 +46,10 @@ class JsBridge(context: Context, webView: WebView) {
 
     @Volatile private var appListCache: List<AppInfo>? = null
 
+    data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
+    data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
+    data class IconResult(val packageName: String, val iconUrl: String)
+
     @JavascriptInterface
     fun crashTest() {
         Thread {
@@ -464,7 +468,6 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun lockScreen(): String {
         return try {
-        return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
             val pm = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
             try {
@@ -632,7 +635,4 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-    data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
-    data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
-    data class IconResult(val packageName: String, val iconUrl: String)
-}
+
