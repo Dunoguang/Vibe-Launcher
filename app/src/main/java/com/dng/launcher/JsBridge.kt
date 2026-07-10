@@ -339,7 +339,23 @@ class JsBridge(context: Context, webView: WebView) {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
             val wifi = ctx.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-            wifi.isWifiEnabled = enabled
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val intent = Intent(android.provider.Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+                return """{"success":false,"error":"redirecting to panel"}"""
+            } else {
+                @Suppress("DEPRECATION")
+                wifi.isWifiEnabled = enabled
+            }
+                val intent = Intent(android.provider.Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+                return """{"success":false,"error":"redirecting to panel"}"""
+            } else {
+                @Suppress("DEPRECATION")
+                wifi.isWifiEnabled = enabled
+            }
             """{"success":true}"""
         } catch (e: Exception) {
             """{"success":false,"error":"${e.message}"}"""
