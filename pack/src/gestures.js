@@ -454,6 +454,7 @@ state.updateMouse(e.clientX, e.clientY);
                         }
                     }
                     if (state.isDragging && state.hasMoved && !state.isInTimeView) startInertiaFromSpeeds();
+                    state.infiniteInertia = false;
                     state.isDragging = false;
                     state.hasMoved = false;
                     document.body.style.cursor = state.hoveredSprite ? 'pointer' : 'grab';
