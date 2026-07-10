@@ -349,20 +349,11 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun setWifiEnabled(enabled: Boolean): String {
         return try {
-            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val wifi = ctx.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val intent = Intent(android.provider.Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                ctx.startActivity(intent)
-                return """{"success":false,"error":"redirecting to panel"}"""
-            } else {
-                @Suppress("DEPRECATION")
-                wifi.isWifiEnabled = enabled
-            }
-            """{"success":true}"""
+            val ctx = contextRef.get() ?: return "{\"success\":false,\"error\":\"context lost\"}"
+            val result = smartToggleWifi(ctx, null, enabled)
+            "{\"success\":true,\"method\":\"$result\"}"
         } catch (e: Exception) {
-            """{"success":false,"error":"${e.message}"}"""
+            "{\"success\":false,\"error\":\"${e.message}\"}"
         }
     }
 
