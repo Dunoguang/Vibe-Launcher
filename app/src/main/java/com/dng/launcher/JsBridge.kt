@@ -469,29 +469,24 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun toggleFlashlight(): String {
         return try {
-            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val ctx = contextRef.get() ?: return "{\"success\":false,\"error\":\"context lost\"}"
             val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager
             val cameraId = camera.cameraIdList[0]
-            val current = try { val m = camera.javaClass.getMethod("getTorchMode", String::class.java); m.invoke(camera, cameraId) as Boolean } catch(_: NoSuchMethodException) { false }
-            camera.setTorchMode(cameraId, !current)
-            """{"success":true}"""
+            torchEnabled = !torchEnabled
+            camera.setTorchMode(cameraId, torchEnabled)
+            "{\"success\":true,\"enabled\":$torchEnabled}"
         } catch (e: Exception) {
-            """{"success":false,"error":"${e.message}"}"""
+            "{\"success\":false,\"error\":\"${e.message}\"}"
         }
     }
-
     @JavascriptInterface
     fun getFlashlightState(): String {
         return try {
-            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-            val cameraId = camera.cameraIdList[0]
-            """{"success":true,"enabled":${try { val m = camera.javaClass.getMethod("getTorchMode", String::class.java); m.invoke(camera, cameraId) as Boolean } catch(_: NoSuchMethodException) { false }}}"""
+            "{\"success\":true,\"enabled\":$torchEnabled}"
         } catch (e: Exception) {
-            """{"success":false,"error":"${e.message}"}"""
+            "{\"success\":false,\"error\":\"${e.message}\"}"
         }
     }
-
     @JavascriptInterface
     fun setFlashlight(enabled: Boolean): String {
         return try {
