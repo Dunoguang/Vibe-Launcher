@@ -636,3 +636,4 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
 
+}
