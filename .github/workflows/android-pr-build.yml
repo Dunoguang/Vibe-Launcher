@@ -60,13 +60,7 @@ jobs:
       - name: 🔨 构建 Release APK 喵～
         run: gradle --no-daemon :app:assembleRelease
 
-      - name: ⬆️ 上传 Debug APK 喵～
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: app-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 7
+
 
       - name: 🔍 定位签名 Release APK 喵～
         run: |
@@ -96,6 +90,16 @@ jobs:
           name: tempfile-links
           path: /tmp/*-tempfile-url.txt
           if-no-files-found: error
+          retention-days: 7
+
+      - name: 📋 上传构建报告 喵～
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: build-reports
+          path: |
+            app/build/reports/
+            build/reports/
+          if-no-files-found: continue
           retention-days: 7
 
       - name: ⬆️ 上传 Release APK 喵～
