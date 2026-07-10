@@ -563,7 +563,7 @@ class JsBridge(context: Context, webView: WebView) {
             val tm = ctx.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
             val simCount = tm.activeModemCount
             val simStates = (0 until simCount).map { i ->
-                mapOf("slot" to i, "operator" to (tm.simOperatorName ?: ""), "state" to tm.simState)
+                mapOf<String, Any>("slot" to i, "operator" to (tm.simOperatorName ?: ""), "state" to tm.simState)
             }
             """{"success":true,"count":$simCount,"sims":${gson.toJson(simStates)}}"""
         } catch (e: Exception) {
