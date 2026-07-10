@@ -138,12 +138,16 @@ fun smartToggleWifi(context: Context, adminComponent: ComponentName? = null, ena
     if (toggleWifiViaShellSettings(enable)) return "Root settings 命令切换成功"
 
     // 5. 兜底：弹出悬浮窗或跳转设置页
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        openWifiPanel(context)
-        return "已弹出 WiFi 悬浮面板，请手动操作"
-    } else {
-        openWifiSettings(context)
-        return "已跳转 WiFi 设置页，请手动操作"
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            openWifiPanel(context)
+            return "已弹出 WiFi 悬浮面板，请手动操作"
+        } else {
+            openWifiSettings(context)
+            return "已跳转 WiFi 设置页，请手动操作"
+        }
+    } catch (e: Exception) {
+        return "兜底失败: ${e.message}"
     }
 }
 
@@ -157,10 +161,9 @@ fun smartToggleWifi(context: Context, adminComponent: ComponentName? = null, ena
  */
 fun checkWriteSecureSettings(context: Context): Boolean {
     return try {
-        val method = Settings.System::class.java.getMethod("getString", android.net.Uri::class.java)
-        true  // 能反射调用基本就说明有权限
+        Settings.System.canWrite(context)
     } catch (e: Exception) {
-        Settings.System.canWrite(context)  // 退一步检查
+        false
     }
 }
 

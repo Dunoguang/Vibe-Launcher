@@ -350,8 +350,17 @@ class JsBridge(context: Context, webView: WebView) {
     fun setWifiEnabled(enabled: Boolean): String {
         return try {
             val ctx = contextRef.get() ?: return "{\"success\":false,\"error\":\"context lost\"}"
+            // 记录切换前 WiFi 状态
+            val wifi = ctx.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            val wasEnabled = wifi.isWifiEnabled
+
             val result = smartToggleWifi(ctx, null, enabled)
-            "{\"success\":true,\"method\":\"$result\"}"
+
+            // 检查 WiFi 是否真的改变了
+            val isNowEnabled = wifi.isWifiEnabled
+            val actuallyChanged = wasEnabled != isNowEnabled
+
+            "{\"success\":$actuallyChanged,\"method\":\"$result\"}"
         } catch (e: Exception) {
             "{\"success\":false,\"error\":\"${e.message}\"}"
         }
