@@ -489,10 +489,7 @@ state.updateSphereMinHint();
                     state._backType = '';
                     // 忽略系统误触发的返回手势（progress接近0的轻触不算）
                     if (finalP < 0.2) {
-                        state.isInTimeView = false;
-                        let tp = document.getElementById('time-page');
-                        if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
-                        exitTimeView(false);
+                        exitTimeView(true);
                         state.inertiaStrength = 0.4;
                         state.infiniteInertia = true;
                         let spinAxis;
