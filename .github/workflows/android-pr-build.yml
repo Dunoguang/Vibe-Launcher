@@ -97,7 +97,7 @@ jobs:
           path: |
             app/build/reports/
             build/reports/
-          if-no-files-found: continue
+          if-no-files-found: warn
           retention-days: 7
 
       - name: 🐾 喵呜～
