@@ -71,6 +71,7 @@ import { materialEasing } from './utils.js';
                     state.inertiaStrength = Math.min(1.5, Math.max(0.3, (sum / state.recentSpeeds.length) * 80));
                 } else state.inertiaStrength = 0.6;
                 state.recentSpeeds = [];
+                state.infiniteInertia = false;
             }
             let resetAllPointers = () => {
                 state.activePointerIds.clear();
