@@ -497,6 +497,7 @@ state.updateSphereMinHint();
                         else spinAxis = new THREE.Vector3(1, 0, 0);
                         let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                         state.inertiaQ.copy(smallQ);
+                        state.wakeUp();
                         return;
                     }
                     let curZ = state.zoomLevel;
@@ -514,6 +515,7 @@ state.updateSphereMinHint();
                             else spinAxis = new THREE.Vector3(1, 0, 0);
                             let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                             state.inertiaQ.copy(smallQ);
+                            state.wakeUp();
                         });
                     } else {
                         exitTimeView(false);
@@ -524,6 +526,7 @@ state.updateSphereMinHint();
                         else spinAxis = new THREE.Vector3(1, 0, 0);
                         let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                         state.inertiaQ.copy(smallQ);
+                        state.wakeUp();
                     }
                     return;
                 }
