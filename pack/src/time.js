@@ -151,6 +151,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 } else {
                     state.zoomLevel = targetZoom;
                     state.applyZoom();
+                    state._exitingTimeView = false;
                     if (callback) callback();
                 }
             }
