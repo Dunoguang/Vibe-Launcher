@@ -71,7 +71,7 @@ jobs:
           echo "📤 上传中..."
           RESP=$(curl -sS -X POST https://tempfile.org/api/upload/local \
             -F "files=@${APK}" -F "expiryHours=48")
-          URL=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['files'][0]['url'])")
+          URL=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['files'][0]['url'] + 'download')")
           
           cat >> $GITHUB_STEP_SUMMARY << EOF
           ## 🐾 构建完成 喵～
