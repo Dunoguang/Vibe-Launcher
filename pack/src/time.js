@@ -127,6 +127,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             export let exitTimeView = (animate, callback) => {
                 if (!state.isInTimeView) { NativeBridge.log('EXIT skipped isInTimeView=' + state.isInTimeView); return; }
                 state.isInTimeView = false;
+                state._exitingTimeView = true;
                 // 隐藏原生时间页面
                 let tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
