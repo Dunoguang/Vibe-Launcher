@@ -1,16 +1,27 @@
 package com.dng.launcher
 
 import android.content.Context
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.hardware.camera2.CameraManager
+import android.media.AudioManager
+import android.media.session.MediaSessionManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.Uri
+import android.os.BatteryManager
+import android.os.Build
+import android.os.PowerManager
+import android.os.SystemClock
+import android.provider.Settings
+import android.telephony.TelephonyManager
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -19,10 +30,9 @@ import java.io.File
 import java.io.FileOutputStream
 import java.lang.ref.WeakReference
 import java.text.Collator
-import android.content.IntentFilter
-import android.content.SharedPreferences
-import android.os.BatteryManager
-import android.net.Uri
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.Executors
 
 class JsBridge(context: Context, webView: WebView) {
@@ -38,7 +48,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
     fun crashTest() {
-        // 在新线程抛异常，绕过 WebView JS Bridge 的异常捕获
         Thread {
             throw RuntimeException("手动触发的崩溃测试 - 这不是真正的Bug")
         }.start()
@@ -73,7 +82,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun requestAppIcons(packageNamesJson: String, iconRes: Int) {
         val targetSize = iconRes.coerceIn(16, 4096)
         executor.execute {
@@ -115,7 +123,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun launchApp(packageName: String): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -130,7 +137,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun uninstallApp(packageName: String): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -144,11 +150,10 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun openAppDetails(packageName: String): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                 Uri.parse("package:$packageName"))
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             ctx.startActivity(intent)
@@ -159,7 +164,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun getBatteryLevel(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -172,7 +176,6 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun isCharging(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
@@ -187,18 +190,7 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-    private fun callback(funcName: String, jsonArg: String) {
-        webViewRef.get()?.let { wv ->
-            wv.post { wv.evaluateJavascript("window.$funcName($jsonArg);", null) }
-        }
-    }
-
-    data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
-    data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
-    data class IconResult(val packageName: String, val iconUrl: String)
-
     @JavascriptInterface
-
     fun goBack(): String {
         return try {
             webViewRef.get()?.post {
@@ -211,99 +203,36 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
-    fun clearIconCache(): String {
-        return try {
-            iconCacheDir.listFiles()?.forEach { it.delete() }
-            """{"success":true}"""
-        } catch (e: Exception) {
-            """{"success":false,"error":"${e.message}"}"""
-        }
-    }
-
-    @JavascriptInterface
-
-    fun setHotReload(enabled: Boolean): String {
-        return try {
-            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val prefs = ctx.getSharedPreferences("vibe_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("hot_reload_enabled", enabled).apply()
-            Log.d("VibeLauncher", "[JS] hotReload set to $enabled")
-            """{"success":true}"""
-        } catch (e: Exception) {
-            """{"success":false,"error":"${e.message}"}"""
-        }
-    }
-
-    @JavascriptInterface
-
-    fun getHotReload() {
-        executor.execute {
-            try {
-                val ctx = contextRef.get() ?: return@execute
-                val prefs = ctx.getSharedPreferences("vibe_prefs", Context.MODE_PRIVATE)
-                val enabled = prefs.getBoolean("hot_reload_enabled", false)
-                callback("_onHotReloadLoaded", """{"success":true,"enabled":$enabled}""")
-            } catch (e: Exception) {
-                callback("_onHotReloadLoaded", """{"success":false,"error":"${e.message}"}""")
-            }
-        }
-    }
-
-    private var currentLogFileName: String? = null
-
-    private fun getLogFile(): java.io.File? {
-        val ctx = contextRef.get() ?: return null
-        val name = currentLogFileName ?: run {
-            val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
-            val ts = sdf.format(java.util.Date())
-            "log_$ts.txt"
-        }.also { currentLogFileName = it }
-        return java.io.File(ctx.filesDir, name)
-    }
-
-    @JavascriptInterface
-
     fun log(msg: String) {
-        Log.d("VibeLauncher", "[JS] $msg")
+        Log.d("VibeLauncher", "[web] $msg")
         val ctx = contextRef.get() ?: return
-        val logFile = getLogFile() ?: return
         try {
-            logFile.appendText(java.time.Instant.now().toString() + " " + msg + "\n")
+            val file = File(ctx.filesDir, currentLogFileName)
+            if (file.exists() && file.length() > 5 * 1024 * 1024) return
+            FileOutputStream(file, true).use { it.write("$msg\n".toByteArray()) }
         } catch (_: Exception) {}
     }
 
-    @JavascriptInterface
+    @Volatile private var currentLogFileName: String? = null
 
+    fun setLogFileName(name: String) {
+        currentLogFileName = name
+    }
+
+    // ========== 壁纸 API ==========
+
+    @JavascriptInterface
     fun pickWallpaper() {
-        Log.d("VibeLauncher", "[wallpaper] pickWallpaper called from JS")
-        val ctx = contextRef.get()
-        if (ctx == null) {
-            Log.e("VibeLauncher", "[wallpaper] context lost")
-            return
-        }
-        val activity = ctx as? MainActivity
-        if (activity == null) {
-            Log.e("VibeLauncher", "[wallpaper] not MainActivity: ${ctx.javaClass.name}")
-            return
-        }
-        val wv = webViewRef.get()
-        if (wv == null) {
-            Log.e("VibeLauncher", "[wallpaper] webView lost")
-            return
-        }
-        wv.post {
-            Log.d("VibeLauncher", "[wallpaper] launching picker on main thread")
-            activity.pickWallpaper()
-        }
+        val ctx = contextRef.get() ?: return
+        val activity = ctx as? MainActivity ?: return
+        webViewRef.get()?.post { activity.pickWallpaper() }
     }
 
     @JavascriptInterface
-
     fun getWallpaperPath(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val file = java.io.File(ctx.filesDir, "wallpaper.png")
+            val file = File(ctx.filesDir, "wallpaper.png")
             if (file.exists()) """{"success":true,"path":"file://${file.absolutePath}"}"""
             else """{"success":false,"error":"no wallpaper"}"""
         } catch (e: Exception) {
@@ -312,11 +241,10 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun removeWallpaper(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val file = java.io.File(ctx.filesDir, "wallpaper.png")
+            val file = File(ctx.filesDir, "wallpaper.png")
             if (file.exists()) file.delete()
             """{"success":true}"""
         } catch (e: Exception) {
@@ -324,7 +252,7 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-    fun onWallpaperPicked(uri: android.net.Uri?) {
+    fun onWallpaperPicked(uri: Uri?) {
         if (uri == null) {
             callback("_onWallpaperPicked", """{"success":false,"error":"cancelled"}""")
             return
@@ -332,8 +260,8 @@ class JsBridge(context: Context, webView: WebView) {
         try {
             val ctx = contextRef.get() ?: return
             val input = ctx.contentResolver.openInputStream(uri)
-            val file = java.io.File(ctx.filesDir, "wallpaper.png")
-            java.io.FileOutputStream(file).use { out -> input?.copyTo(out) }
+            val file = File(ctx.filesDir, "wallpaper.png")
+            FileOutputStream(file).use { out -> input?.copyTo(out) }
             input?.close()
             callback("_onWallpaperPicked", """{"success":true,"path":"file://${file.absolutePath}"}""")
         } catch (e: Exception) {
@@ -341,24 +269,18 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-
     @JavascriptInterface
-
     fun pickTimeBg() {
-        Log.d("VibeLauncher", "[timebg] pickTimeBg called")
         val ctx = contextRef.get() ?: return
         val activity = ctx as? MainActivity ?: return
-        webViewRef.get()?.post {
-            activity.pickTimeBg()
-        }
+        webViewRef.get()?.post { activity.pickTimeBg() }
     }
 
     @JavascriptInterface
-
     fun getTimeBgPath(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val file = java.io.File(ctx.filesDir, "time_bg.png")
+            val file = File(ctx.filesDir, "time_bg.png")
             if (file.exists()) """{"success":true,"path":"file://${file.absolutePath}"}"""
             else """{"success":false,"error":"no time bg"}"""
         } catch (e: Exception) {
@@ -367,11 +289,10 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     @JavascriptInterface
-
     fun removeTimeBg(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val file = java.io.File(ctx.filesDir, "time_bg.png")
+            val file = File(ctx.filesDir, "time_bg.png")
             if (file.exists()) file.delete()
             """{"success":true}"""
         } catch (e: Exception) {
@@ -379,7 +300,7 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-    fun onTimeBgPicked(uri: android.net.Uri?) {
+    fun onTimeBgPicked(uri: Uri?) {
         if (uri == null) {
             callback("_onTimeBgPicked", """{"success":false,"error":"cancelled"}""")
             return
@@ -387,8 +308,8 @@ class JsBridge(context: Context, webView: WebView) {
         try {
             val ctx = contextRef.get() ?: return
             val input = ctx.contentResolver.openInputStream(uri)
-            val file = java.io.File(ctx.filesDir, "time_bg.png")
-            java.io.FileOutputStream(file).use { out -> input?.copyTo(out) }
+            val file = File(ctx.filesDir, "time_bg.png")
+            FileOutputStream(file).use { out -> input?.copyTo(out) }
             input?.close()
             callback("_onTimeBgPicked", """{"success":true,"path":"file://${file.absolutePath}"}""")
         } catch (e: Exception) {
@@ -396,4 +317,320 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
+    // ========== 控制中心 API ==========
+
+    @JavascriptInterface
+    fun getWifiEnabled(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val wifi = ctx.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            """{"success":true,"enabled":${wifi.isWifiEnabled}}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun setWifiEnabled(enabled: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val wifi = ctx.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            wifi.isWifiEnabled = enabled
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getMobileDataEnabled(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val enabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val network = cm.activeNetwork
+                val caps = network?.let { cm.getNetworkCapabilities(it) }
+                caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
+            } else {
+                @Suppress("DEPRECATION")
+                cm.getMobileDataEnabled()
+            }
+            """{"success":true,"enabled":$enabled}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getBrightness(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val brightness = Settings.System.getInt(
+                ctx.contentResolver,
+                Settings.System.SCREEN_BRIGHTNESS
+            )
+            """{"success":true,"brightness":$brightness}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun setBrightness(brightness: Int): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            if (!Settings.System.canWrite(ctx)) {
+                val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+                return """{"success":false,"error":"WRITE_SETTINGS not granted"}"""
+            }
+            Settings.System.putInt(
+                ctx.contentResolver,
+                Settings.System.SCREEN_BRIGHTNESS,
+                brightness.coerceIn(0, 255)
+            )
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getVolume(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val audio = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val current = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+            val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            """{"success":true,"current":$current,"max":$max}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun setVolume(volume: Int): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val audio = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            audio.setStreamVolume(AudioManager.STREAM_MUSIC, volume.coerceIn(0, max), 0)
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun toggleFlashlight(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val cameraId = camera.cameraIdList[0]
+            val current = camera.getTorchMode(cameraId)
+            camera.setTorchMode(cameraId, !current)
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getFlashlightState(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val cameraId = camera.cameraIdList[0]
+            """{"success":true,"enabled":${camera.getTorchMode(cameraId)}}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun setFlashlight(enabled: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val cameraId = camera.cameraIdList[0]
+            camera.setTorchMode(cameraId, enabled)
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun lockScreen(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val activity = ctx as? MainActivity ?: return """{"success":false,"error":"not activity context"}"""
+            val pm = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
+            pm.goToSleep(SystemClock.uptimeMillis())
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun openSettings(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val intent = Intent(Settings.ACTION_SETTINGS)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(intent)
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun shareText(text: String): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, text)
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(Intent.createChooser(intent, "分享"))
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getMusicInfo(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val sm = ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val sessions = sm.getActiveSessions(null)
+            if (sessions.isNotEmpty()) {
+                val controller = sessions[0]
+                val metadata = controller.metadata
+                if (metadata != null) {
+                    val title = metadata.getString(android.media.MediaMetadata.METADATA_KEY_TITLE) ?: ""
+                    val artist = metadata.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST) ?: ""
+                    val album = metadata.getString(android.media.MediaMetadata.METADATA_KEY_ALBUM) ?: ""
+                    val duration = metadata.getLong(android.media.MediaMetadata.METADATA_KEY_DURATION)
+                    val isPlaying = controller.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING
+                    return """{"success":true,"title":"${title.replace("\"","\\\"")}","artist":"${artist.replace("\"","\\\"")}","album":"${album.replace("\"","\\\"")}","duration":$duration,"isPlaying":$isPlaying}"""
+                }
+            }
+            """{"success":false,"error":"no music"}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getMusicCoverUrl(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val sm = ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val sessions = sm.getActiveSessions(null)
+            if (sessions.isNotEmpty()) {
+                val controller = sessions[0]
+                val metadata = controller.metadata
+                if (metadata != null) {
+                    val bitmap = metadata.getBitmap(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART)
+                    if (bitmap != null) {
+                        val file = File(ctx.cacheDir, "music_cover.png")
+                        FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 80, it) }
+                        return """{"success":true,"url":"file://${file.absolutePath}"}"""
+                    }
+                }
+            }
+            """{"success":false,"error":"no cover"}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getSimInfo(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val tm = ctx.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+            val simCount = tm.activeModemCount
+            val simStates = (0 until simCount).map { i ->
+                mapOf("slot" to i, "operator" to (tm.simOperatorName ?: ""), "state" to tm.simState)
+            }
+            """{"success":true,"count":$simCount,"sims":${gson.toJson(simStates)}}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun hotspotEnabled(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = cm.activeNetwork
+            val caps = network?.let { cm.getNetworkCapabilities(it) }
+            val isHotspot = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE) == true
+            """{"success":true,"enabled":$isHotspot}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getVolumeInfo(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val audio = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val media = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+            val mediaMax = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            val ring = audio.getStreamVolume(AudioManager.STREAM_RING)
+            val ringMax = audio.getStreamMaxVolume(AudioManager.STREAM_RING)
+            val alarm = audio.getStreamVolume(AudioManager.STREAM_ALARM)
+            val alarmMax = audio.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+            """{"success":true,"media":{"current":$media,"max":$mediaMax},"ring":{"current":$ring,"max":$ringMax},"alarm":{"current":$alarm,"max":$alarmMax}}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun requestSettingsPermission(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            if (!Settings.System.canWrite(ctx)) {
+                val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+                """{"success":false,"error":"redirecting"}"""
+            } else """{"success":true,"granted":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun canWriteSettings(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            """{"success":true,"canWrite":${Settings.System.canWrite(ctx)}}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    // ========== 内部 ==========
+
+    private fun callback(funcName: String, jsonArg: String) {
+        webViewRef.get()?.let { wv ->
+            wv.post { wv.evaluateJavascript("window.$funcName($jsonArg);", null) }
+        }
+    }
+
+    data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
+    data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
+    data class IconResult(val packageName: String, val iconUrl: String)
 }
