@@ -119,23 +119,39 @@ fun toggleWifiViaShellSettings(enable: Boolean): Boolean {
  */
 fun smartToggleWifi(context: Context, adminComponent: ComponentName? = null, enable: Boolean): String {
     // 1. 尝试 WifiManager（API 9-）
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {  // Android 9- 可用
-        if (toggleWifiViaManager(context, enable)) return "WifiManager 切换成功"
+    try {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {  // Android 9- 可用
+            if (toggleWifiViaManager(context, enable)) return "WifiManager 切换成功"
+        }
+    } catch (e: Exception) {
+        // ignore
     }
 
     // 2. 尝试 DevicePolicyManager（DO 特权）
-    if (adminComponent != null && toggleWifiViaDpm(context, adminComponent, enable)) {
-        return "DevicePolicyManager 切换成功"
+    try {
+        if (adminComponent != null && toggleWifiViaDpm(context, adminComponent, enable)) {
+            return "DevicePolicyManager 切换成功"
+        }
+    } catch (e: Exception) {
+        // ignore
     }
 
     // 3. 尝试 Settings.Global（需 WRITE_SECURE_SETTINGS 权限，仅系统/DO应用可用）
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkWriteSecureSettings(context)) {
-        if (toggleWifiViaSettings(context, enable)) return "Settings.Global 切换成功"
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkWriteSecureSettings(context)) {
+            if (toggleWifiViaSettings(context, enable)) return "Settings.Global 切换成功"
+        }
+    } catch (e: SecurityException) {
+        // 无 WRITE_SECURE_SETTINGS 权限，跳过
     }
 
     // 4. 尝试 Root 命令
-    if (toggleWifiViaSvc(enable)) return "Root svc 命令切换成功"
-    if (toggleWifiViaShellSettings(enable)) return "Root settings 命令切换成功"
+    try {
+        if (toggleWifiViaSvc(enable)) return "Root svc 命令切换成功"
+        if (toggleWifiViaShellSettings(enable)) return "Root settings 命令切换成功"
+    } catch (e: Exception) {
+        // ignore
+    }
 
     // 5. 兜底：弹出悬浮窗或跳转设置页
     try {
