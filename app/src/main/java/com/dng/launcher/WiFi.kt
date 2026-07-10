@@ -43,6 +43,7 @@ fun getDeviceInfo(context: Context): Map<String, Any> {
 /**
  * 方式1：WifiManager.setWifiEnabled()（Android 9-）
  */
+@Suppress("DEPRECATION")
 fun toggleWifiViaManager(context: Context, enable: Boolean): Boolean {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return false  // Android 10+ 封杀
     val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
@@ -177,6 +178,7 @@ fun execShell(command: String): Boolean {
 /**
  * API 1-9 专用：直接切换 WiFi
  */
+@Suppress("DEPRECATION")
 fun toggleWifiSimple(context: Context) {  // 简单切换，不依赖权限
     if (Build.VERSION.SDK_INT <= 9) {
         val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
