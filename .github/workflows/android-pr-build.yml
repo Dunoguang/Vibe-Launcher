@@ -60,8 +60,6 @@ jobs:
       - name: 🔨 构建 Release APK 喵～
         run: gradle --no-daemon :app:assembleRelease
 
-
-
       - name: 🔍 定位签名 Release APK 喵～
         run: |
           SIGNED=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" ! -name "*-unsigned.apk" | head -n 1)
