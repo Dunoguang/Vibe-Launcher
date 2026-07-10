@@ -33,10 +33,17 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
         run: |
-          cd pack && npm ci && npm run build
+          # 构建前端
+          cd pack
+          npm ci
+          npm run build
           mkdir -p ../app/src/main/assets
           cp dist/index.html ../app/src/main/assets/index.html
           
+          # ⚠️ 重要：回到项目根目录
+          cd ..
+          
+          # 准备签名
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASSWORD" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/vibe-launcher.p12"
             echo "ANDROID_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/vibe-launcher.p12" >> "$GITHUB_ENV"
@@ -48,6 +55,7 @@ jobs:
             echo "⚠️ 无签名密钥，将使用 Debug 签名 喵～"
           fi
           
+          # 现在在根目录，可以正常构建
           gradle --no-daemon :app:assembleRelease
 
       - name: ☁️ 上传并写入 Summary 喵～
