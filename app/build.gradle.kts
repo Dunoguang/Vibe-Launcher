@@ -2,7 +2,7 @@ plugins {
     id("com.android.application")
 }
 
-val signingKeystorePath = System.getenv("ANDROID_SIGNING_KEYSTORE_PATH") ?: "vibe-launcher.p12"
+val signingKeystorePath = System.getenv("ANDROID_SIGNING_KEYSTORE_PATH")
 val signingStorePassword = System.getenv("ANDROID_SIGNING_STORE_PASSWORD")
 val signingKeyAlias = System.getenv("ANDROID_SIGNING_KEY_ALIAS")
 val signingKeyPassword = System.getenv("ANDROID_SIGNING_KEY_PASSWORD")
