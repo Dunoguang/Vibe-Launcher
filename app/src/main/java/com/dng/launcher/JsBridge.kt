@@ -44,6 +44,7 @@ class JsBridge(context: Context, webView: WebView) {
     private val iconCacheDir = File(context.cacheDir, "icons").also { it.mkdirs() }
 
     @Volatile private var appListCache: List<AppInfo>? = null
+    private var torchEnabled = false
 
     data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
     data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
