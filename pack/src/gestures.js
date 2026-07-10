@@ -253,6 +253,7 @@ state.updateMouse(e.clientX, e.clientY);
                 let dist = Math.sqrt(state.prevScreen.distanceToSquared(curr));
                 if (!state.hasMoved && dist > state.DRAG_THRESHOLD) {
                     state.hasMoved = true;
+                    state.infiniteInertia = false;
                     clearLongPressTimer();
                     clearHover();
                     document.body.style.cursor = 'grabbing';
