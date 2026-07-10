@@ -83,7 +83,7 @@ jobs:
           > \`${URL}\`
           EOF
           
-          echo "DOWNLOAD_URL=${URL}"
+          echo "✅ Summary 已生成 喵～"
 
       - name: 🐾 喵呜～
         if: always()
