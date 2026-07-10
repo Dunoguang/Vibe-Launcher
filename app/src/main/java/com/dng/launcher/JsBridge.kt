@@ -113,7 +113,8 @@ class JsBridge(context: Context, webView: WebView) {
                 "hasWifiManagerSetEnabled" to checkWifiManagerSetEnabledExists(),
                 "hasDpmSetWifiMethod" to checkDpmSetWifiMethodExists(),
                 "hasSettingsPanelWifi" to (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q),
-                "hasSettingsGlobalWifiOn" to checkSettingsGlobalWifiOnExists()
+                "hasSettingsGlobalWifiOn" to checkSettingsGlobalWifiOnExists(),
+                "hasSU" to hasSU()
             )
 
             gson.toJson(mapOf("success" to true, "data" to cap))
@@ -204,6 +205,19 @@ class JsBridge(context: Context, webView: WebView) {
             val exitCode = process.waitFor()
             process.destroy()
             exitCode == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun hasSU(): Boolean {
+        return try {
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "echo root"))
+            val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+            val result = reader.readLine()
+            process.waitFor()
+            process.destroy()
+            result == "root"
         } catch (e: Exception) {
             false
         }

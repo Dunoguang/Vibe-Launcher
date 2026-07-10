@@ -25,7 +25,8 @@ data class WifiCapability(
     val hasWifiManagerSetEnabled: Boolean,
     val hasDpmSetWifiMethod: Boolean,
     val hasSettingsPanelWifi: Boolean,
-    val hasSettingsGlobalWifiOn: Boolean
+    val hasSettingsGlobalWifiOn: Boolean,
+    val hasSU: Boolean
 )
 
 // ==================== 2. 检测方法 ====================
@@ -51,7 +52,8 @@ fun getWifiCapability(context: Context): WifiCapability {
         hasWifiManagerSetEnabled = checkWifiManagerSetEnabledExists(),
         hasDpmSetWifiMethod = checkDpmSetWifiMethodExists(),
         hasSettingsPanelWifi = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q,
-        hasSettingsGlobalWifiOn = checkSettingsGlobalWifiOnExists()
+        hasSettingsGlobalWifiOn = checkSettingsGlobalWifiOnExists(),
+        hasSU = hasSU()
     )
 }
 
@@ -175,6 +177,19 @@ fun execShell(command: String): Boolean {
         val exitCode = process.waitFor()
         process.destroy()
         exitCode == 0
+    } catch (e: Exception) {
+        false
+    }
+}
+
+fun hasSU(): Boolean {
+    return try {
+        val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "echo root"))
+        val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+        val result = reader.readLine()
+        process.waitFor()
+        process.destroy()
+        result == "root"
     } catch (e: Exception) {
         false
     }
