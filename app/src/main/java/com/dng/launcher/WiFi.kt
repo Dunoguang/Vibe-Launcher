@@ -1,3 +1,5 @@
+package com.dng.launcher
+
 import android.Manifest
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
