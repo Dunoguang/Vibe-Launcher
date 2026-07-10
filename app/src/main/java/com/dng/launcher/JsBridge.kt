@@ -347,6 +347,15 @@ class JsBridge(context: Context, webView: WebView) {
             } else {
                 @Suppress("DEPRECATION")
                 wifi.isWifiEnabled = enabled
+            }
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getMobileDataEnabled(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
             val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
