@@ -100,13 +100,7 @@ jobs:
           if-no-files-found: continue
           retention-days: 7
 
-      - name: ⬆️ 上传 Release APK 喵～
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: app-release-apk
-          path: ${{ env.RELEASE_APK }}
-          if-no-files-found: error
-          retention-days: 7
+
 
       - name: 🐾 喵呜～
         if: always()
