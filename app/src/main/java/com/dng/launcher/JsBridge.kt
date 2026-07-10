@@ -491,7 +491,8 @@ class JsBridge(context: Context, webView: WebView) {
     fun setFlashlight(enabled: Boolean): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
-            val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val camera = ctx.getSystemService(Context.CAMERA_SERVICE) as CameraManager;
+            torchEnabled = enabled
             val cameraId = camera.cameraIdList[0]
             camera.setTorchMode(cameraId, enabled)
             """{"success":true}"""
