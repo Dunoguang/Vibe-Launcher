@@ -56,7 +56,12 @@ fun toggleWifiViaDpm(context: Context, adminComponent: ComponentName, enable: Bo
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
     val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
     if (!dpm.isDeviceOwnerApp(context.packageName)) return false
-    return dpm.setWifiEnabled(adminComponent, enable)
+    return try {
+        val m = dpm.javaClass.getMethod("setWifiEnabled", ComponentName::class.java, Boolean::class.java)
+        m.invoke(dpm, adminComponent, enable) as Boolean
+    } catch (e: Exception) {
+        false
+    }
 }
 
 /**
