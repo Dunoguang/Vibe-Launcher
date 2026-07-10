@@ -3,13 +3,11 @@ package com.dng.launcher
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
 import android.media.session.MediaSessionManager
@@ -373,6 +371,26 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
+    // 新增：移动数据“设置”跳转（普通应用无法直接切换）
+    @JavascriptInterface
+    fun setMobileDataEnabled(enabled: Boolean): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val intent = Intent(android.provider.Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+            } else {
+                val intent = Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(intent)
+            }
+            """{"success":false,"error":"redirecting to settings"}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
     @JavascriptInterface
     fun getBrightness(): String {
         return try {
@@ -395,7 +413,8 @@ class JsBridge(context: Context, webView: WebView) {
                 val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 ctx.startActivity(intent)
-                return """{"success":false,"error":"WRITE_SETTINGS not granted"}"""
+                // 返回字段增加 needPermission，方便前端提示
+                return """{"success":false,"error":"WRITE_SETTINGS not granted","needPermission":true}"""
             }
             Settings.System.putInt(
                 ctx.contentResolver,
@@ -487,11 +506,26 @@ class JsBridge(context: Context, webView: WebView) {
             """{"success":false,"error":"${e.message}"}"""
         }
     }
+
     @JavascriptInterface
     fun openSettings(): String {
         return try {
             val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
             val intent = Intent(Settings.ACTION_SETTINGS)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(intent)
+            """{"success":true}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    // 新增：跳转到飞行模式设置
+    @JavascriptInterface
+    fun openAirplaneModeSettings(): String {
+        return try {
+            val ctx = contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val intent = Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             ctx.startActivity(intent)
             """{"success":true}"""
@@ -642,6 +676,4 @@ class JsBridge(context: Context, webView: WebView) {
             wv.post { wv.evaluateJavascript("window.$funcName($jsonArg);", null) }
         }
     }
-
-
 }
