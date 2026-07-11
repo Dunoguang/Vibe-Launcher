@@ -24,6 +24,7 @@ import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import java.io.File
+import rikka.shizuku.Shizuku
 
 class MainActivity : AppCompatActivity() {
 
@@ -158,6 +159,17 @@ class MainActivity : AppCompatActivity() {
 
             val bridge = JsBridge(this, wv)
             jsBridge = bridge
+            // Shizuku 权限请求
+            Shizuku.addRequestPermissionResultListener { requestCode, grantResult ->
+                if (requestCode == 10001) {
+                    Log.d(TAG, "Shizuku permission granted: $grantResult")
+                }
+            }
+            if (Shizuku.isPreV11() || Shizuku.getVersion() >= 11) {
+                if (Shizuku.checkSelfPermission() != 0) {
+                    Shizuku.requestPermission(10001)
+                }
+            }
             wv.addJavascriptInterface(bridge, "NativeBridge")
 
             // 检查历史崩溃日志
