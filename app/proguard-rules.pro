@@ -22,3 +22,6 @@
 
 # Keep JsBridge inner classes (Message etc.)
 -keep class com.dng.launcher.JsBridge$** { *; }
+
+# Keep AdminModule
+-keep class com.dng.launcher.AdminModule { *; }
