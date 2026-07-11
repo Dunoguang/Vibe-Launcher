@@ -26,12 +26,18 @@ class Permissions(private val activity: Activity) {
         private const val RC_OVERLAY = 1003
         private const val RC_ADMIN = 1004
 
-        val RUNTIME_PERMISSIONS: Array<String> = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.CAMERA
-        )
+        val RUNTIME_PERMISSIONS: Array<String> by lazy {
+            val list = mutableListOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.CAMERA
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                list.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            list.toTypedArray()
+        }
     }
 
     // 回调接口
