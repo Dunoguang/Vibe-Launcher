@@ -2,4 +2,6 @@
 <resources>
     <string name="app_name">Vibe Launcher</string>
     <string name="in_app_title">Vibe Launcher</string>
+    <string name="in_app_title">Vibe Launcher</string>
+    <string name="accessibility_service_description">为 Vibe Launcher 提供无障碍能力，用于获取当前应用包名等</string>
 </resources>
