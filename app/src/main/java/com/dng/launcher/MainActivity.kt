@@ -159,13 +159,13 @@ class MainActivity : AppCompatActivity() {
 
             val bridge = JsBridge(this, wv)
             jsBridge = bridge
-            // Shizuku 权限请求
+            // Shizuku 权限请求（等 binder 收到后再检查）
             Shizuku.addRequestPermissionResultListener { requestCode, grantResult ->
                 if (requestCode == 10001) {
                     Log.d(TAG, "Shizuku permission granted: $grantResult")
                 }
             }
-            if (Shizuku.isPreV11() || Shizuku.getVersion() >= 11) {
+            Shizuku.addBinderReceivedListener {
                 if (Shizuku.checkSelfPermission() != 0) {
                     Shizuku.requestPermission(10001)
                 }
