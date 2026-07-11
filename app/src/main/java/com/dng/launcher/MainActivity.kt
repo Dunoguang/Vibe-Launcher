@@ -300,7 +300,7 @@ class MainActivity : AppCompatActivity() {
         if (!isDeviceAdminActive()) {
             val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                 putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN,
-                    ComponentName(this, VibeDeviceAdminReceiver::class.java))
+                    ComponentName(this@MainActivity, VibeDeviceAdminReceiver::class.java))
                 putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
                     "激活设备管理员后，Vibe Launcher 可以锁定屏幕、擦除数据等")
             }
@@ -316,7 +316,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun isDeviceAdminActive(): Boolean {
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        val component = ComponentName(this, VibeDeviceAdminReceiver::class.java)
+        val component = ComponentName(this@MainActivity, VibeDeviceAdminReceiver::class.java)
         return dpm.isAdminActive(component)
     }
 
