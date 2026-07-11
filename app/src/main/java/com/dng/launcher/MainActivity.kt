@@ -2,108 +2,42 @@ package com.dng.launcher
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.net.Uri
-import java.io.File
-import java.io.FileOutputStream
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.content.SharedPreferences
-import android.os.Build
-import android.view.WindowInsets
-import android.view.WindowInsetsController
 import android.window.BackEvent
 import android.window.OnBackAnimationCallback
 import android.window.OnBackInvokedDispatcher
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.addCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import android.Manifest
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
-import android.content.pm.PackageManager
-import android.provider.Settings
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "VibeLauncher"
-        private const val RC_RUNTIME_PERMS = 1001
-        private const val RC_WRITE_SETTINGS = 1002
-        private const val RC_OVERLAY = 1003
-        private const val RC_ADMIN = 1004
-
-        private val RUNTIME_PERMISSIONS = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.CAMERA
-        )
     }
 
     private lateinit var wallpaperPickerLauncher: androidx.activity.result.ActivityResultLauncher<String>
-
-    fun pickWallpaper() {
-        if (::wallpaperPickerLauncher.isInitialized) {
-            wallpaperPickerLauncher.launch("image/*")
-        }
-    }
-
     private lateinit var timeBgPickerLauncher: androidx.activity.result.ActivityResultLauncher<String>
-
-    fun pickTimeBg() {
-        if (::timeBgPickerLauncher.isInitialized) {
-            timeBgPickerLauncher.launch("image/*")
-        }
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
-            hideSystemBars()
-        }
-    }
-
-    private fun hideSystemBars() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.let { controller ->
-                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or View.SYSTEM_UI_FLAG_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            )
-        }
-    }
-
     private var webView: WebView? = null
     private var jsBridge: JsBridge? = null
-    private var errorDialogShown = false  // 每次启动重置
+    private var errorDialogShown = false
     private var currentLogFileName: String? = null
-
-    private fun getLogFile(): File {
-        val name = currentLogFileName ?: run {
-            val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
-            val ts = sdf.format(java.util.Date())
-            "log_$ts.txt"
-        }.also { currentLogFileName = it }
-        return File(filesDir, name)
-    }
+    private lateinit var permissions: Permissions
 
     private val exportLogLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain")
@@ -123,22 +57,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @Suppress("deprecation")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setTitle(R.string.in_app_title)
         setContentView(R.layout.activity_main)
 
-        // 沉浸模式：隐藏状态栏和导航栏
+        // 初始化权限管理
+        permissions = Permissions(this)
+
+        // 沉浸模式
         window.setDecorFitsSystemWindows(false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
         hideSystemBars()
 
-        // ========== 请求所有权限 ==========
-        requestAllPermissions()
+        // 请求所有权限
+        permissions.requestAllPermissions(object : Permissions.PermissionCallback {
+            override fun onRuntimePermissionsResult(granted: List<String>, denied: List<String>) {
+                if (denied.isNotEmpty()) {
+                    Log.w(TAG, "部分运行时权限被拒绝: $denied")
+                }
+            }
 
+            override fun onWriteSettingsResult(canWrite: Boolean) {
+                Log.d(TAG, "WRITE_SETTINGS 状态: $canWrite")
+            }
+
+            override fun onOverlayResult(canDraw: Boolean) {
+                Log.d(TAG, "SYSTEM_ALERT_WINDOW 状态: $canDraw")
+            }
+
+            override fun onAdminResult(isActive: Boolean) {
+                Log.d(TAG, "设备管理员状态: $isActive")
+            }
+        })
+
+        // 注册图片选择器
         wallpaperPickerLauncher = registerForActivityResult(
             ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
@@ -182,8 +137,6 @@ class MainActivity : AppCompatActivity() {
                     result.confirm()
                     return true
                 }
-
-
             }
             wv.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) {
@@ -195,44 +148,49 @@ class MainActivity : AppCompatActivity() {
                     if (!errorDialogShown) showErrorExportDialog()
                 }
 
+                @Deprecated("Deprecated in Java")
                 override fun onReceivedError(view: WebView, errorCode: Int, description: String, failingUrl: String) {
                     Log.e(TAG, "onReceivedError(deprecated): $failingUrl code=$errorCode $description")
                     if (!errorDialogShown) showErrorExportDialog()
                 }
             }
-            val bridge = JsBridge(this, wv); jsBridge = bridge; wv.addJavascriptInterface(bridge, "NativeBridge")
-            // 检查历史崩溃日志
-        filesDir.listFiles()?.filter { it.name.startsWith("crash_") }?.forEach { crashFile ->
-            try {
-                val text = crashFile.readText()
-                runOnUiThread {
-                    AlertDialog.Builder(this)
-                        .setTitle("应用上次异常退出❌")
-                        .setMessage("是否导出或分享崩溃日志？")
-                        .setPositiveButton("导出") { _, _ ->
-                            exportLogLauncher.launch(crashFile.name)
-                        }
-                        .setNeutralButton("分享") { _, _ ->
-                            try {
-                                val text = crashFile.readText()
-                                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Vibe Launcher 崩溃日志")
-                                    putExtra(android.content.Intent.EXTRA_TEXT, text)
-                                }
-                                startActivity(android.content.Intent.createChooser(intent, "分享日志"))
-                            } catch (_: Exception) {}
-                        }
-                        .setNegativeButton("删除") { _, _ ->
-                            crashFile.delete()
-                        }
-                        .show()
-                }
-            } catch (_: Exception) {}
-        }
 
-        val hotReload = prefs.getBoolean("hot_reload_enabled", false)
-            val externalHtml = java.io.File(filesDir, "index.html")
+            val bridge = JsBridge(this, wv)
+            jsBridge = bridge
+            wv.addJavascriptInterface(bridge, "NativeBridge")
+
+            // 检查历史崩溃日志
+            filesDir.listFiles()?.filter { it.name.startsWith("crash_") }?.forEach { crashFile ->
+                try {
+                    val text = crashFile.readText()
+                    runOnUiThread {
+                        AlertDialog.Builder(this)
+                            .setTitle("应用上次异常退出❌")
+                            .setMessage("是否导出或分享崩溃日志？")
+                            .setPositiveButton("导出") { _, _ ->
+                                exportLogLauncher.launch(crashFile.name)
+                            }
+                            .setNeutralButton("分享") { _, _ ->
+                                try {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, "Vibe Launcher 崩溃日志")
+                                        putExtra(Intent.EXTRA_TEXT, text)
+                                    }
+                                    startActivity(Intent.createChooser(intent, "分享日志"))
+                                } catch (_: Exception) {}
+                            }
+                            .setNegativeButton("删除") { _, _ ->
+                                crashFile.delete()
+                            }
+                            .show()
+                    }
+                } catch (_: Exception) {}
+            }
+
+            // 加载页面
+            val hotReload = prefs.getBoolean("hot_reload_enabled", false)
+            val externalHtml = File(filesDir, "index.html")
             val loadPath = if (hotReload && externalHtml.exists()) {
                 Log.d(TAG, "loading external index.html from $externalHtml (hot-reload ON)")
                 "file://${externalHtml.absolutePath}"
@@ -269,52 +227,53 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ==================== 权限请求 ====================
-
-    private fun requestAllPermissions() {
-        // 1. 运行时危险权限
-        val needRuntime = RUNTIME_PERMISSIONS.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }.toTypedArray()
-        if (needRuntime.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, needRuntime, RC_RUNTIME_PERMS)
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            hideSystemBars()
         }
-
-        // 2. 特殊权限：WRITE_SETTINGS
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.System.canWrite(this)) {
-            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
-                data = Uri.parse("package:$packageName")
-            }
-            startActivityForResult(intent, RC_WRITE_SETTINGS)
-        }
-
-        // 3. 特殊权限：SYSTEM_ALERT_WINDOW
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
-                data = Uri.parse("package:$packageName")
-            }
-            startActivityForResult(intent, RC_OVERLAY)
-        }
-
-        // 4. 设备管理员激活引导
-        if (!isDeviceAdminActive()) {
-            val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN,
-                    ComponentName(this@MainActivity, VibeDeviceAdminReceiver::class.java))
-                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                    "激活设备管理员后，Vibe Launcher 可以锁定屏幕、擦除数据等")
-            }
-            startActivityForResult(intent, RC_ADMIN)
-        }
-
     }
 
-    private fun isDeviceAdminActive(): Boolean {
-        val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        val component = ComponentName(this@MainActivity, VibeDeviceAdminReceiver::class.java)
-        return dpm.isAdminActive(component)
+    private fun hideSystemBars() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.let { controller ->
+                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                or View.SYSTEM_UI_FLAG_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            )
+        }
     }
 
+    fun pickWallpaper() {
+        if (::wallpaperPickerLauncher.isInitialized) {
+            wallpaperPickerLauncher.launch("image/*")
+        }
+    }
+
+    fun pickTimeBg() {
+        if (::timeBgPickerLauncher.isInitialized) {
+            timeBgPickerLauncher.launch("image/*")
+        }
+    }
+
+    private fun getLogFile(): File {
+        val name = currentLogFileName ?: run {
+            val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
+            val ts = sdf.format(java.util.Date())
+            "log_$ts.txt"
+        }.also { currentLogFileName = it }
+        return File(filesDir, name)
+    }
+
+    // ==================== 权限结果处理 ====================
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -322,31 +281,12 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == RC_RUNTIME_PERMS) {
-            val denied = permissions.filterIndexed { i, _ ->
-                grantResults[i] != PackageManager.PERMISSION_GRANTED
-            }
-            if (denied.isNotEmpty()) {
-                Log.w(TAG, "权限被拒绝: $denied")
-            } else {
-                Log.d(TAG, "所有运行时权限已授予")
-            }
-        }
+        this.permissions.handleRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        when (requestCode) {
-            RC_WRITE_SETTINGS -> {
-                Log.d(TAG, "WRITE_SETTINGS 结果: canWrite=${Settings.System.canWrite(this)}")
-            }
-            RC_OVERLAY -> {
-                Log.d(TAG, "SYSTEM_ALERT_WINDOW 结果: canDrawOverlays=${Settings.canDrawOverlays(this)}")
-            }
-            RC_ADMIN -> {
-                Log.d(TAG, "设备管理员结果: isActive=${isDeviceAdminActive()}")
-            }
-        }
+        permissions.handleActivityResult(requestCode, resultCode, data)
     }
 
     private fun showErrorExportDialog() {

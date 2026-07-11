@@ -17,6 +17,7 @@ class JsBridge(context: Context, webView: WebView) {
     private val mediaModule = MediaModule(this)
     private val wallpaperModule = WallpaperModule(this)
     private val infoModule = InfoModule(this)
+    private val adminModule = AdminModule(this)  // 新增
 
     // 委托方法给各个模块
     @JavascriptInterface
@@ -151,12 +152,21 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun getNetworkInfo() = infoModule.getNetworkInfo()
 
+    // ============ AdminModule 委托 ============
+    @JavascriptInterface
+    fun lockScreen(callbackId: String) = adminModule.lockScreen(callbackId)
+
+    @JavascriptInterface
+    fun isAdminActive(callbackId: String) = adminModule.isAdminActive(callbackId)
+
     // 内部回调方法
     fun callback(funcName: String, jsonArg: String) {
         webViewRef.get()?.let { wv ->
             wv.post { wv.evaluateJavascript("window.$funcName($jsonArg);", null) }
         }
     }
+
+    fun getContext(): Context? = contextRef.get()
 
     // 壁纸回调
     fun onWallpaperPicked(uri: android.net.Uri?) {
