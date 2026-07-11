@@ -64,7 +64,7 @@
 
         <!-- ========== 设备管理员 ========== -->
         <receiver
-            android:name=".VibeDeviceAdminReceiver"
+            android:name=".Admin"
             android:exported="true"
             android:permission="android.permission.BIND_DEVICE_ADMIN">
             <intent-filter>
