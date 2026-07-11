@@ -29,9 +29,12 @@ import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import com.google.gson.Gson
+import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStreamReader
 import java.lang.ref.WeakReference
+import java.nio.charset.StandardCharsets
 import java.text.Collator
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -52,6 +55,70 @@ class JsBridge(context: Context, webView: WebView) {
     data class AppInfo(val packageName: String, val appName: String, val isSystem: Boolean)
     data class AppsResult(val success: Boolean, val apps: List<AppInfo>)
     data class IconResult(val packageName: String, val iconUrl: String)
+
+    // ==================== Shell 执行 ====================
+
+    /**
+     * 执行 Shell 命令（异步回调）
+     * @param command 要执行的命令
+     * @param callbackId 回调ID，用于在 JS 中识别
+     */
+    @JavascriptInterface
+    fun execShell(command: String, callbackId: String) {
+        if (command.isBlank()) {
+            callback("_onShellResult", """{"callbackId":"$callbackId","stdout":"","stderr":"Command is empty","statusCode":-1}""")
+            return
+        }
+
+        Thread {
+            var process: Process? = null
+            try {
+                process = ProcessBuilder("sh").start()
+                
+                process!!.outputStream.use { out ->
+                    out.write((command + "\n").toByteArray(StandardCharsets.UTF_8))
+                    out.write("exit\n".toByteArray(StandardCharsets.UTF_8))
+                    out.flush()
+                }
+                
+                val stdout = readAll(process!!.inputStream)
+                val stderr = readAll(process!!.errorStream)
+                val statusCode = process!!.waitFor()
+                
+                val result = mapOf(
+                    "callbackId" to callbackId,
+                    "stdout" to stdout,
+                    "stderr" to stderr,
+                    "statusCode" to statusCode
+                )
+                callback("_onShellResult", gson.toJson(result))
+            } catch (e: Exception) {
+                val result = mapOf(
+                    "callbackId" to callbackId,
+                    "stdout" to "",
+                    "stderr" to (e.message ?: "Unknown error"),
+                    "statusCode" to -1
+                )
+                callback("_onShellResult", gson.toJson(result))
+            } finally {
+                process?.destroy()
+            }
+        }.start()
+    }
+
+    private fun readAll(inputStream: java.io.InputStream): String {
+        val builder = StringBuilder()
+        BufferedReader(InputStreamReader(inputStream, StandardCharsets.UTF_8)).use { reader ->
+            var line: String?
+            var first = true
+            while (reader.readLine().also { line = it } != null) {
+                if (!first) builder.append('\n')
+                builder.append(line)
+                first = false
+            }
+        }
+        return builder.toString()
+    }
 
     // ==================== WiFi 检测方法 ====================
 
@@ -162,11 +229,11 @@ class JsBridge(context: Context, webView: WebView) {
     }
 
     private fun execSvcWifi(enable: Boolean): Boolean {
-        return execShell("svc wifi ${if (enable) "enable" else "disable"}")
+        return execShellSync("svc wifi ${if (enable) "enable" else "disable"}")
     }
 
     private fun execSvcWifiWithSu(enable: Boolean): Boolean {
-        return execShell("su -c svc wifi ${if (enable) "enable" else "disable"}")
+        return execShellSync("su -c svc wifi ${if (enable) "enable" else "disable"}")
     }
 
     private fun execOpenWifiPanel(context: Context): Boolean {
@@ -199,7 +266,7 @@ class JsBridge(context: Context, webView: WebView) {
         }
     }
 
-    private fun execShell(command: String): Boolean {
+    private fun execShellSync(command: String): Boolean {
         return try {
             val process = Runtime.getRuntime().exec(command)
             val exitCode = process.waitFor()
