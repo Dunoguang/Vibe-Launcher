@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @Suppress("deprecation")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setTitle(R.string.in_app_title)
