@@ -30,6 +30,7 @@ fun execOpenWifiSettings(context: Context): Boolean {
     }
 }
 
+@Suppress("DEPRECATION")
 fun getCurrentWifiInfo(context: Context): Pair<String, Int>? {
     return try {
         val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager

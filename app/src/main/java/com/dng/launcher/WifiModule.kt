@@ -74,6 +74,7 @@ class WifiModule(private val bridge: JsBridge) {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun execWifiManager(context: Context, enable: Boolean): Boolean {
         val wifi = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
         return wifi.setWifiEnabled(enable)
@@ -91,6 +92,7 @@ class WifiModule(private val bridge: JsBridge) {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun getCurrentWifiInfo(context: Context): Pair<String, Int>? {
         return try {
             val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
