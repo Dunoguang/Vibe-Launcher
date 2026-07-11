@@ -32,6 +32,9 @@ class JsBridge(context: Context, webView: WebView) {
     fun openWifiSettings() = wifiModule.openWifiSettings()
 
     @JavascriptInterface
+    fun getCurrentWifiInfo() = wifiModule.getCurrentWifiInfo()
+
+    @JavascriptInterface
     fun requestInstalledApps() = appModule.requestInstalledApps()
 
     @JavascriptInterface

@@ -29,3 +29,15 @@ fun execOpenWifiSettings(context: Context): Boolean {
         false
     }
 }
+
+fun getCurrentWifiInfo(context: Context): Pair<String, Int>? {
+    return try {
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wifiInfo = wifiManager.connectionInfo ?: return null
+        val ssid = wifiInfo.ssid?.replace("^\"|\"$".toRegex(), "") ?: ""
+        if (ssid.isEmpty() || ssid == "<unknown ssid>") return null
+        Pair(ssid, wifiInfo.rssi)
+    } catch (e: Exception) {
+        null
+    }
+}

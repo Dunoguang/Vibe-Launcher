@@ -52,6 +52,28 @@ class WifiModule(private val bridge: JsBridge) {
         }
     }
 
+    @JavascriptInterface
+    fun getCurrentWifiInfo(): String {
+        return try {
+            val ctx = bridge.contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val result = getCurrentWifiInfo(ctx)
+            if (result != null) {
+                val (ssid, rssi) = result
+                gson.toJson(
+                    mapOf(
+                        "success" to true,
+                        "ssid" to ssid,
+                        "rssi" to rssi
+                    )
+                )
+            } else {
+                """{"success":false,"error":"not connected to wifi or insufficient permission"}"""
+            }
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
     private fun execWifiManager(context: Context, enable: Boolean): Boolean {
         val wifi = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
         return wifi.setWifiEnabled(enable)
@@ -66,6 +88,18 @@ class WifiModule(private val bridge: JsBridge) {
             true
         } catch (e: Exception) {
             false
+        }
+    }
+
+    private fun getCurrentWifiInfo(context: Context): Pair<String, Int>? {
+        return try {
+            val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val wifiInfo = wifiManager.connectionInfo ?: return null
+            val ssid = wifiInfo.ssid?.replace("^\"|\"$".toRegex(), "") ?: ""
+            if (ssid.isEmpty() || ssid == "<unknown ssid>") return null
+            Pair(ssid, wifiInfo.rssi)
+        } catch (e: Exception) {
+            null
         }
     }
 }
