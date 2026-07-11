@@ -71,7 +71,7 @@ class JsBridge(context: Context, webView: WebView) {
         }
 
         Thread {
-            var process: Process? = null
+            var process: java.lang.Process? = null
             try {
                 process = ProcessBuilder("sh").start()
                 

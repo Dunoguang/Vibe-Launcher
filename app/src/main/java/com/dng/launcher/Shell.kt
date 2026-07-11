@@ -11,7 +11,7 @@ object Shell {
         }
         
         Thread {
-            var process: Process? = null
+            var process: java.lang.Process? = null
             try {
                 process = ProcessBuilder("sh").start()
                 
