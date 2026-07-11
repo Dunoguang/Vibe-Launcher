@@ -62,6 +62,14 @@
             </intent-filter>
         </activity>
 
+        <!-- ========== Shizuku ========== -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="com.dng.launcher.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
         <!-- ========== 设备管理员 ========== -->
         <receiver
             android:name=".Admin"

@@ -51,6 +51,9 @@ android {
 }
 
 dependencies {
+    val shizuku_version = "13.1.5"
+    implementation("dev.rikka.shizuku:api:$shizuku_version")
+    implementation("dev.rikka.shizuku:provider:$shizuku_version")
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("com.google.code.gson:gson:2.11.0")
 }

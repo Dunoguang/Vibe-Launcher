@@ -11,18 +11,27 @@ class JsBridge(context: Context, webView: WebView) {
 
     // 模块实例
     private val shellModule = ShellModule(this)
+    private val shizukuModule = ShizukuModule(this)  // 新增
     private val wifiModule = WifiModule(this)
     private val appModule = AppModule(this)
     private val systemModule = SystemModule(this)
     private val mediaModule = MediaModule(this)
     private val wallpaperModule = WallpaperModule(this)
     private val infoModule = InfoModule(this)
-    private val adminModule = AdminModule(this)  // 新增
+    private val adminModule = AdminModule(this)
 
-    // 委托方法给各个模块
+    // ============ ShizukuModule 委托 ============
+    @JavascriptInterface
+    fun shizukuIsConnected(): String = shizukuModule.isConnected()
+
+    @JavascriptInterface
+    fun shizukuExecShell(command: String, callbackId: String) = shizukuModule.execShell(command, callbackId)
+
+    // ============ ShellModule 委托 ============
     @JavascriptInterface
     fun execShell(command: String, callbackId: String) = shellModule.execShell(command, callbackId)
 
+    // ============ WifiModule 委托 ============
     @JavascriptInterface
     fun getWifiState() = wifiModule.getWifiState()
 
@@ -35,6 +44,7 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun getCurrentWifiInfo() = wifiModule.getCurrentWifiInfo()
 
+    // ============ AppModule 委托 ============
     @JavascriptInterface
     fun requestInstalledApps() = appModule.requestInstalledApps()
 
@@ -50,6 +60,7 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun openAppDetails(packageName: String) = appModule.openAppDetails(packageName)
 
+    // ============ SystemModule 委托 ============
     @JavascriptInterface
     fun setHotReload(enabled: Boolean) = systemModule.setHotReload(enabled)
 
@@ -122,12 +133,14 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun hotspotEnabled() = systemModule.hotspotEnabled()
 
+    // ============ MediaModule 委托 ============
     @JavascriptInterface
     fun getMusicInfo() = mediaModule.getMusicInfo()
 
     @JavascriptInterface
     fun getMusicCoverUrl() = mediaModule.getMusicCoverUrl()
 
+    // ============ WallpaperModule 委托 ============
     @JavascriptInterface
     fun pickWallpaper() = wallpaperModule.pickWallpaper()
 
@@ -146,6 +159,7 @@ class JsBridge(context: Context, webView: WebView) {
     @JavascriptInterface
     fun removeTimeBg() = wallpaperModule.removeTimeBg()
 
+    // ============ InfoModule 委托 ============
     @JavascriptInterface
     fun getSystemInfo() = infoModule.getSystemInfo()
 
