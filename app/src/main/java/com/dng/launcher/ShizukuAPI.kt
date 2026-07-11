@@ -1,10 +1,11 @@
 package com.dng.launcher
 
+import android.os.ParcelFileDescriptor
+import moe.shizuku.server.IShizukuService
 import rikka.shizuku.Shizuku
 
 object ShizukuAPI {
 
-    // 1. 检查是否连接
     fun isConnected(): Boolean {
         return try {
             Shizuku.pingBinder()
@@ -13,7 +14,6 @@ object ShizukuAPI {
         }
     }
 
-    // 2. 执行命令返回三要素
     fun execute(command: String, callback: (CommandResult) -> Unit) {
         if (command.isBlank()) {
             callback(CommandResult("", "Command is empty", -1))
@@ -27,19 +27,27 @@ object ShizukuAPI {
 
         Thread {
             try {
-                val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)
-                val stdout = process.inputStream.bufferedReader().readText()
-                val stderr = process.errorStream.bufferedReader().readText()
-                val statusCode = process.waitFor()
+                val binder = Shizuku.getBinder()
+                    ?: throw IllegalStateException("Binder is null")
+                val service = IShizukuService.Stub.asInterface(binder)
+                val remote = service.newProcess(arrayOf("sh", "-c", command), null, null)
 
-                callback(CommandResult(stdout.trim(), stderr.trim(), statusCode))
+                val stdout = readFromPfd(remote.inputStream)
+                val stderr = readFromPfd(remote.errorStream)
+                val statusCode = remote.waitFor()
+
+                callback(CommandResult(stdout, stderr, statusCode))
             } catch (e: Exception) {
                 callback(CommandResult("", e.message ?: "Unknown error", -1))
             }
         }.start()
     }
 
-    // 三要素数据类
+    private fun readFromPfd(pfd: ParcelFileDescriptor?): String {
+        if (pfd == null) return ""
+        return ParcelFileDescriptor.AutoCloseInputStream(pfd).bufferedReader().readText().trim()
+    }
+
     data class CommandResult(
         val stdout: String,
         val stderr: String,
