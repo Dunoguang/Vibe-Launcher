@@ -265,6 +265,7 @@ state.updateSphereMinHint();
                 }
             }
             export function loadRealIcon(sprite, iconUrl) {
+                console.log('[DEBUG] loadRealIcon:', iconUrl);
                 state.pendingIconLoads++;
                 let img = new Image();
                 img.onload = function() {
@@ -299,8 +300,10 @@ state.updateSphereMinHint();
             }
             // ========== NativeBridge ==========
             export let tryLoadApps = () => {
+                console.log('[DEBUG] NativeBridge detected:', typeof NativeBridge !== 'undefined', 'requestInstalledApps exists:', typeof NativeBridge !== 'undefined' && typeof NativeBridge.requestInstalledApps === 'function');
                 if (typeof NativeBridge !== 'undefined' && NativeBridge.requestInstalledApps) {
                     state.nativeBridgeReady = true;
+                    console.log('[DEBUG] Calling NativeBridge.requestInstalledApps()');
                     NativeBridge.requestInstalledApps();
                 } else {
                     setTimeout(async function() {
@@ -572,6 +575,7 @@ state.updateSphereMinHint();
                 } catch(e) {}
             };
             window._onAppsLoaded = function(json) {
+                console.log('[DEBUG] _onAppsLoaded received:', typeof json === 'string' ? json.substring(0, 200) : JSON.stringify(json).substring(0, 200));
                 try {
                     let data = typeof json === 'string' ? JSON.parse(json) : json;
                     if (data.success && data.apps && data.apps.length > 0) {
@@ -598,13 +602,18 @@ state.updateSphereMinHint();
                 }
             };
             window._onIconsLoaded = function(json) {
+                console.log('[DEBUG] _onIconsLoaded received:', typeof json === 'string' ? json.substring(0, 300) : JSON.stringify(json).substring(0, 300));
                 try {
                     let iconData = typeof json === 'string' ? JSON.parse(json) : json;
                     let iconMap = {};
                     if (Array.isArray(iconData)) {
                         for (let i = 0; i < iconData.length; i++) {
                             let item = iconData[i];
-                            if (item.packageName && item.iconUrl) iconMap[item.packageName] = item.iconUrl;
+                            if (item.packageName && item.iconUrl) {
+                                iconMap[item.packageName] = item.iconUrl;
+                            } else if (item.packageName && !item.iconUrl) {
+                                console.warn('[DEBUG] empty iconUrl for:', item.packageName);
+                            }
                         }
                     }
                     for (let j = 0; j < state.sprites.length; j++) {
@@ -616,5 +625,8 @@ state.updateSphereMinHint();
                         }
                     }
                 } catch (e) { console.error('解析图标数据失败:', e); }
+            };
+            window._onIconsError = function(msg) {
+                console.error('[DEBUG] _onIconsError:', msg);
             };
             // ========== 旋转控制 ==========

@@ -307,11 +307,6 @@ class MainActivity : AppCompatActivity() {
             startActivityForResult(intent, RC_ADMIN)
         }
 
-        // 5. 无障碍服务引导
-        if (!isAccessibilityServiceEnabled()) {
-            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-            startActivity(intent)
-        }
     }
 
     private fun isDeviceAdminActive(): Boolean {
@@ -320,14 +315,6 @@ class MainActivity : AppCompatActivity() {
         return dpm.isAdminActive(component)
     }
 
-    private fun isAccessibilityServiceEnabled(): Boolean {
-        val service = ComponentName(this, VibeAccessibilityService::class.java)
-        val enabledServices = Settings.Secure.getString(
-            contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: return false
-        return enabledServices.split(':').any { it.equals(service.flattenToString(), ignoreCase = true) }
-    }
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
