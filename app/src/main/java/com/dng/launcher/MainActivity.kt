@@ -23,7 +23,6 @@ import android.window.OnBackInvokedDispatcher
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
@@ -67,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         permissions = Permissions(this)
 
         // 沉浸模式
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.setDecorFitsSystemWindows(false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
@@ -115,6 +114,8 @@ class MainActivity : AppCompatActivity() {
                 javaScriptEnabled = true
                 allowFileAccess = true
                 domStorageEnabled = true
+                allowUniversalAccessFromFileURLs = true
+                allowFileAccessFromFileURLs = true
             }
             wv.overScrollMode = View.OVER_SCROLL_NEVER
             wv.webChromeClient = object : WebChromeClient() {
