@@ -1,5 +1,6 @@
 package com.dng.launcher
 
+import android.Manifest
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
@@ -25,7 +26,7 @@ class Permissions(private val activity: Activity) {
         private const val RC_OVERLAY = 1003
         private const val RC_ADMIN = 1004
 
-        val RUNTIME_PERMISSIONS = arrayOf(
+        val RUNTIME_PERMISSIONS: Array<String> = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.READ_PHONE_STATE,
@@ -58,7 +59,7 @@ class Permissions(private val activity: Activity) {
      * 1. 请求运行时危险权限
      */
     private fun requestRuntimePermissions() {
-        val needRuntime = RUNTIME_PERMISSIONS.filter {
+        val needRuntime: Array<String> = RUNTIME_PERMISSIONS.filter {
             ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED
         }.toTypedArray()
 
@@ -193,22 +194,5 @@ class Permissions(private val activity: Activity) {
         return RUNTIME_PERMISSIONS.all {
             ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED
         }
-    }
-
-    /**
-     * 检查所有特殊权限是否已授予
-     */
-    fun hasAllSpecialPermissions(): Boolean {
-        val canWrite = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.System.canWrite(activity)
-        val canDraw = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(activity)
-        val isAdmin = isDeviceAdminActive()
-        return canWrite && canDraw && isAdmin
-    }
-
-    /**
-     * 检查所有权限是否完整
-     */
-    fun hasAllPermissions(): Boolean {
-        return hasAllRuntimePermissions() && hasAllSpecialPermissions()
     }
 }

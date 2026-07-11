@@ -11,7 +11,7 @@ class AdminModule(private val bridge: JsBridge) {
 
     @JavascriptInterface
     fun lockScreen(callbackId: String) {
-        val context = bridge.getContext()
+        val context = bridge.getContext() ?: return
         val success = Lock.lockScreen(context)
         
         val data = mapOf(
@@ -23,7 +23,7 @@ class AdminModule(private val bridge: JsBridge) {
 
     @JavascriptInterface
     fun isAdminActive(callbackId: String) {
-        val context = bridge.getContext()
+        val context = bridge.getContext() ?: return
         val active = Lock.isAdminActive(context)
         
         val data = mapOf(
