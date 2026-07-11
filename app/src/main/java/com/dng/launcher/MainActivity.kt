@@ -165,7 +165,7 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "Shizuku permission granted: $grantResult")
                 }
             }
-            Shizuku.addBinderReceivedListener {
+            Shizuku.addBinderReceivedListenerSticky {
                 if (Shizuku.checkSelfPermission() != 0) {
                     Shizuku.requestPermission(10001)
                 }
