@@ -134,4 +134,12 @@ class AppModule(private val bridge: JsBridge) {
             """{"success":false,"error":"${e.message}"}"""
         }
     }
+
+    @JavascriptInterface
+    fun clearIconCache() {
+        try {
+            iconCacheDir.listFiles()?.forEach { it.delete() }
+        } catch (_: Exception) {}
+    }
+
 }
