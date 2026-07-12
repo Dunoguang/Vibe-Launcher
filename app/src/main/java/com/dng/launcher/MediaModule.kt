@@ -1,6 +1,7 @@
 package com.dng.launcher
 
 import android.content.Context
+import android.content.ComponentName
 import android.graphics.Bitmap
 import android.media.session.MediaSessionManager
 import android.webkit.JavascriptInterface
@@ -16,7 +17,7 @@ class MediaModule(private val bridge: JsBridge) {
         return try {
             val ctx = bridge.contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
             val sm = ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-            val sessions = sm.getActiveSessions(null)
+            val sessions = sm.getActiveSessions(ComponentName(ctx, MusicNotificationListener::class.java))
             if (sessions.isNotEmpty()) {
                 val controller = sessions[0]
                 val metadata = controller.metadata
@@ -40,7 +41,7 @@ class MediaModule(private val bridge: JsBridge) {
         return try {
             val ctx = bridge.contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
             val sm = ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-            val sessions = sm.getActiveSessions(null)
+            val sessions = sm.getActiveSessions(ComponentName(ctx, MusicNotificationListener::class.java))
             if (sessions.isNotEmpty()) {
                 val controller = sessions[0]
                 val metadata = controller.metadata
