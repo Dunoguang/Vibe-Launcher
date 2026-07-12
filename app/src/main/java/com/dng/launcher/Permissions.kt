@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import com.dng.launcher.MusicNotificationListener
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -204,6 +205,16 @@ class Permissions(private val activity: Activity) {
     }
 
     private fun requestNotificationListener() {
+        // 检查是否已授权
+        val enabled = Settings.Secure.getString(
+            activity.contentResolver,
+            "enabled_notification_listeners"
+        )
+        val component = "${activity.packageName}/${MusicNotificationListener::class.java.name}"
+        if (enabled?.contains(component) == true) {
+            Log.d(TAG, "通知监听已授权")
+            return
+        }
         try {
             val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
