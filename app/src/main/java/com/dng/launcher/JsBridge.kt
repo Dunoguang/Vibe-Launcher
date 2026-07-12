@@ -50,6 +50,8 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
     fun requestAppIcons(packageNamesJson: String, iconRes: Int) = appModule.requestAppIcons(packageNamesJson, iconRes)
+    @JavascriptInterface
+    fun clearIconCache() = appModule.clearIconCache()
 
     @JavascriptInterface
     fun launchApp(packageName: String) = appModule.launchApp(packageName)
