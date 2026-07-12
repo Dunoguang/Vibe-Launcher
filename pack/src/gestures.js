@@ -199,8 +199,14 @@ state.updateMouse(e.clientX, e.clientY);
                         if (deltaY > 8) state.timeViewSwipe.direction = 'up';
                         else if (deltaY < -8) state.timeViewSwipe.direction = 'down';
                     }
-                    // 面板已展开时阻止退出
+                    // 面板已展开时：只允许关闭面板，不允许退出时间视图
                     if (isOpen) {
+                        if (!isDraggingPanel && deltaY > 3) {
+                            onPanelDown(e);
+                        }
+                        if (isDraggingPanel) {
+                            onPanelMove(e);
+                        }
                         return;
                     }
                     // 向下滑动 - 交给控制中心面板
@@ -380,7 +386,7 @@ state.updateMouse(e.clientX, e.clientY);
                     // 向下滑动但未触发面板
                     if (swipeData.direction === 'down') {
                         if (state.zoomLevel < state.defaultZoom) {
-                            state.animateZoom(state.defaultZoom);
+                            state.startZoomAnimation(state.defaultZoom);
                         }
                         return;
                     }
@@ -398,7 +404,7 @@ state.updateMouse(e.clientX, e.clientY);
                                 let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                                 state.inertiaQ.copy(smallQ);
                             });
-                        } else {                        } else {
+                        } else {
                             state.startZoomAnimation(state.timeViewZoom, state.ANIM_DURATION, function() {
                                 state.zoomLevel = state.timeViewZoom;
                                 state.applyZoom();
@@ -519,7 +525,7 @@ state.updateMouse(e.clientX, e.clientY);
                 state.topSwipeData = null;
                     if (bsd.direction === 'down') {
                         if (state.zoomLevel < state.defaultZoom) {
-                            state.animateZoom(state.defaultZoom);
+                            state.startZoomAnimation(state.defaultZoom);
                         }
                         return;
                     }
@@ -560,6 +566,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             }
             let onTouchStart = (e) => {
                 if (e.touches.length === 2) {
+                    if (state.isInTimeView) { pinchStartDist = 0; return; }
                     pinchStartDist = getTouchDist(e.touches);
                     pinchStartZoom = state.zoomLevel;
                     state.isDragging = false;
@@ -575,6 +582,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
             }
             let onTouchMove = (e) => {
                 if (e.touches.length === 2) {
+                    if (state.isInTimeView) { pinchStartDist = 0; return; }
                     if (e.cancelable) e.preventDefault();
                     let dist = getTouchDist(e.touches);
                     if (pinchStartDist > 0) {

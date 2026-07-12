@@ -386,7 +386,7 @@ import { execShell, execShellShizuku, detectCapabilities, autoSelectMethod, devi
         }
     }
     // ========== 定时同步 ==========
-    let syncInterval = null;
+    let syncInterval = null, airplaneInterval = null;
     function startSyncInterval() {
         if (syncInterval) clearInterval(syncInterval);
         syncInterval = setInterval(syncInitialState, 1000);

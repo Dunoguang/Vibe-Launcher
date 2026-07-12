@@ -359,6 +359,16 @@ state.updateSphereMinHint();
                     state._backType = '';
                     return;
                 }
+                // 控制中心面板展开时，返回手势由面板接管
+                var panelEl = document.getElementById('panel');
+                if (panelEl) {
+                    var matrix = new WebKitCSSMatrix(getComputedStyle(panelEl).transform);
+                    if (matrix.m42 > -panelEl.offsetHeight * 0.9) {
+                        state._backType = 'panel';
+                        state._backProgress = 0;
+                        return;
+                    }
+                }
                 // 忽略进入时间视图后短时间内（500ms）的系统返回手势（可能是旋转动画触发的误判）
                 if (state._backType === '' && state._timeEnteredAt && performance.now() - state._timeEnteredAt < 500) {
                     state._backProgress = -1;
@@ -395,6 +405,13 @@ state.updateSphereMinHint();
                     }
                     state.zoomLevel = state._backStartZoom + (state.defaultZoom - state._backStartZoom) * state.materialEasing(p);
                     state.applyZoom();
+                } else if (state._backType === 'panel') {
+                    var panelEl = document.getElementById('panel');
+                    if (panelEl) {
+                        var ph = panelEl.offsetHeight;
+                        var ep = state.materialEasing(p);
+                        panelEl.style.transform = 'translateY(' + (-ph * ep) + 'px)';
+                    }
                 } else {
                     let t = state.materialEasing(p);
                     let z = state._backStartZoom + (state.defaultZoom - state._backStartZoom) * t;
@@ -409,6 +426,15 @@ state.updateSphereMinHint();
                 if (state._backProgress < 0) return;
                 let _cancelP = state._backProgress;
                 state._backProgress = -1;
+                if (state._backType === 'panel') {
+                    var panelEl = document.getElementById('panel');
+                    if (panelEl) {
+                        panelEl.style.transform = 'translateY(0)';
+                        panelEl.classList.add('animate');
+                    }
+                    state._backType = '';
+                    return;
+                }
                 if (state._backType === 'settings') {
                     let overlay = document.getElementById('settings-overlay');
                     if (overlay) overlay.style.opacity = '1';
@@ -460,6 +486,16 @@ state.updateSphereMinHint();
                 state._backType = '';
             };
             window._onBackPressed = function() {
+                if (state._backProgress >= 0 && state._backType === 'panel') {
+                    state._backType = '';
+                    var panelEl = document.getElementById('panel');
+                    if (panelEl) {
+                        panelEl.style.transform = 'translateY(-' + panelEl.offsetHeight + 'px)';
+                        panelEl.classList.add('animate');
+                    }
+                    state._backProgress = -1;
+                    return;
+                }
                 if (state._backProgress >= 0 && state._backType === 'settings') {
                     state._backProgress = -1;
                     state._backType = '';
