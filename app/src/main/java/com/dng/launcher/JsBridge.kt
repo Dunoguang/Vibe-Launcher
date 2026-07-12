@@ -105,6 +105,14 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
     fun setFlashlight(enabled: Boolean) = systemModule.setFlashlight(enabled)
+    @JavascriptInterface
+    fun mediaPlayPause() = mediaModule.mediaPlayPause()
+
+    @JavascriptInterface
+    fun mediaNext() = mediaModule.mediaNext()
+
+    @JavascriptInterface
+    fun mediaPrevious() = mediaModule.mediaPrevious()
 
     @JavascriptInterface
     fun lockScreen() = systemModule.lockScreen()

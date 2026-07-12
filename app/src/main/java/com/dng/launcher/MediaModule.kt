@@ -59,4 +59,59 @@ class MediaModule(private val bridge: JsBridge) {
             """{"success":false,"error":"${e.message}"}"""
         }
     }
+
+    @JavascriptInterface
+    fun mediaPlayPause(): String {
+        return try {
+            val ctx = bridge.contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val sm = ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val sessions = sm.getActiveSessions(ComponentName(ctx, MusicNotificationListener::class.java))
+            if (sessions.isNotEmpty()) {
+                val controller = sessions[0]
+                val state = controller.playbackState
+                if (state != null && state.state == android.media.session.PlaybackState.STATE_PLAYING) {
+                    controller.transportControls.pause()
+                    return """{"success":true,"action":"pause"}"""
+                } else {
+                    controller.transportControls.play()
+                    return """{"success":true,"action":"play"}"""
+                }
+            }
+            """{"success":false,"error":"no session"}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun mediaNext(): String {
+        return try {
+            val ctx = bridge.contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val sm = ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val sessions = sm.getActiveSessions(ComponentName(ctx, MusicNotificationListener::class.java))
+            if (sessions.isNotEmpty()) {
+                sessions[0].transportControls.skipToNext()
+                return """{"success":true}"""
+            }
+            """{"success":false,"error":"no session"}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun mediaPrevious(): String {
+        return try {
+            val ctx = bridge.contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val sm = ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val sessions = sm.getActiveSessions(ComponentName(ctx, MusicNotificationListener::class.java))
+            if (sessions.isNotEmpty()) {
+                sessions[0].transportControls.skipToPrevious()
+                return """{"success":true}"""
+            }
+            """{"success":false,"error":"no session"}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message}"}"""
+        }
+    }
 }
