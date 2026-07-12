@@ -68,10 +68,10 @@ class MainActivity : AppCompatActivity() {
         permissions = Permissions(this)
 
         // 沉浸模式
-        window.setDecorFitsSystemWindows(false)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        try {
+            window.setDecorFitsSystemWindows(false)
             window.insetsController?.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
+        } catch (_: Throwable) {}
         hideSystemBars()
 
         // 请求所有权限
