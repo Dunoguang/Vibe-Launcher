@@ -201,7 +201,7 @@ state.updateMouse(e.clientX, e.clientY);
                     }
                     // 面板已展开时：只允许关闭面板，不允许退出时间视图
                     if (isOpen) {
-                        if (!isDraggingPanel && deltaY > 3) {
+                        if (!isDraggingPanel && Math.abs(deltaY) > 3) {
                             onPanelDown(e);
                         }
                         if (isDraggingPanel) {
@@ -499,6 +499,13 @@ state.updateMouse(e.clientX, e.clientY);
                     let bsd = state.timeViewSwipe;
                     state.timeViewSwipe = null;
                 state.topSwipeData = null;
+                    if (bsd.direction === 'down') {
+                        if (state.zoomLevel < state.defaultZoom) {
+                            state.startZoomAnimation(state.defaultZoom);
+                        }
+                        document.body.style.cursor = 'default';
+                        return;
+                    }
                     if (bsd.confirmed && state.zoomLevel > state.timeViewZoom + 0.1) {
                         let currentZoom = state.zoomLevel;
                         let zoomRange = state.defaultZoom - state.timeViewZoom;
