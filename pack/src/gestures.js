@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { materialEasing } from './utils.js';
+import { panel, onPanelDown, onPanelMove, onPanelUp, isDraggingPanel, isOpen } from './control-center.js';
             let checkHover = (e) => {
                 if (state.isInTimeView) return;
                 state.raycaster.setFromCamera(state.mouse, state.camera);
@@ -76,7 +77,7 @@ import { materialEasing } from './utils.js';
                 state.activePointerIds.clear();
                 state.isDragging = false;
                 state.hasMoved = false;
-                state.bottomSwipeData = null;
+                state.timeViewSwipe = null;
                 state.topSwipeData = null;
                 document.body.style.cursor = state.isInTimeView ? 'default' : (state.hoveredSprite ? 'pointer' : 'grab');
             }
@@ -90,6 +91,7 @@ import { materialEasing } from './utils.js';
                 // 可取消动作进行中：上滑跟手取消
                 if (state.cancelableAction && state.cancelableAction.phase === 'animating') {
                     state.cancelSwipeData = { pointerId: e.pointerId, startY: e.clientY, startZoom: state.zoomLevel, active: true, confirmed: false, startRot: state.sphereGroup.quaternion.clone() };
+                            direction: null,
                     state.activePointerIds.add(e.pointerId);
                     state.cancelZoomAnimation();
                     return;
@@ -110,27 +112,24 @@ import { materialEasing } from './utils.js';
                 }
                 if (!state.isInTimeView && state.activePointerIds.size === 0 && isInTopZone(e.clientY)) {
                     state.topSwipeData = { pointerId: e.pointerId, startY: e.clientY, startZoom: state.zoomLevel, active: true, confirmed: false, startTimeViewZoom: state.computeTimeViewZoom() };
+                            direction: null,
                     state.activePointerIds.add(e.pointerId);
                     state.cancelZoomAnimation();
                     return;
                 }
                 if (state.isInTimeView && state.activePointerIds.size === 0) {
-                    if (isInBottomZone(e.clientY)) {
-                        state.bottomSwipeData = {
-                            pointerId: e.pointerId,
-                            startY: e.clientY,
-                            startZoom: state.zoomLevel,
-                            active: true,
-                            confirmed: false,
-                            minY: e.clientY,
-                        };
-                        state.activePointerIds.add(e.pointerId);
-                        document.body.style.cursor = 'grabbing';
-                        state.cancelZoomAnimation();
-                        return;
-                    } else {
-                        return;
-                    }
+                    state.timeViewSwipe = {
+                        pointerId: e.pointerId,
+                        startY: e.clientY,
+                        startZoom: state.zoomLevel,
+                        direction: null,
+                        active: true,
+                        confirmed: false,
+                    };
+                    state.activePointerIds.add(e.pointerId);
+                    document.body.style.cursor = 'grabbing';
+                    state.cancelZoomAnimation();
+                    return;
                 }
                 if (state.isInTimeView) return;
                 state.activePointerIds.add(e.pointerId);
@@ -192,18 +191,34 @@ state.updateMouse(e.clientX, e.clientY);
                     }
                     return;
                 }
-                if (state.isInTimeView && state.bottomSwipeData && state.bottomSwipeData.active &&
-                    state.bottomSwipeData.pointerId === e.pointerId && state.activePointerIds.size === 1) {
-                    let deltaY = state.bottomSwipeData.startY - e.clientY;
-                    if (deltaY < -5 && e.clientY < state.bottomSwipeData.minY) {
-                        state.bottomSwipeData.minY = e.clientY;
+                if (state.isInTimeView && state.timeViewSwipe && state.timeViewSwipe.active &&
+                    state.timeViewSwipe.pointerId === e.pointerId && state.activePointerIds.size === 1) {
+                    let deltaY = state.timeViewSwipe.startY - e.clientY;
+                    // 判断滑动方向
+                    if (!state.timeViewSwipe.direction) {
+                        if (deltaY > 8) state.timeViewSwipe.direction = 'up';
+                        else if (deltaY < -8) state.timeViewSwipe.direction = 'down';
                     }
-                    if (deltaY > 3 && !state.bottomSwipeData.confirmed) {
-                        state.bottomSwipeData.confirmed = true;
+                    // 面板已展开时阻止退出
+                    if (isOpen) {
+                        return;
                     }
-                    if (state.bottomSwipeData.confirmed || deltaY > 8) {
-                        state.bottomSwipeData.confirmed = true;
-                        // 有上滑意图: 立即隐藏原生DOM
+                    // 向下滑动 - 交给控制中心面板
+                    if (state.timeViewSwipe.direction === 'down') {
+                        if (!isDraggingPanel) {
+                            onPanelDown(e);
+                        }
+                        if (isDraggingPanel) {
+                            onPanelMove(e);
+                        }
+                        return;
+                    }
+                    // 向上滑动 - 退出时间页面
+                    if (deltaY > 3 && !state.timeViewSwipe.confirmed) {
+                        state.timeViewSwipe.confirmed = true;
+                    }
+                    if (state.timeViewSwipe.confirmed || deltaY > 8) {
+                        state.timeViewSwipe.confirmed = true;
                         let tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; }
                         state.syncTimeSpriteTexture();
@@ -211,13 +226,10 @@ state.updateMouse(e.clientX, e.clientY);
                         let maxDelta = screenH * 0.7;
                         let clampedDelta = Math.max(0, Math.min(maxDelta, deltaY));
                         let zoomRange = state.defaultZoom - state.timeViewZoom;
-                        let targetZ = state.bottomSwipeData.startZoom + (clampedDelta / maxDelta) * zoomRange * 1.3;
+                        let targetZ = state.timeViewSwipe.startZoom + (clampedDelta / maxDelta) * zoomRange * 1.3;
                         targetZ = Math.max(state.timeViewZoom, Math.min(state.defaultZoom * 1.3, targetZ));
                         state.zoomLevel = targetZ;
                         state.applyZoom();
-                    }
-                    if (e.clientY < state.bottomSwipeData.minY) {
-                        state.bottomSwipeData.minY = e.clientY;
                     }
                     return;
                 }
@@ -354,12 +366,24 @@ state.updateMouse(e.clientX, e.clientY);
                         }
                     }
                 }
-                if (state.isInTimeView && state.bottomSwipeData && state.bottomSwipeData.pointerId === e.pointerId && state.bottomSwipeData.active) {
+                if (state.isInTimeView && state.timeViewSwipe && state.timeViewSwipe.pointerId === e.pointerId && state.timeViewSwipe.active) {
                     state.activePointerIds.delete(e.pointerId);
-                    let swipeData = state.bottomSwipeData;
-                    state.bottomSwipeData = null;
+                    let swipeData = state.timeViewSwipe;
+                    state.timeViewSwipe = null;
                 state.topSwipeData = null;
                     document.body.style.cursor = 'default';
+                    // 面板操作结束
+                    if (isDraggingPanel) {
+                        onPanelUp();
+                        return;
+                    }
+                    // 向下滑动但未触发面板
+                    if (swipeData.direction === 'down') {
+                        if (state.zoomLevel < state.defaultZoom) {
+                            state.animateZoom(state.defaultZoom);
+                        }
+                        return;
+                    }
                     if (swipeData.confirmed) {
                         let currentZoom = state.zoomLevel;
                         let zoomRange = state.defaultZoom - state.timeViewZoom;
@@ -374,7 +398,7 @@ state.updateMouse(e.clientX, e.clientY);
                                 let smallQ = new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015);
                                 state.inertiaQ.copy(smallQ);
                             });
-                        } else {
+                        } else {                        } else {
                             state.startZoomAnimation(state.timeViewZoom, state.ANIM_DURATION, function() {
                                 state.zoomLevel = state.timeViewZoom;
                                 state.applyZoom();
@@ -464,10 +488,10 @@ state.updateMouse(e.clientX, e.clientY);
                 if (state.activePointerIds.has(e.pointerId) && state.activePointerIds.size === 1 && state.isDragging && !state.hasMoved && !state.isInTimeView) {
                     clearHover();
                 }
-                if (state.isInTimeView && state.bottomSwipeData && state.bottomSwipeData.pointerId === e.pointerId && state.bottomSwipeData.active) {
+                if (state.isInTimeView && state.timeViewSwipe && state.timeViewSwipe.pointerId === e.pointerId && state.timeViewSwipe.active) {
                     state.activePointerIds.delete(e.pointerId);
-                    let bsd = state.bottomSwipeData;
-                    state.bottomSwipeData = null;
+                    let bsd = state.timeViewSwipe;
+                    state.timeViewSwipe = null;
                 state.topSwipeData = null;
                     if (bsd.confirmed && state.zoomLevel > state.timeViewZoom + 0.1) {
                         let currentZoom = state.zoomLevel;
@@ -486,10 +510,19 @@ state.updateMouse(e.clientX, e.clientY);
             }
             let onPointerCancel = (e) => {
                 state.activePointerIds.delete(e.pointerId);
-                if (state.isInTimeView && state.bottomSwipeData && state.bottomSwipeData.pointerId === e.pointerId) {
-                    let bsd = state.bottomSwipeData;
-                    state.bottomSwipeData = null;
+                if (state.isInTimeView && state.timeViewSwipe && state.timeViewSwipe.pointerId === e.pointerId) {
+                    if (isDraggingPanel) {
+                        onPanelUp();
+                    }
+                    let bsd = state.timeViewSwipe;
+                    state.timeViewSwipe = null;
                 state.topSwipeData = null;
+                    if (bsd.direction === 'down') {
+                        if (state.zoomLevel < state.defaultZoom) {
+                            state.animateZoom(state.defaultZoom);
+                        }
+                        return;
+                    }
                     if (bsd.confirmed && state.zoomLevel > state.timeViewZoom + 0.1) {
                         let currentZoom = state.zoomLevel;
                         let zoomRange = state.defaultZoom - state.timeViewZoom;
@@ -535,7 +568,7 @@ let dx = touches[0].clientX - touches[1].clientX, dy = touches[0].clientY - touc
                     clearHover();
                     state.wasPinching = true;
                     state.cancelZoomAnimation();
-                    state.bottomSwipeData = null;
+                    state.timeViewSwipe = null;
                 state.topSwipeData = null;
                     state.activePointerIds.clear();
                 }

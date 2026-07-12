@@ -188,9 +188,9 @@ import { execShell, execShellShizuku, detectCapabilities, autoSelectMethod, devi
         return { success: result.success, method: 'settingsPage', panelOpened: true };
     }
     // ========== 面板拖拽 ==========
-    const panel = document.getElementById('panel');
-    let startYPanel, isDraggingPanel = false, isOpen = false, panelHeight, startTranslateY, sliderActive = false;
-    function onPanelDown(e) {
+    export const panel = document.getElementById('panel');
+    export let startYPanel, isDraggingPanel = false, isOpen = false, panelHeight, startTranslateY, sliderActive = false;
+    export function onPanelDown(e) {
         if (sliderActive) return;
         startYPanel = e.touches ? e.touches[0].clientY : e.clientY;
         isDraggingPanel = true;
@@ -199,7 +199,7 @@ import { execShell, execShellShizuku, detectCapabilities, autoSelectMethod, devi
         const matrix = new WebKitCSSMatrix(getComputedStyle(panel).transform);
         startTranslateY = matrix.m42;
     }
-    function onPanelMove(e) {
+    export function onPanelMove(e) {
         if (!isDraggingPanel) return;
         e.preventDefault();
         const y = e.touches ? e.touches[0].clientY : e.clientY;
@@ -207,7 +207,7 @@ import { execShell, execShellShizuku, detectCapabilities, autoSelectMethod, devi
         translateY = Math.max(-panelHeight, Math.min(0, translateY));
         panel.style.transform = `translateY(${translateY}px)`;
     }
-    function onPanelUp() {
+    export function onPanelUp() {
         if (!isDraggingPanel) return;
         isDraggingPanel = false;
         const matrix = new WebKitCSSMatrix(getComputedStyle(panel).transform);
@@ -231,12 +231,7 @@ import { execShell, execShellShizuku, detectCapabilities, autoSelectMethod, devi
             }
         }
     }
-    document.addEventListener('touchstart', onPanelDown, { passive: true });
-    document.addEventListener('touchmove', onPanelMove, { passive: false });
-    document.addEventListener('touchend', onPanelUp);
-    document.addEventListener('mousedown', onPanelDown);
-    document.addEventListener('mousemove', onPanelMove);
-    document.addEventListener('mouseup', onPanelUp);
+    // 面板事件由 gestures.js 统一调度
     // ========== 滑块 ==========
     function setupSlider(cardId, fillId, getVal, setVal, maxVal) {
         const card = document.getElementById(cardId);
