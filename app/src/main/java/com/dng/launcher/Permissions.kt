@@ -59,6 +59,7 @@ class Permissions(private val activity: Activity) {
         requestWriteSettings()
         requestOverlayPermission()
         requestDeviceAdmin()
+        requestNotificationListener()
     }
 
     /**
@@ -201,4 +202,15 @@ class Permissions(private val activity: Activity) {
             ContextCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED
         }
     }
+
+    private fun requestNotificationListener() {
+        try {
+            val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            activity.startActivity(intent)
+        } catch (e: Exception) {
+            Log.w(TAG, "无法打开通知监听设置: ${e.message}")
+        }
+    }
+
 }
