@@ -22,7 +22,14 @@ import { state } from './state.js';
                     const bl = JSON.parse(NativeBridge.getBatteryLevel());
                     const ch = JSON.parse(NativeBridge.isCharging());
                     if (bl.success) {
-                        batteryEl.textContent = (ch.charging ? '⚡' : '🔋') + ' ' + bl.level + '%';
+                        const fillEl = document.getElementById('batteryFill');
+                        const pctEl = document.getElementById('batteryPct');
+                        if (fillEl) {
+                            const w = Math.max(0, Math.min(13, (bl.level / 100) * 13));
+                            fillEl.setAttribute('width', String(w));
+                            fillEl.setAttribute('x', String(4 + (13 - w)));
+                        }
+                        if (pctEl) pctEl.textContent = bl.level + '%';
                     }
                 } catch(e) {}
             }

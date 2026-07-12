@@ -68,14 +68,15 @@
         }
     #settings-overlay {
     position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;
-    background:rgba(0,0,0,0.6);display:none;justify-content:center;align-items:center;
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    background:rgba(0,0,0,0.3);display:none;justify-content:center;align-items:center;
+    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
 }
 #settings-card {
-    background:rgba(22,22,36,0.95);border-radius:20px;
+    background:rgba(255,255,255,0.5);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,0.3);border-radius:20px;
     width:min(88vw,88vh);aspect-ratio:1;
     display:flex;flex-direction:column;
-    overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);
+    overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.2);
     animation:slideUp 0.3s ease;
 }
 @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -83,16 +84,16 @@
     display:flex;justify-content:space-between;align-items:center;
     padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.06);
 }
-#settings-title{font-size:18px;font-weight:700;color:#fff}
-#settings-close-btn{font-size:20px;color:rgba(255,255,255,0.4);cursor:pointer;padding:4px 8px}
-#settings-close-btn:hover{color:#fff}
+#settings-title{font-size:18px;font-weight:700;color:#333}
+#settings-close-btn{font-size:20px;color:rgba(51,51,51,0.4);cursor:pointer;padding:4px 8px}
+#settings-close-btn:hover{color:#333}
 #settings-body{padding:16px 20px;overflow-y:auto;flex:1}
 #settings-body::-webkit-scrollbar{width:4px}
 #settings-body::-webkit-scrollbar-track{background:transparent}
-#settings-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.25);border-radius:2px}
-#settings-body::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.4)}
+#settings-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:2px}
+#settings-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,0.25)}
 .setting-group{margin-bottom:20px}
-.setting-label{font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px;display:flex;justify-content:space-between}
+.setting-label{font-size:13px;color:rgba(51,51,51,0.6);margin-bottom:8px;display:flex;justify-content:space-between}
 .setting-val{color:#8ab4f8;font-weight:600}
 .setting-group input[type=range]{
     width:100%;height:6px;-webkit-appearance:none;appearance:none;
@@ -132,12 +133,12 @@
 .toggle-switch input:checked+.toggle-slider:before{transform:translateX(22px)}
 
 /* Settings panel refactor */
-.settings-input{width:100%;padding:12px;font-size:15px;background:#1a1a2e;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;outline:none}
-.settings-input:focus{border-color:#8ab4f8}
-.settings-btn{flex:1;padding:12px;font-size:14px;background:#2a2a4a;color:#ccc;border:1px solid rgba(255,255,255,0.15);border-radius:8px;cursor:pointer;transition:all 0.2s}
-.settings-btn:hover{background:#3a3a5a;color:#fff}
-.settings-btn-danger{padding:12px 16px;font-size:14px;background:rgba(255,80,80,0.15);color:#ff6b6b;border:1px solid rgba(255,80,80,0.3);border-radius:8px;cursor:pointer;transition:all 0.2s}
-.settings-btn-danger:hover{background:rgba(255,80,80,0.25)}
+.settings-input{width:100%;padding:12px;font-size:15px;background:rgba(255,255,255,0.6);color:#333;border:1px solid rgba(0,0,0,0.1);border-radius:8px;outline:none}
+.settings-input:focus{border-color:#4a8ad4}
+.settings-btn{flex:1;padding:12px;font-size:14px;background:rgba(255,255,255,0.6);color:#333;border:1px solid rgba(0,0,0,0.1);border-radius:8px;cursor:pointer;transition:all 0.2s}
+.settings-btn:hover{background:rgba(255,255,255,0.8);color:#333}
+.settings-btn-danger{padding:12px 16px;font-size:14px;background:rgba(255,80,80,0.1);color:#d32f2f;border:1px solid rgba(255,80,80,0.2);border-radius:8px;cursor:pointer;transition:all 0.2s}
+.settings-btn-danger:hover{background:rgba(255,80,80,0.2)}
 .settings-row{display:flex;gap:8px;align-items:center}
 .settings-sphere{display:flex;align-items:center;gap:8px}
 .settings-hint{font-size:13px;color:rgba(255,255,255,0.4);white-space:nowrap}
@@ -270,8 +271,8 @@
     ">
         <div id="time-page-clock" style="
             text-align:center; font-size:26vw; font-weight:bold; line-height:1;
-            color:#fff;
-            text-shadow:0 0 3vw rgba(255,255,255,0.4);
+            color:rgba(255,255,255,0.5);
+            text-shadow:0 0 4vw rgba(255,255,255,0.25);
         ">12:00</div>
         <div id="time-page-date" style="
             text-align:center; font-size:5vw; margin-top:2vh;
@@ -280,8 +281,15 @@
         <div style="flex:1;"></div>
         <div id="time-page-battery" style="
             text-align:center; font-size:4vw; padding-bottom:5vh;
-            color:rgba(255,255,255,0.5);
-        ">🔋 --%</div>
+            color:rgba(255,255,255,0.5); display:flex; align-items:center; justify-content:center; gap:8px;
+        ">
+            <svg viewBox="0 0 24 24" width="4vw" height="4vw" style="display:block">
+                <rect x="2" y="7" width="17" height="10" rx="2" ry="2" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+                <line x1="19" y1="11" x2="21" y2="11" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+                <rect x="4" y="9" width="13" height="6" rx="1" fill="rgba(255,255,255,0.4)" id="batteryFill"/>
+            </svg>
+            <span id="batteryPct">--%</span>
+        </div>
     </div>
     <div id="context-menu" style="
         position:fixed; z-index:90; display:none; pointer-events:auto;
