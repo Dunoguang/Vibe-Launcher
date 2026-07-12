@@ -142,8 +142,124 @@
 .settings-sphere{display:flex;align-items:center;gap:8px}
 .settings-hint{font-size:13px;color:rgba(255,255,255,0.4);white-space:nowrap}
 </style>
+    <style>
+        .panel { width: 90vmin; height: 90vmin; background: rgba(255,255,255,0.25); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.3); border-radius: 20px; position: fixed; top: 0; left: 50%; margin-left: calc(-90vmin / 2); transform: translateY(-100%); transition: none; z-index: 100; padding: 16px; }
+        .panel.animate { transition: transform 0.4s cubic-bezier(0.32, 0.94, 0.6, 1); }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; width: 100%; height: 100%; }
+        .card { background: rgba(255,255,255,0.5); border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 10px; cursor: pointer; transition: background 0.2s; -webkit-tap-highlight-color: transparent; user-select: none; }
+        .card-wifi { grid-column: 1/3; grid-row: 1/2; }
+        .card-data { grid-column: 3/5; grid-row: 1/2; }
+        .card-music { grid-column: 1/3; grid-row: 2/4; flex-direction: column; padding: 10px 12px; cursor: default; gap: 6px; overflow: hidden; }
+        .music-info { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden; min-width: 0; width: 100%; }
+        .music-title { font-size: 13px; color: #333; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+        .music-artist { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+        .music-controls { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 4px 0; }
+        .music-btn { width: 36px; height: 36px; border: none; border-radius: 50%; background: rgba(0,0,0,0.06); cursor: pointer; display: flex; align-items: center; justify-content: center; color: #333; }
+        .music-btn svg { fill: none; stroke: #333; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+        .music-btn:active { background: rgba(0,0,0,0.15); }
+        .music-btn-play { width: 40px; height: 40px; }
+        .card.active { background: rgba(255,255,255,0.8); }
+        .card.active .icon-circle { background: rgba(51,51,51,0.15); }
+        .card.active .card-label { font-weight: 600; }
+        .card-bar1 { grid-column: 3/4; grid-row: 2/4; flex-direction: column; padding: 8px 4px 6px; position: relative; overflow: hidden; cursor: pointer; touch-action: none; justify-content: flex-end; }
+        .card-bar2 { grid-column: 4/5; grid-row: 2/4; flex-direction: column; padding: 8px 4px 6px; position: relative; overflow: hidden; cursor: pointer; touch-action: none; justify-content: flex-end; }
+        .bar-fill { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.6); border-radius: 14px; transition: height 0.05s; pointer-events: none; z-index: 0; }
+        .bar-content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }
+        .bar-icon svg { width: 20px; height: 20px; display: block; fill: none; stroke: #333; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .card-btn1, .card-btn2, .card-btn3, .card-btn4 { cursor: pointer; transition: background 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; }
+        .card-btn1.active, .card-btn2.active, .card-btn3.active, .card-btn4.active { background: rgba(255,255,255,0.8); }
+        .card-btn1.active .icon-circle, .card-btn2.active .icon-circle, .card-btn3.active .icon-circle, .card-btn4.active .icon-circle { background: rgba(51,51,51,0.15); }
+        .icon-circle { width: 36px; height: 36px; background: rgba(255,255,255,0.6); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
+        .wifi-icon { position: relative; width: 22px; height: 22px; }
+        .wifi-icon svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+        .signal-icon { display: flex; align-items: flex-end; gap: 1px; height: 18px; }
+        .signal-icon .bar { width: 3px; background: #333; border-radius: 1px; }
+        .signal-icon .bar1 { height: 4px; } .signal-icon .bar2 { height: 8px; } .signal-icon .bar3 { height: 12px; } .signal-icon .bar4 { height: 16px; }
+        .btn-icon svg { width: 20px; height: 20px; display: block; fill: none; stroke: #333; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .card-label { font-size: 13px; color: #333; white-space: nowrap; transition: font-weight 0.2s; }
+        .data-label { font-size: 13px; color: #333; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+        .btn-label { font-size: 11px; color: #333; white-space: nowrap; margin-top: -2px; }
+        .wifi-icon .wifi-arc { fill: none; stroke: #333; stroke-width: 2.5; stroke-linecap: round; }
+        .wifi-icon .wifi-arc.dim { opacity: 0.2; }
+        .wifi-icon .wifi-dot { fill: #333; }
+        .wifi-icon .wifi-dot.dim { opacity: 0.2; }
+    </style>
 </head>
 <body>
+    <div class="panel" id="panel">
+    <div class="grid">
+        <div class="card card-wifi" id="wifiCard">
+            <div class="icon-circle">
+                <div class="wifi-icon" id="wifiIcon">
+                    <svg viewBox="0 0 24 24">
+                        <path class="wifi-arc" id="arc0" d="M1 7.5a16 16 0 0 1 22 0"/>
+                        <path class="wifi-arc" id="arc1" d="M3.5 11.5a12 12 0 0 1 17 0"/>
+                        <path class="wifi-arc" id="arc2" d="M7 15.5a7 7 0 0 1 10 0"/>
+                        <path class="wifi-arc" id="arc3" d="M10.5 19.5a3 3 0 0 1 3 0"/>
+                        <circle class="wifi-dot" id="dot1" cx="12" cy="19.5" r="1.8"/>
+                    </svg>
+                </div>
+            </div>
+            <span class="card-label" id="wifiLabel">Wi-Fi</span>
+        </div>
+        <div class="card card-data" id="dataCard">
+            <div class="icon-circle"><div class="signal-icon"><div class="bar bar1"></div><div class="bar bar2"></div><div class="bar bar3"></div><div class="bar bar4"></div></div></div>
+            <span class="data-label" id="dataLabel">移动数据</span>
+        </div>
+        <div class="card card-music" id="musicCard">
+            <div class="music-info">
+                <span class="music-title" id="musicTitle">未在播放</span>
+                <span class="music-artist" id="musicArtist">—</span>
+            </div>
+            <div class="music-controls">
+                <button class="music-btn" id="btnPrev">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path d="M6 5h2v14H6z"/>
+                        <path d="M8 12l10-7v14z"/>
+                    </svg>
+                </button>
+                <button class="music-btn music-btn-play" id="btnPlay">
+                    <svg viewBox="0 0 24 24" width="22" height="22" id="playIcon">
+                        <path d="M8 5l10 7-10 7z"/>
+                    </svg>
+                    <svg viewBox="0 0 24 24" width="22" height="22" id="pauseIcon" style="display:none">
+                        <path d="M8 5h3v14H8z M13 5h3v14h-3z"/>
+                    </svg>
+                </button>
+                <button class="music-btn" id="btnNext">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path d="M18 5h2v14h-2z"/>
+                        <path d="M16 12l-9-7v14z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="card card-bar1" id="brightnessCard">
+            <div class="bar-fill" id="brightnessBarFill" style="height:50%;"></div>
+            <div class="bar-content"><div class="bar-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></div></div>
+        </div>
+        <div class="card card-bar2" id="volumeCard">
+            <div class="bar-fill" id="volumeBarFill" style="height:40%;"></div>
+            <div class="bar-content"><div class="bar-icon"><svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></div></div>
+        </div>
+        <div class="card card-btn1" id="btnAirplane">
+            <div class="icon-circle"><div class="btn-icon"><svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></div></div>
+            <span class="btn-label">飞行模式</span>
+        </div>
+        <div class="card card-btn2" id="btnFlashlight">
+            <div class="icon-circle"><div class="btn-icon"><svg viewBox="0 0 24 24"><path d="M9 18c-4 0-6-2-6-6s2-6 6-6 6 2 6 6-2 6-6 6z"/><path d="M15 9l6-6"/><path d="M15 15l6 6"/></svg></div></div>
+            <span class="btn-label">手电筒</span>
+        </div>
+        <div class="card card-btn3" id="btnLock">
+            <div class="icon-circle"><div class="btn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div></div>
+            <span class="btn-label">锁屏</span>
+        </div>
+        <div class="card card-btn4" id="btnSettings">
+            <div class="icon-circle"><div class="btn-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div></div>
+            <span class="btn-label">设置</span>
+        </div>
+    </div>
+</div>
     <div id="time-page" style="
         position:fixed; top:0; left:0; width:100vw; height:100vh;
         visibility:hidden; z-index:-1;
