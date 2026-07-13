@@ -151,7 +151,7 @@ class AppModule(private val bridge: JsBridge) {
             val files = iconCacheDir.listFiles()?.filter { it.name.endsWith(".png") }?.sortedBy { it.name } ?: emptyList()
             if (files.isEmpty()) return """{"success":false,"error":"no icons cached"}"""
 
-            val cellSize = 128
+            val cellSize = 512
             val cols = 10
             val rows = Math.ceil(files.size.toDouble() / cols).toInt()
             val atlasW = cols * cellSize
