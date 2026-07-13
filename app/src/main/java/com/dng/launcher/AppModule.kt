@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.BitmapFactory
+import android.util.Log
 import android.graphics.Path
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
@@ -67,6 +68,7 @@ class AppModule(private val bridge: JsBridge) {
                     IconResult(pkg, getOrCreateIcon(ctx, pm, pkg, targetSize))
                 }
                 bridge.callback("_onIconsLoaded", gson.toJson(results))
+                generateIconAtlas()
             } catch (e: Exception) {
                 bridge.callback("_onIconsError", "\"${e.message}\"")
             }
@@ -145,13 +147,12 @@ class AppModule(private val bridge: JsBridge) {
     }
 
 
-    @JavascriptInterface
-    fun generateIconAtlas(): String {
-        return try {
-            val ctx = bridge.contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+    private fun generateIconAtlas() {
+        try {
+            val ctx = bridge.contextRef.get() ?: return
             val cellSize = 192
             val files = iconCacheDir.listFiles()?.filter { it.name.endsWith("_${cellSize}.png") }?.sortedBy { it.name } ?: emptyList()
-            if (files.isEmpty()) return """{"success":false,"error":"no icons cached"}"""
+            if (files.isEmpty()) return
             val cols = 10
             val rows = Math.ceil(files.size.toDouble() / cols).toInt()
             val atlasW = cols * cellSize
@@ -159,7 +160,7 @@ class AppModule(private val bridge: JsBridge) {
 
             val atlas = Bitmap.createBitmap(atlasW, atlasH, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(atlas)
-            canvas.drawColor(0xFF1a1a2e.toInt()) // dark background
+            canvas.drawColor(0xFF1a1a2e.toInt())
 
             for ((index, file) in files.withIndex()) {
                 val col = index % cols
@@ -170,7 +171,6 @@ class AppModule(private val bridge: JsBridge) {
                     val src = BitmapFactory.decodeFile(file.absolutePath)
                     if (src != null) {
                         val scaled = Bitmap.createScaledBitmap(src, cellSize, cellSize, true)
-                        // 圆形裁剪 ———— 跟 createIconTextureFromImage 保持一致
                         val cx = x + cellSize / 2f
                         val cy = y + cellSize / 2f
                         val r = cellSize / 2f
@@ -188,10 +188,9 @@ class AppModule(private val bridge: JsBridge) {
             val outFile = File(ctx.cacheDir, "icon_atlas.png")
             FileOutputStream(outFile).use { atlas.compress(Bitmap.CompressFormat.PNG, 90, it) }
             atlas.recycle()
-
-            """{"success":true,"path":"${outFile.absolutePath}","width":$atlasW,"height":$atlasH,"count":${files.size},"cols":$cols,"rows":$rows,"cellSize":$cellSize}"""
+            Log.i("Vibe-Launcher", "icon_atlas generated: ${outFile.absolutePath} (${atlasW}x${atlasH}, ${files.size} icons)")
         } catch (e: Exception) {
-            """{"success":false,"error":"${e.message?.replace("\"", "\\\"")?.replace("\n", " ")}"}"""
+            Log.w("Vibe-Launcher", "icon_atlas generation failed: ${e.message}")
         }
     }
 }

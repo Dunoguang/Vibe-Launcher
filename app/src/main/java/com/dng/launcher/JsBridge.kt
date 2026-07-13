@@ -61,10 +61,6 @@ class JsBridge(context: Context, webView: WebView) {
 
     @JavascriptInterface
     fun openAppDetails(packageName: String) = appModule.openAppDetails(packageName)
-    @JavascriptInterface
-    fun generateIconAtlas(): String = appModule.generateIconAtlas()
-
-
     // ============ SystemModule 委托 ============
     @JavascriptInterface
     fun setHotReload(enabled: Boolean) = systemModule.setHotReload(enabled)

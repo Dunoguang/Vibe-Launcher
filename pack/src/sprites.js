@@ -285,25 +285,11 @@ state.updateSphereMinHint();
                 img.onerror = function() { console.warn('图标加载失败:', iconUrl); state.pendingIconLoads--; checkAllIconsLoaded(); };
                 img.src = iconUrl;
             }
-            let _atlasGenerated = false;
-            let _iconsEverRequested = false;
             export function checkAllIconsLoaded() {
                 state.checkAllIconsLoaded = checkAllIconsLoaded;
-                // 记录是否发起过图标请求
-                if (state.pendingIconLoads > 0) _iconsEverRequested = true;
                 if (state.pendingIconLoads <= 0 && state.enterAnimationComplete) {
                     state.loadingEl.style.opacity = '0';
                     setTimeout(function() { state.loadingEl.textContent = ''; }, 500);
-                    // 所有图标加载完成后（确保确实发起过图标请求），生成拼接图
-                    if (!_atlasGenerated && _iconsEverRequested && typeof NativeBridge !== 'undefined' && NativeBridge.generateIconAtlas) {
-                        _atlasGenerated = true;
-                        try {
-                            var result = NativeBridge.generateIconAtlas();
-                            console.log('[Atlas] 图标拼接图已生成:', result);
-                        } catch(e) {
-                            console.warn('[Atlas] 生成失败:', e);
-                        }
-                    }
                 }
             }
             export function hideLoadingIfReady() {
