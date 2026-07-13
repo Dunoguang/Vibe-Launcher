@@ -149,10 +149,9 @@ class AppModule(private val bridge: JsBridge) {
     fun generateIconAtlas(): String {
         return try {
             val ctx = bridge.contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val cellSize = 192
             val files = iconCacheDir.listFiles()?.filter { it.name.endsWith("_${cellSize}.png") }?.sortedBy { it.name } ?: emptyList()
             if (files.isEmpty()) return """{"success":false,"error":"no icons cached"}"""
-
-            val cellSize = 192
             val cols = 10
             val rows = Math.ceil(files.size.toDouble() / cols).toInt()
             val atlasW = cols * cellSize
