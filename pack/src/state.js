@@ -8,7 +8,7 @@ export const state = {
     SPHERE_DIAMETER: 5.0,
     layoutMode: 'sphere',
     BASE_SCALE: 0.52,
-    ICON_RES: 512,
+    ICON_RES: 192,
     HOVER_SCALE: 0.72,
     ANIM_DURATION: 250,
     defaultZoom: 1,
