@@ -1,82 +1,25 @@
 import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { sphereCoulomb } from './sphere-coulomb.js';
-import { createGearTexture, drawCircleFrame, drawTimeCircleBackground } from './textures.js';
+import { createGearTexture, createPlaceholderTexture, createIconTextureFromImage, drawCircleFrame, drawTimeCircleBackground } from './textures.js';
 import { enterTimeView, exitTimeView, createTimeTexture, syncTimeSpriteTexture, scheduleMinuteUpdate, stopTimeTextureUpdates } from './time.js';
-import { createAtlas, restoreAtlasFromCache, redrawAllPlaceholders, appendNewApps, allocateSlot, drawPlaceholderToAtlas, drawIconToAtlas, createSpriteTextureRef, commitAtlas, disposeAtlas, shouldRebuildAtlas, saveAtlasState, isAppendOnly, clearAtlasCache } from './atlas.js';
             export let clearAllSprites = () => {
                 stopTimeTextureUpdates();
                 for (let i = 0; i < state.sprites.length; i++) {
                     let s = state.sprites[i];
                     if (s.material) {
-                        let map = s.material.map;
-                        if (map) {
-                            // 不 dispose atlas 的基础纹理，只 dispose 独立的纹理(齿轮/时钟)
-                            if (state.atlas && map === state.atlas.baseTexture) {
-                                // 共享纹理，不 dispose
-                            } else {
-                                map.dispose();
-                            }
-                        }
+                        if (s.material.map) s.material.map.dispose();
                         s.material.dispose();
                     }
                     state.sphereGroup.remove(s);
                 }
                 state.sprites = [];
                 state.timeSprite = null;
+                state.timeSprite = null;
             }
 state.pendingIconLoads = 0;
 state.enterAnimationComplete = false;
             export let createSprites = (appList, iconMap, skipEnter) => {
-                // ========== Atlas 管理：重建或增量 ==========
-                let atlas = null;
-                let rebuildAtlas = false;
-                if (state.atlas) {
-                    if (shouldRebuildAtlas(appList)) {
-                        if (isAppendOnly(appList, state.atlas.slots)) {
-                            // 仅新增应用：追加到现有 atlas
-                            atlas = state.atlas;
-                            let added = appendNewApps(atlas, appList, state.placeholderColors);
-                            saveAtlasState(appList, atlas.slots);
-                        } else {
-                            // 有缺失/变更：重建
-                            disposeAtlas(state.atlas);
-                            state.atlas = null;
-                            rebuildAtlas = true;
-                            clearAtlasCache();
-                        }
-                    } else {
-                        // 应用列表未变：保留现有 atlas，重绘占位符
-                        atlas = state.atlas;
-                        redrawAllPlaceholders(atlas, appList, state.placeholderColors);
-                    }
-                } else {
-                    rebuildAtlas = true;
-                }
-                if (!atlas) {
-                    // 尝试从持久化恢复
-                    atlas = restoreAtlasFromCache(appList);
-                    if (atlas) {
-                        redrawAllPlaceholders(atlas, appList, state.placeholderColors);
-                    } else {
-                        // 创建全新 atlas
-                        let totalNeeded = appList.length + 4; // APP + 时钟+设置+余量
-                        atlas = createAtlas(totalNeeded);
-                        // 分配槽位并画占位符
-                        for (let i = 0; i < appList.length; i++) {
-                            const app = appList[i];
-                            const slot = allocateSlot(atlas, app.packageName);
-                            const color = state.placeholderColors[i % state.placeholderColors.length];
-                            drawPlaceholderToAtlas(atlas, slot, app.appName, color);
-                        }
-                        commitAtlas(atlas);
-                        saveAtlasState(appList, atlas.slots);
-                    }
-                    state.atlas = atlas;
-                }
-                // 确保时钟和设置也有槽位（如果 atlas 里还没有）
-                // 时钟和设置不在 appList 中，但它们通常不需要 atlas 纹理（各自独立纹理）
-                commitAtlas(atlas || state.atlas);
                 clearAllSprites();
                 let totalItems = [];
 window._totalItems = totalItems;
@@ -190,7 +133,6 @@ window._totalItems = totalItems;
                         totalItems[zi] = merged[zi].item;
                     }
                 }
-                let currentAtlas = state.atlas;
                 for (let j = 0; j < N; j++) {
                     let item = totalItems[j];
                     let p = rotatedPoints[j];
@@ -238,36 +180,31 @@ window._totalItems = totalItems;
                         state.sphereGroup.add(sprite);
                         state.sprites.push(sprite);
                         state.timeSprite = sprite;
+                        state.timeSprite = sprite;
                     } else {
-                        // ===== APP 精灵：使用 Atlas 纹理 =====
                         let app = item.data;
-                        let slot = currentAtlas ? currentAtlas.slots[app.packageName] : null;
-                        if (slot && currentAtlas) {
-                            let texRef = createSpriteTextureRef(currentAtlas, slot);
-                            let mat = new THREE.SpriteMaterial({
-                                map: texRef,
-                                transparent: true,
-                                depthTest: true,
-                                depthWrite: true
-                            });
-                            let appSprite = new THREE.Sprite(mat);
-                            appSprite.position.copy(p);
-                            appSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
-                            appSprite.userData = {
-                                isTimeSprite: false,
-                                app: app,
-                                color: state.placeholderColors[item.colorIndex % state.placeholderColors.length],
-                                hasRealIcon: false,
-                                baseScale: state.BASE_SCALE
-                            };
-                            state.sphereGroup.add(appSprite);
-                            state.sprites.push(appSprite);
-                            if (iconMap && iconMap[app.packageName]) {
-                                loadRealIcon(appSprite, iconMap[app.packageName]);
-                            }
-                        } else {
-                            // 兜底：若无 atlas，使用备用逻辑（极低概率）
-                            console.warn('[ATLAS] 缺少槽位:', app.packageName);
+                        let color = state.placeholderColors[item.colorIndex % state.placeholderColors.length];
+                        let placeholderTex = createPlaceholderTexture(app.appName, color);
+                        let mat = new THREE.SpriteMaterial({
+                            map: placeholderTex,
+                            transparent: true,
+                            depthTest: true,
+                            depthWrite: true
+                        });
+                        let appSprite = new THREE.Sprite(mat);
+                        appSprite.position.copy(p);
+                        appSprite.scale.set(state.BASE_SCALE, state.BASE_SCALE, 1);
+                        appSprite.userData = {
+                            isTimeSprite: false,
+                            app: app,
+                            color: color,
+                            hasRealIcon: false,
+                            baseScale: state.BASE_SCALE
+                        };
+                        state.sphereGroup.add(appSprite);
+                        state.sprites.push(appSprite);
+                        if (iconMap && iconMap[app.packageName]) {
+                            loadRealIcon(appSprite, iconMap[app.packageName]);
                         }
                     }
                 }
@@ -333,16 +270,14 @@ state.updateSphereMinHint();
                 let img = new Image();
                 img.onload = function() {
                     try {
-                        let app = sprite.userData.app;
-                        if (app && state.atlas && state.atlas.slots[app.packageName]) {
-                            let slot = state.atlas.slots[app.packageName];
-                            drawIconToAtlas(state.atlas, slot, img);
-                            commitAtlas(state.atlas);
-                            sprite.userData.hasRealIcon = true;
-                            sprite.userData._iconUrl = iconUrl;
-                        } else {
-                            console.warn('[ATLAS] loadRealIcon: 无槽位:', app ? app.packageName : '?');
+                        let tex = createIconTextureFromImage(img);
+                        if (sprite.material && sprite.material.map && !sprite.userData.hasRealIcon) {
+                            sprite.material.map.dispose();
                         }
+                        sprite.material.map = tex;
+                        sprite.material.needsUpdate = true;
+                        sprite.userData.hasRealIcon = true;
+                        sprite.userData._iconUrl = iconUrl;
                     } catch (e) { console.warn('图标处理失败:', iconUrl, e); }
                     state.pendingIconLoads--;
                     checkAllIconsLoaded();
@@ -730,3 +665,4 @@ state.updateSphereMinHint();
             window._onIconsError = function(msg) {
                 console.error('[DEBUG] _onIconsError:', msg);
             };
+            // ========== 旋转控制 ==========

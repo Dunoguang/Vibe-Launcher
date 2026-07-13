@@ -6,47 +6,9 @@ import { sphereCoulomb } from './sphere-coulomb.js';
 state.sphereCoulomb = sphereCoulomb;
 import { cubicBezier, animateValue, materialEasing, easeOutCubic } from './utils.js';
 state.materialEasing = materialEasing;
-import { createGearTexture, drawCircleFrame, drawCircleBackground, drawTimeCircleBackground } from './textures.js';
-
-// 向后兼容：settings.js 在 ICON_RES 变化时需要独立纹理重建
-state.createPlaceholderTexture = function(appName, colorHex) {
-    let s = Math.max(16, state.ICON_RES || 512),
-        c = document.createElement("canvas");
-    c.width = s; c.height = s;
-    let ctx = c.getContext("2d"),
-        cx = s / 2, cy = s / 2, r = s * 0.44;
-    ctx.fillStyle = "#000000";
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = colorHex + "aa";
-    ctx.lineWidth = s * 0.03;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-    let initial = (appName || "?").charAt(0).toUpperCase();
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold " + (s * 0.5) + "px \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.shadowColor = colorHex; ctx.shadowBlur = s * 0.1;
-    ctx.fillText(initial, cx, cy); ctx.shadowBlur = 0;
-    let tex = new THREE.CanvasTexture(c);
-    tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
-    if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-};
-state.createIconTextureFromImage = function(img) {
-    let s = 512, cx = s / 2, cy = s / 2, r = s * 0.44, margin = s * 0.04;
-    let c2 = document.createElement("canvas");
-    c2.width = s; c2.height = s;
-    let ctx2 = c2.getContext("2d");
-    ctx2.beginPath(); ctx2.arc(cx, cy, r, 0, Math.PI * 2); ctx2.clip();
-    let imgSize = Math.min(img.width, img.height);
-    let sx = (img.width - imgSize) / 2, sy = (img.height - imgSize) / 2;
-    ctx2.drawImage(img, sx, sy, imgSize, imgSize, margin, margin, s - margin * 2, s - margin * 2);
-    ctx2.beginPath(); ctx2.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx2.strokeStyle = "rgba(255,255,255,0.35)"; ctx2.lineWidth = s * 0.025; ctx2.stroke();
-    let tex = new THREE.CanvasTexture(c2);
-    tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
-    if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-};
+import { createGearTexture, drawCircleFrame, drawCircleBackground, drawTimeCircleBackground, createPlaceholderTexture, createIconTextureFromImage } from './textures.js';
+state.createIconTextureFromImage = createIconTextureFromImage;
+state.createPlaceholderTexture = createPlaceholderTexture;
 import { initSettingsPanel } from './settings.js';
 import { checkHover, clearLongPressTimer, showContextMenu, hideContextMenu, clearHover, startInertiaFromSpeeds, resetAllPointers, onPointerDown, onPointerMove, onPointerUp, onPointerLeave, onPointerCancel, onWheel, onTouchStart, onTouchMove, onTouchEnd, getTouchDist, quatAngle, isInBottomZone, isInTopZone } from './gestures.js';
 state.hideContextMenu = hideContextMenu;

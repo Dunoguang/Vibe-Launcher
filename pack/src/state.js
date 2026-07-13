@@ -1,5 +1,4 @@
 export const state = {
-    atlas: null,
     renderer: null,
     rendererType: 'unknown',
     scene: null,
