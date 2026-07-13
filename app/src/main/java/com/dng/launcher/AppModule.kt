@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.provider.Settings
@@ -142,4 +143,47 @@ class AppModule(private val bridge: JsBridge) {
         } catch (_: Exception) {}
     }
 
+
+    @JavascriptInterface
+    fun generateIconAtlas(): String {
+        return try {
+            val ctx = bridge.contextRef.get() ?: return """{"success":false,"error":"context lost"}"""
+            val files = iconCacheDir.listFiles()?.filter { it.name.endsWith(".png") }?.sortedBy { it.name } ?: emptyList()
+            if (files.isEmpty()) return """{"success":false,"error":"no icons cached"}"""
+
+            val cellSize = 128
+            val cols = 10
+            val rows = Math.ceil(files.size.toDouble() / cols).toInt()
+            val atlasW = cols * cellSize
+            val atlasH = rows * cellSize
+
+            val atlas = Bitmap.createBitmap(atlasW, atlasH, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(atlas)
+            canvas.drawColor(0xFF1a1a2e.toInt()) // dark background
+
+            for ((index, file) in files.withIndex()) {
+                val col = index % cols
+                val row = index / cols
+                val x = col * cellSize
+                val y = row * cellSize
+                try {
+                    val src = BitmapFactory.decodeFile(file.absolutePath)
+                    if (src != null) {
+                        val scaled = Bitmap.createScaledBitmap(src, cellSize, cellSize, true)
+                        canvas.drawBitmap(scaled, x.toFloat(), y.toFloat(), null)
+                        if (scaled !== src) scaled.recycle()
+                        src.recycle()
+                    }
+                } catch (_: Exception) {}
+            }
+
+            val outFile = File(ctx.cacheDir, "icon_atlas.png")
+            FileOutputStream(outFile).use { atlas.compress(Bitmap.CompressFormat.PNG, 90, it) }
+            atlas.recycle()
+
+            """{"success":true,"path":"${outFile.absolutePath}","width":$atlasW,"height":$atlasH,"count":${files.size},"cols":$cols,"rows":$rows,"cellSize":$cellSize}"""
+        } catch (e: Exception) {
+            """{"success":false,"error":"${e.message?.replace("\"", "\\\"")?.replace("\n", " ")}"}"""
+        }
+    }
 }
