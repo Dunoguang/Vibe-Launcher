@@ -174,7 +174,7 @@ class AppModule(private val bridge: JsBridge) {
                         // 圆形裁剪 ———— 跟 createIconTextureFromImage 保持一致
                         val cx = x + cellSize / 2f
                         val cy = y + cellSize / 2f
-                        val r = cellSize * 0.44f
+                        val r = cellSize / 2f
                         val clipPath = Path().apply { addCircle(cx, cy, r, Path.Direction.CW) }
                         canvas.save()
                         canvas.clipPath(clipPath)
