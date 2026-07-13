@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.BitmapFactory
+import android.graphics.Path
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.provider.Settings
@@ -170,8 +171,16 @@ class AppModule(private val bridge: JsBridge) {
                     val src = BitmapFactory.decodeFile(file.absolutePath)
                     if (src != null) {
                         val scaled = Bitmap.createScaledBitmap(src, cellSize, cellSize, true)
+                        // 圆形裁剪 ———— 跟 createIconTextureFromImage 保持一致
+                        val cx = x + cellSize / 2f
+                        val cy = y + cellSize / 2f
+                        val r = cellSize * 0.44f
+                        val clipPath = Path().apply { addCircle(cx, cy, r, Path.Direction.CW) }
+                        canvas.save()
+                        canvas.clipPath(clipPath)
                         canvas.drawBitmap(scaled, x.toFloat(), y.toFloat(), null)
-                        if (scaled !== src) scaled.recycle()
+                        canvas.restore()
+                        scaled.recycle()
                         src.recycle()
                     }
                 } catch (_: Exception) {}
