@@ -322,12 +322,14 @@ state.updateSphereMinHint();
             export let tryLoadApps = () => {
                 if (typeof NativeBridge !== 'undefined' && NativeBridge.generateAtlas) {
                     state.nativeBridgeReady = true;
+                    createTimeTexture();  // 预创建时间纹理
                     __T("T0 generateAtlas called");
                     NativeBridge.generateAtlas();
                 } else {
                     setTimeout(async function() {
                         if (typeof NativeBridge !== 'undefined' && NativeBridge.generateAtlas) {
                             state.nativeBridgeReady = true;
+                            createTimeTexture();
                             NativeBridge.generateAtlas();
                         } else {
                             state.loadingEl.textContent = 'NativeBridge 不可用，使用演示数据';
