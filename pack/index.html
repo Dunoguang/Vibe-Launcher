@@ -59,12 +59,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(255, 255, 255, 0.38);
-            font-size: 14px;
-            letter-spacing: 0.05em;
-            z-index: 20;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 18px;
+            letter-spacing: 0.1em;
+            z-index: 999999;
+            transition: opacity 0.5s ease;
+            opacity: 1;
             pointer-events: none;
-            transition: opacity 0.4s ease;
         }
     #settings-overlay {
     position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;
@@ -381,7 +382,7 @@
     </div>
     <div id="fps-counter" style="position:fixed;top:8px;left:8px;z-index:2147483647;color:#0f0;font-size:16px;font-family:monospace;background:rgba(0,0,0,0.8);padding:4px 8px;border-radius:4px;display:none;pointer-events:none;user-select:none;font-weight:bold">FPS: <span id="fps-value">0</span></div>
     <div class="app-label" id="appLabel"></div>
-    <div class="loading-indicator" id="loadingIndicator"></div>
+    <div class="loading-indicator" id="loadingIndicator">Vibe Launcher 正在加载…</div>
     <script type="module" src="/main.js"></script>
 </body>
 </html>
