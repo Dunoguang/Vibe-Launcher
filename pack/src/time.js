@@ -117,7 +117,6 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                         // 显示原生时间页面覆盖层（最高分辨率）
                         let tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                        syncTimeSpriteTexture();
                     });
                 } else {
                     state.zoomLevel = targetZoom;
@@ -125,13 +124,11 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     if (onComplete) onComplete();
                     let tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
-                    syncTimeSpriteTexture();
                 }
             }
             export let exitTimeView = (animate, callback) => {
                 if (!state.isInTimeView) { return; }
                 state.isInTimeView = false;
-                                // 隐藏原生时间页面
                 let tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
                 // 不在这里重建纹理（即将缩小的精灵不需要全分辨率画布）

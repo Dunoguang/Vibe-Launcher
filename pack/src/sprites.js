@@ -1,5 +1,5 @@
 window.__T = { _start: performance.now() };
-function __T(l){const n=performance.now();if(!window.__T[l])window.__T[l]=n;console.log('[time] '+l+' +'+(n-window.__T._start).toFixed(0)+'ms')}
+(function(){const _s=window.__T._start;window.__T=function(l){const n=performance.now();if(!window.__T[l])window.__T[l]=n;console.log('[time] '+l+' +'+(n-_s).toFixed(0)+'ms')}})();
 import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { sphereCoulomb } from './sphere-coulomb.js';
@@ -405,7 +405,6 @@ state.updateSphereMinHint();
                 if (!state.animFrameId) state.animFrameId = requestAnimationFrame(state.animate);
                 let tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
-                syncTimeSpriteTexture();
             };
             window._onBackProgress = function(p) {
                 if (state._backProgress < 0) return;
