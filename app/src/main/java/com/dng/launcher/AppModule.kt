@@ -39,8 +39,11 @@ class AppModule(private val bridge: JsBridge) {
             try {
                 val ctx = bridge.contextRef.get() ?: return@execute
                 val pm = ctx.packageManager
+                val reqLauncherPkgs = pm.queryIntentActivities(
+                        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+                    ).map { it.activityInfo.packageName }.filter { it != "com.dng.launcher" }.toSet()
                 val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                    .filter { pm.getLaunchIntentForPackage(it.packageName) != null && it.packageName != "com.dng.launcher" }
+                    .filter { it.packageName in reqLauncherPkgs }
                     .map {
                         AppInfo(
                             it.packageName,
@@ -68,8 +71,11 @@ class AppModule(private val bridge: JsBridge) {
                 val atlasFile = File(ctx.cacheDir, "icon_atlas.png")
                 if (atlasFile.exists()) {
                     // 一次查询拿到全部应用列表（避免重复 PM 调用）
+                    val launcherPkgs = pm.queryIntentActivities(
+                            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+                        ).map { it.activityInfo.packageName }.filter { it != "com.dng.launcher" }.toSet()
                     val allApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                        .filter { pm.getLaunchIntentForPackage(it.packageName) != null && it.packageName != "com.dng.launcher" }
+                        .filter { it.packageName in launcherPkgs }
                         .map {
                             AppInfo(
                                 it.packageName,
@@ -107,8 +113,11 @@ class AppModule(private val bridge: JsBridge) {
                 }
 
                 // 1. Get all installed apps
+                val fullLauncherPkgs = pm.queryIntentActivities(
+                        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+                    ).map { it.activityInfo.packageName }.filter { it != "com.dng.launcher" }.toSet()
                 val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                    .filter { pm.getLaunchIntentForPackage(it.packageName) != null && it.packageName != "com.dng.launcher" }
+                    .filter { it.packageName in fullLauncherPkgs }
                     .map {
                         AppInfo(
                             it.packageName,
