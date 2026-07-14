@@ -49,9 +49,10 @@ class JsBridge(context: Context, webView: WebView) {
     fun requestInstalledApps() = appModule.requestInstalledApps()
 
     @JavascriptInterface
-    fun requestAppIcons(packageNamesJson: String, iconRes: Int) = appModule.requestAppIcons(packageNamesJson, iconRes)
-    @JavascriptInterface
     fun clearIconCache() = appModule.clearIconCache()
+
+    @JavascriptInterface
+    fun generateAtlas() = appModule.generateAtlas()
 
     @JavascriptInterface
     fun getAtlasUrl() = appModule.getAtlasUrl()

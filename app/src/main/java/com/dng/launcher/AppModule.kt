@@ -57,46 +57,80 @@ class AppModule(private val bridge: JsBridge) {
     }
 
     @JavascriptInterface
-    fun requestAppIcons(packageNamesJson: String, iconRes: Int) {
-        val targetSize = iconRes.coerceIn(16, 4096)
+    fun generateAtlas() {
         executor.execute {
             try {
                 val ctx = bridge.contextRef.get() ?: return@execute
                 val pm = ctx.packageManager
-                val pkgs = gson.fromJson(packageNamesJson, Array<String>::class.java)
-                val results = pkgs.map { pkg ->
-                    IconResult(pkg, getOrCreateIcon(ctx, pm, pkg, targetSize))
+
+                // 1. Get all installed apps
+                val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                    .filter { pm.getLaunchIntentForPackage(it.packageName) != null && it.packageName != "com.dng.launcher" }
+                    .map {
+                        AppInfo(
+                            it.packageName,
+                            pm.getApplicationLabel(it).toString(),
+                            (it.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                        )
+                    }
+                    .sortedWith(compareBy(collator) { it.appName })
+                // Call back app list
+                bridge.callback("_onAppsLoaded", gson.toJson(AppsResult(true, apps)))
+
+                // 2. Fetch and cache all icons (192x192)
+                val iconSize = 192
+                for (app in apps) {
+                    try {
+                        val file = File(iconCacheDir, "${app.packageName}_${iconSize}.png")
+                        if (!file.exists()) {
+                            val drawable = pm.getApplicationIcon(app.packageName)
+                            val srcBitmap = (drawable as? BitmapDrawable)?.bitmap ?: run {
+                                val bmp = Bitmap.createBitmap(
+                                    drawable.intrinsicWidth.coerceAtLeast(1),
+                                    drawable.intrinsicHeight.coerceAtLeast(1),
+                                    Bitmap.Config.ARGB_8888
+                                )
+                                Canvas(bmp).apply {
+                                    drawable.setBounds(0, 0, bmp.width, bmp.height)
+                                    drawable.draw(this)
+                                }
+                                bmp
+                            }
+                            val scaled = Bitmap.createScaledBitmap(srcBitmap, iconSize, iconSize, true)
+                            FileOutputStream(file).use { scaled.compress(Bitmap.CompressFormat.PNG, 80, it) }
+                        }
+                    } catch (_: Exception) {}
                 }
-                bridge.callback("_onIconsLoaded", gson.toJson(results))
-                generateIconAtlas()
+
+                // 3. Get sorted package names (atlas order = sorted by filename = sorted by packageName)
+                val atlasOrder = iconCacheDir.listFiles()
+                    ?.filter { it.name.endsWith("_${iconSize}.png") }
+                    ?.map { it.name.removeSuffix("_${iconSize}.png") }
+                    ?.sorted()
+                    ?: emptyList()
+
+                // 4. Call back sorted package list (so frontend can map position -> packageName)
+                bridge.webViewRef.get()?.post {
+                    bridge.webViewRef.get()?.evaluateJavascript(
+                        "typeof window._onIconsLoaded==='function'&&window._onIconsLoaded(${gson.toJson(atlasOrder)})",
+                        null
+                    )
+                }
+
+                // 5. Generate atlas
+                generateIconAtlas(ctx)
+
             } catch (e: Exception) {
-                bridge.callback("_onIconsError", "\"${e.message}\"")
+                bridge.webViewRef.get()?.post {
+                    bridge.webViewRef.get()?.evaluateJavascript(
+                        "typeof window._onAtlasError==='function'&&window._onAtlasError('${e.message?.replace("'", "\\'") ?: "unknown"}')",
+                        null
+                    )
+                }
             }
         }
     }
 
-    private fun getOrCreateIcon(ctx: Context, pm: PackageManager, pkg: String, size: Int = 512): String {
-        val file = File(iconCacheDir, "${pkg}_${size}.png")
-        if (file.exists()) return "file://${file.absolutePath}"
-        return try {
-            val drawable = pm.getApplicationIcon(pkg)
-            val srcBitmap = (drawable as? BitmapDrawable)?.bitmap ?: run {
-                val bmp = Bitmap.createBitmap(
-                    drawable.intrinsicWidth.coerceAtLeast(1),
-                    drawable.intrinsicHeight.coerceAtLeast(1),
-                    Bitmap.Config.ARGB_8888
-                )
-                Canvas(bmp).apply {
-                    drawable.setBounds(0, 0, bmp.width, bmp.height)
-                    drawable.draw(this)
-                }
-                bmp
-            }
-            val scaled = Bitmap.createScaledBitmap(srcBitmap, size, size, true)
-            FileOutputStream(file).use { scaled.compress(Bitmap.CompressFormat.PNG, 80, it) }
-            "file://${file.absolutePath}"
-        } catch (e: Exception) { "" }
-    }
 
     @JavascriptInterface
     fun launchApp(packageName: String): String {
@@ -155,9 +189,8 @@ class AppModule(private val bridge: JsBridge) {
         } catch (_: Exception) { "" }
     }
 
-    private fun generateIconAtlas() {
+    private fun generateIconAtlas(ctx: Context) {
         try {
-            val ctx = bridge.contextRef.get() ?: return
             val cellSize = 192
             val files = iconCacheDir.listFiles()?.filter { it.name.endsWith("_${cellSize}.png") }?.sortedBy { it.name } ?: emptyList()
             if (files.isEmpty()) return
