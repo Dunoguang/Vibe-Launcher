@@ -104,7 +104,7 @@ import { state } from './state.js';
                 if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
                 return tex;
             }
-            export let createAtlasSliceTexture = (atlasTex, sortedIndex, totalCols) => {
+            export let createAtlasSliceTexture = (atlasTex, sortedIndex, totalCols, totalRows) => {
                 const tex = atlasTex.clone();
                 const cellW = 1 / totalCols;
                 const cellH = 1 / totalRows;

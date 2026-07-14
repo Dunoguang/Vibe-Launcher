@@ -269,7 +269,7 @@ state.updateSphereMinHint();
                 if (!state.atlasTex) return;
                 const totalCols = state.atlasCols;
                 const totalRows = Math.ceil(state.atlasSorterPkgs.length / totalCols);
-                const tex = createAtlasSliceTexture(state.atlasTex, sortedIndex, totalCols);
+                const tex = createAtlasSliceTexture(state.atlasTex, sortedIndex, totalCols, totalRows);
                 if (sprite.material && sprite.material.map && !sprite.userData.hasRealIcon) {
                     sprite.material.map.dispose();
                 }
