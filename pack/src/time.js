@@ -5,22 +5,17 @@ import { drawTimeCircleBackground, drawCircleFrame } from './textures.js';
 export let timeTextureUpdateInterval = null;
             export let updateTimeSpriteBgOnly = function() {
                 state._texVersion++;
-                if (!state.timeSprite || !state.timeSprite.material) return;
-                let s = Math.max(window.innerWidth, window.innerHeight);
-                let c = document.createElement('canvas');
-                c.width = s; c.height = s;
-                let ctx = c.getContext('2d');
-                let cx = s/2, cy = s/2, r = s * 0.44;
-                drawTimeCircleBackground(ctx, cx, cy, r, s);
-                let oldMap = state.timeSprite.material.map;
-                let tex = new THREE.CanvasTexture(c);
-                tex.minFilter = THREE.LinearFilter;
-                tex.magFilter = THREE.LinearFilter;
-                if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
-                state.timeSprite.material.map = tex;
-                state.timeSprite.material.needsUpdate = true;
-                if (oldMap && oldMap !== tex) oldMap.dispose();
-                if (state.renderer) state.renderer.render(state.scene, state.camera);
+                // 重建缓存纹理
+                if (state.timeTexture) { state.timeTexture.dispose(); state.timeTexture = null; }
+                let tex = createTimeTexture();
+                // 更新当前精灵
+                if (state.timeSprite && state.timeSprite.material) {
+                    let oldMap = state.timeSprite.material.map;
+                    state.timeSprite.material.map = tex;
+                    state.timeSprite.material.needsUpdate = true;
+                    if (oldMap && oldMap !== tex) oldMap.dispose();
+                    if (state.renderer) state.renderer.render(state.scene, state.camera);
+                }
             };
             // 状态机：DOM可见 → bg-only，DOM隐藏 → full
             export let syncTimeSpriteTexture = function() {
@@ -40,6 +35,7 @@ export let timeTextureUpdateInterval = null;
                 drawCircleFrame(ctx, cx, cy, r, s);
             };
             export let createTimeTexture = () => {
+                if (state.timeTexture) return state.timeTexture;
                 let s = Math.max(window.innerWidth, window.innerHeight);
                 let c = document.createElement('canvas');
                 c.width = s;
@@ -51,6 +47,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                 tex.minFilter = THREE.LinearFilter;
                 tex.magFilter = THREE.LinearFilter;
                 if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
+                state.timeTexture = tex;
                 return tex;
             }
             export let updateTimeSpriteTexture = () => {

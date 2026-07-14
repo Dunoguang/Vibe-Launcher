@@ -48,4 +48,5 @@ export const state = {
     atlasSorterPkgs: [],
     atlasPkgToIndex: {},
     atlasCols: 10,
+    timeTexture: null,    // 缓存的时间纹理（壁纸变化时重建）
 };
