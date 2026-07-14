@@ -256,7 +256,7 @@ state.updateSphereMinHint();
                     syncTimeSpriteTexture();
                     scheduleMinuteUpdate();
                 }, 500);
-                hideLoadingIfReady();  // 先隐藏loading
+                // 由 checkAllIconsLoaded 统一淡出遮罩
                 if (!skipEnter) {
                     enterTimeView(true, function() {
                         state.enterAnimationComplete = true;
@@ -314,8 +314,10 @@ state.updateSphereMinHint();
             }
             export function hideLoadingIfReady() {
                 state.hideLoadingIfReady = hideLoadingIfReady;
-                if (state.loadingEl) {
-                    state.loadingEl.style.display = 'none';
+                // 改为淡出而非硬隐藏，由 checkAllIconsLoaded 统一控制
+                if (state.loadingEl && state.loadingEl.style.opacity !== '0') {
+                    state.loadingEl.style.opacity = '0';
+                    setTimeout(function() { state.loadingEl.textContent = ''; }, 500);
                 }
             }
             // ========== NativeBridge ==========
