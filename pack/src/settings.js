@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { state } from './state.js';
-import { createGearTexture } from './textures.js';
+import { createGearTexture, createAtlasSliceTexture } from './textures.js';
 import { createSprites } from './sprites.js';
             export let initSettingsPanel = () => {
             let wallpaperPickBtn = document.getElementById('s-wallpaper-pick');
@@ -201,7 +201,7 @@ import { createSprites } from './sprites.js';
                         // 重建后重新加载图标
                         if (state.nativeBridgeReady) NativeBridge.clearIconCache();
                         if (window._allPkgs && state.nativeBridgeReady) {
-                            NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), state.ICON_RES);
+                            NativeBridge.generateAtlas();
                         }
                     } else {
                         // 仅分辨率/速度等变化，原地重建纹理
@@ -211,15 +211,12 @@ import { createSprites } from './sprites.js';
                                     spr.material.map = state.createTimeTexture();
                                 } else if (spr.userData.app && spr.userData.app.packageName === '__settings__') {
                                     spr.material.map = createGearTexture();
-                                } else if (spr.userData._iconUrl) {
-                                    (function(s) {
-                                        let img = new Image();
-                                        img.onload = function() {
-                                            s.material.map = state.createIconTextureFromImage(img);
-                                            s.material.needsUpdate = true;
-                                        };
-                                        img.src = s.userData._iconUrl;
-                                    })(spr);
+                                } else if (spr.userData.app && state.atlasTex && state.atlasPkgToIndex && state.atlasPkgToIndex[spr.userData.app.packageName] !== undefined) {
+                                    const idx = state.atlasPkgToIndex[spr.userData.app.packageName];
+                                    const tc = state.atlasCols;
+                                    const tr = Math.ceil(Object.keys(state.atlasPkgToIndex).length / tc);
+                                    s.material.map = createAtlasSliceTexture(state.atlasTex, idx, tc);
+                                    s.material.needsUpdate = true;
                                 } else if (spr.userData.color) {
                                     spr.material.map = state.createPlaceholderTexture(spr.userData.app.appName, spr.userData.color);
                                 }
@@ -258,7 +255,7 @@ import { createSprites } from './sprites.js';
                         if (state.nativeBridgeReady) NativeBridge.clearIconCache();
                         state.sprites.forEach(function(spr) { spr.userData.hasRealIcon = false; });
                         if (window._allPkgs && state.nativeBridgeReady) {
-                            NativeBridge.requestAppIcons(JSON.stringify(window._allPkgs), state.ICON_RES);
+                            NativeBridge.generateAtlas();
                         }
                     }
                     saveBtn.textContent = '已保存 ✓';

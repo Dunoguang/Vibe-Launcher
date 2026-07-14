@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { sphereCoulomb } from './sphere-coulomb.js';
-import { createGearTexture, createPlaceholderTexture, createIconTextureFromImage, drawCircleFrame, drawTimeCircleBackground } from './textures.js';
+import { createGearTexture, createPlaceholderTexture, createAtlasSliceTexture, drawCircleFrame, drawTimeCircleBackground } from './textures.js';
 import { enterTimeView, exitTimeView, createTimeTexture, syncTimeSpriteTexture, scheduleMinuteUpdate, stopTimeTextureUpdates } from './time.js';
             export let clearAllSprites = () => {
                 stopTimeTextureUpdates();
@@ -16,6 +16,9 @@ import { enterTimeView, exitTimeView, createTimeTexture, syncTimeSpriteTexture, 
                 state.sprites = [];
                 state.timeSprite = null;
                 state.timeSprite = null;
+                if (state.atlasTex) { state.atlasTex.dispose(); state.atlasTex = null; }
+                state.atlasSorterPkgs = [];
+                state.atlasPkgToIndex = {};
             }
 state.pendingIconLoads = 0;
 state.enterAnimationComplete = false;
@@ -203,9 +206,7 @@ window._totalItems = totalItems;
                         };
                         state.sphereGroup.add(appSprite);
                         state.sprites.push(appSprite);
-                        if (iconMap && iconMap[app.packageName]) {
-                            loadRealIcon(appSprite, iconMap[app.packageName]);
-                        }
+                        // 图标由 _onAtlasReady → applyAtlasToAllSprites 统一替换
                     }
                 }
                 state.rotationQuat.identity();
@@ -264,27 +265,44 @@ state.updateSphereMinHint();
                     checkAllIconsLoaded();
                 }
             }
-            export function loadRealIcon(sprite, iconUrl) {
-                console.log('[DEBUG] loadRealIcon:', iconUrl);
-                state.pendingIconLoads++;
-                let img = new Image();
-                img.onload = function() {
-                    try {
-                        let tex = createIconTextureFromImage(img);
-                        if (sprite.material && sprite.material.map && !sprite.userData.hasRealIcon) {
-                            sprite.material.map.dispose();
-                        }
-                        sprite.material.map = tex;
-                        sprite.material.needsUpdate = true;
-                        sprite.userData.hasRealIcon = true;
-                        sprite.userData._iconUrl = iconUrl;
-                    } catch (e) { console.warn('图标处理失败:', iconUrl, e); }
-                    state.pendingIconLoads--;
-                    checkAllIconsLoaded();
-                };
-                img.onerror = function() { console.warn('图标加载失败:', iconUrl); state.pendingIconLoads--; checkAllIconsLoaded(); };
-                img.src = iconUrl;
+            export function loadAtlasIcon(sprite, sortedIndex) {
+                if (!state.atlasTex) return;
+                const totalCols = state.atlasCols;
+                const totalRows = Math.ceil(state.atlasSorterPkgs.length / totalCols);
+                const tex = createAtlasSliceTexture(state.atlasTex, sortedIndex, totalCols);
+                if (sprite.material && sprite.material.map && !sprite.userData.hasRealIcon) {
+                    sprite.material.map.dispose();
+                }
+                sprite.material.map = tex;
+                sprite.material.needsUpdate = true;
+                sprite.userData.hasRealIcon = true;
+                state.pendingIconLoads--;
+                checkAllIconsLoaded();
             }
+
+            export function applyAtlasToAllSprites() {
+                if (!state.atlasTex || !state.atlasSorterPkgs.length) return;
+                state.atlasPkgToIndex = {};
+                for (let i = 0; i < state.atlasSorterPkgs.length; i++) {
+                    state.atlasPkgToIndex[state.atlasSorterPkgs[i]] = i;
+                }
+                let count = 0;
+                for (const sprite of state.sprites) {
+                    if (!sprite.userData.isTimeSprite && sprite.userData.app &&
+                        state.atlasPkgToIndex[sprite.userData.app.packageName] !== undefined &&
+                        !sprite.userData.hasRealIcon) count++;
+                }
+                state.pendingIconLoads = count;
+                for (const sprite of state.sprites) {
+                    if (sprite.userData.isTimeSprite) continue;
+                    const app = sprite.userData.app;
+                    const idx = app && state.atlasPkgToIndex[app.packageName];
+                    if (idx !== undefined && !sprite.userData.hasRealIcon) {
+                        loadAtlasIcon(sprite, idx);
+                    }
+                }
+            }
+
             export function checkAllIconsLoaded() {
                 state.checkAllIconsLoaded = checkAllIconsLoaded;
                 if (state.pendingIconLoads <= 0 && state.enterAnimationComplete) {
@@ -628,7 +646,7 @@ state.updateSphereMinHint();
                         state.loadingEl.textContent = '正在加载图标…';
                         createSprites(state.apps, null);
                         window._allPkgs = newPkgs;
-                        if (state.nativeBridgeReady) NativeBridge.requestAppIcons(JSON.stringify(newPkgs), state.ICON_RES);
+                        if (state.nativeBridgeReady) NativeBridge.generateAtlas();
                     } else {
                         state.loadingEl.textContent = '没有找到应用';
                         createSprites([], null);
@@ -638,31 +656,33 @@ state.updateSphereMinHint();
                 }
             };
             window._onIconsLoaded = function(json) {
-                console.log('[DEBUG] _onIconsLoaded received:', typeof json === 'string' ? json.substring(0, 300) : JSON.stringify(json).substring(0, 300));
                 try {
-                    let iconData = typeof json === 'string' ? JSON.parse(json) : json;
-                    let iconMap = {};
-                    if (Array.isArray(iconData)) {
-                        for (let i = 0; i < iconData.length; i++) {
-                            let item = iconData[i];
-                            if (item.packageName && item.iconUrl) {
-                                iconMap[item.packageName] = item.iconUrl;
-                            } else if (item.packageName && !item.iconUrl) {
-                                console.warn('[DEBUG] empty iconUrl for:', item.packageName);
-                            }
-                        }
+                    const pkgs = typeof json === 'string' ? JSON.parse(json) : json;
+                    if (Array.isArray(pkgs)) {
+                        state.atlasSorterPkgs = pkgs;
                     }
-                    for (let j = 0; j < state.sprites.length; j++) {
-                        let sprite = state.sprites[j];
-                        if (sprite.userData.isTimeSprite) continue;
-                        let app = sprite.userData.app;
-                        if (app && iconMap[app.packageName] && !sprite.userData.hasRealIcon) {
-                            loadRealIcon(sprite, iconMap[app.packageName]);
-                        }
-                    }
-                } catch (e) { console.error('解析图标数据失败:', e); }
+                } catch (e) { console.error('[DEBUG] _onIconsLoaded error:', e); }
             };
+
             window._onIconsError = function(msg) {
                 console.error('[DEBUG] _onIconsError:', msg);
             };
+            window._onAtlasReady = function(url) {
+                if (!url || typeof url !== 'string') return;
+                const img = new Image();
+                img.onload = function() {
+                    const tex = new THREE.Texture(img);
+                    tex.minFilter = THREE.LinearFilter;
+                    tex.magFilter = THREE.LinearFilter;
+                    if (tex.colorSpace !== undefined) tex.colorSpace = THREE.SRGBColorSpace;
+                    tex.needsUpdate = true;
+                    state.atlasTex = tex;
+                    applyAtlasToAllSprites();
+                };
+                img.onerror = function() {
+                    console.error('[DEBUG] Atlas load failed:', url);
+                };
+                img.src = url;
+            };
+
             // ========== 旋转控制 ==========

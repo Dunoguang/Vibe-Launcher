@@ -44,4 +44,8 @@ export const state = {
     _allPkgs: null,
     _totalItems: null,
     _lastBatteryLevel: -1,
+    atlasTex: null,
+    atlasSorterPkgs: [],
+    atlasPkgToIndex: {},
+    atlasCols: 10,
 };
