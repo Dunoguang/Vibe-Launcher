@@ -64,33 +64,28 @@ class AppModule(private val bridge: JsBridge) {
                 val ctx = bridge.contextRef.get() ?: return@execute
                 val pm = ctx.packageManager
 
-                // Fast path: 合图已存在 + 包名无变化 → 直接返回
+                                // Fast path: 合图已存在 + 包名无变化 → 直接返回
                 val atlasFile = File(ctx.cacheDir, "icon_atlas.png")
                 if (atlasFile.exists()) {
-                    // 读取当前已安装 APP 包名（有启动 Intent 的）
-                    val currentPkgs = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                    // 一次查询拿到全部应用列表（避免重复 PM 调用）
+                    val allApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
                         .filter { pm.getLaunchIntentForPackage(it.packageName) != null && it.packageName != "com.dng.launcher" }
-                        .map { it.packageName }
-                        .toSet()
-                    // 读取已缓存的图标包名
+                        .map {
+                            AppInfo(
+                                it.packageName,
+                                pm.getApplicationLabel(it).toString(),
+                                (it.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                            )
+                        }
+                        .sortedWith(compareBy(collator) { it.appName })
+                    val currentPkgs = allApps.map { it.packageName }.toSet()
                     val cachedPkgs = iconCacheDir.listFiles()
                         ?.filter { it.name.endsWith("_192.png") }
                         ?.map { it.name.removeSuffix("_192.png") }
                         ?.toSet() ?: emptySet()
-                    // 只有完全一致才走快速路径
                     if (currentPkgs == cachedPkgs) {
-                        val apps = appListCache ?: pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                            .filter { pm.getLaunchIntentForPackage(it.packageName) != null && it.packageName != "com.dng.launcher" }
-                            .map {
-                                AppInfo(
-                                    it.packageName,
-                                    pm.getApplicationLabel(it).toString(),
-                                    (it.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                                )
-                            }
-                            .sortedWith(compareBy(collator) { it.appName })
-                            .also { appListCache = it }
-                        bridge.callback("_onAppsLoaded", gson.toJson(AppsResult(true, apps)))
+                        appListCache = allApps
+                        bridge.callback("_onAppsLoaded", gson.toJson(AppsResult(true, allApps)))
                         val atlasOrder = cachedPkgs.sorted()
                         bridge.webViewRef.get()?.post {
                             bridge.webViewRef.get()?.evaluateJavascript(
