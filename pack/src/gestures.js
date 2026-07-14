@@ -452,8 +452,6 @@ state.updateMouse(e.clientX, e.clientY);
                                                         state.startCancelableAction(state.hoveredSprite, targetQuat, appZoom, function() {
                                 let saved = {};
                                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
-                                let iconInput = document.getElementById('s-icon');
-                                if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
                                 let sphereInput = document.getElementById('settings-sphere-input');
                                 if (saved.sphereSize && sphereInput) sphereInput.value = parseFloat(saved.sphereSize);
                                 let animInput = document.getElementById('settings-anim-input');

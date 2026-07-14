@@ -89,8 +89,6 @@ import { createSprites } from './sprites.js';
                 try { saved = JSON.parse(localStorage.getItem('vibe-settings') || '{}'); } catch(e) {}
                 // Setup radio button clicks
                 // Apply saved values
-                let iconInput = document.getElementById('s-icon');
-                if (saved.iconRes && iconInput) iconInput.value = saved.iconRes;
                 let sphereInput = document.getElementById('settings-sphere-input');
                 if (saved.sphereSize && sphereInput) sphereInput.value = parseFloat(saved.sphereSize);
                 if (saved.layoutMode) {
@@ -144,7 +142,6 @@ import { createSprites } from './sprites.js';
                     }
                 });
                 saveBtn.addEventListener('click', function() {
-                    let iconRes = document.getElementById('s-icon');
                     let sphereSizeInput = document.getElementById('settings-sphere-input');
                     let sphereSize = sphereSizeInput ? sphereSizeInput.value : '2.5';
                     // 最小半径校验
@@ -174,7 +171,6 @@ import { createSprites } from './sprites.js';
                     let hotreloadCb = document.getElementById('s-hotreload');
                     let hotreloadEnabled = hotreloadCb ? hotreloadCb.checked : false;
                     let settings = {
-                        iconRes: iconRes ? iconRes.value : '512',
                         sphereSize: sphereSize || '2.5',
                         layoutMode: layoutVal,
                         hotReload: hotreloadEnabled,
@@ -185,8 +181,6 @@ import { createSprites } from './sprites.js';
                     state.ANIM_DURATION = animSpeedVal;
                     try { NativeBridge.setHotReload(hotreloadEnabled); } catch(e) {}
                     // 统一：应用所有更改，无需刷新页面
-                    let prevIconRes = state.ICON_RES;
-                    state.ICON_RES = Math.max(16, parseInt(settings.iconRes) || 512);
                     let layoutChanged = state.layoutMode !== layoutVal;
                     let sphereChanged = Math.abs(state.SPHERE_RADIUS - inputR) > 0.001;
                     state.layoutMode = layoutVal;
@@ -203,26 +197,7 @@ import { createSprites } from './sprites.js';
                         if (window._allPkgs && state.nativeBridgeReady) {
                             NativeBridge.generateAtlas();
                         }
-                    } else {
-                        // 仅分辨率/速度等变化，原地重建纹理
-                        if (state.ICON_RES !== prevIconRes) {
-                            state.sprites.forEach(function(spr) {
-                                if (spr.userData.isTimeSprite) {
-                                    spr.material.map = state.createTimeTexture();
-                                } else if (spr.userData.app && spr.userData.app.packageName === '__settings__') {
-                                    spr.material.map = createGearTexture();
-                                } else if (spr.userData.app && state.atlasTex && state.atlasPkgToIndex && state.atlasPkgToIndex[spr.userData.app.packageName] !== undefined) {
-                                    const idx = state.atlasPkgToIndex[spr.userData.app.packageName];
-                                    const tc = state.atlasCols;
-                                    const tr = Math.ceil(Object.keys(state.atlasPkgToIndex).length / tc);
-                                    s.material.map = createAtlasSliceTexture(state.atlasTex, idx, tc);
-                                    s.material.needsUpdate = true;
-                                } else if (spr.userData.color) {
-                                    spr.material.map = state.createPlaceholderTexture(spr.userData.app.appName, spr.userData.color);
-                                }
-                                spr.material.needsUpdate = true;
-                            });
-                        }
+                    
                         if (state.sphereGroup && inputR > 0) {
                             // 仅球体大小变化（布局不变），重新分布位置
                             let rawPoints = state.sphereCoulomb(window._totalItems.length, { radius: state.SPHERE_RADIUS, iter: 500 });
@@ -251,13 +226,7 @@ import { createSprites } from './sprites.js';
                         }
                     }
                     // 纹理重建（布局变更时createSprites已经做了，不需要重复）
-                    if (!layoutChanged && !sphereChanged && state.ICON_RES !== prevIconRes) {
-                        if (state.nativeBridgeReady) NativeBridge.clearIconCache();
-                        state.sprites.forEach(function(spr) { spr.userData.hasRealIcon = false; });
-                        if (window._allPkgs && state.nativeBridgeReady) {
-                            NativeBridge.generateAtlas();
-                        }
-                    }
+
                     saveBtn.textContent = '已保存 ✓';
                     saveBtn.style.background = '#2ecc71';
                     setTimeout(function() {
