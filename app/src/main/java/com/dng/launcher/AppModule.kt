@@ -9,6 +9,7 @@ import android.graphics.Canvas
 import android.graphics.BitmapFactory
 import android.util.Log
 import android.graphics.Path
+import android.graphics.PorterDuff
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.provider.Settings
@@ -248,7 +249,7 @@ class AppModule(private val bridge: JsBridge) {
 
             val atlas = Bitmap.createBitmap(atlasW, atlasH, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(atlas)
-            canvas.drawColor(0xFF1a1a2e.toInt())
+            canvas.drawColor(0, PorterDuff.Mode.CLEAR)
 
             for ((index, file) in files.withIndex()) {
                 val col = index % cols
