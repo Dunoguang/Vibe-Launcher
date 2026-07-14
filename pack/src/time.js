@@ -130,7 +130,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                                 // 隐藏原生时间页面
                 let tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
-                syncTimeSpriteTexture()
+                // 不在这里重建纹理（即将缩小的精灵不需要全分辨率画布）
                 state.cancelZoomAnimation();
                 state.rotationAnimData = null;
                 stopTimeTextureUpdates();
