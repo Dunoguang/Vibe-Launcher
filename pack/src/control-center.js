@@ -19,6 +19,49 @@ import { execShell, execShellShizuku, detectCapabilities, autoSelectMethod, devi
     const getCurrentWifiInfo = () => bridgeCall('getCurrentWifiInfo');
     const getMobileDataEnabled = () => bridgeCall('getMobileDataEnabled');
     const setMobileDataEnabled = (enabled) => bridgeCall('setMobileDataEnabled', enabled);
+    // ========== 移动数据开关（Shell 方式） ==========
+    async function toggleMobileData(enable) {
+        const cap = await detectCapabilities();
+        const cmd = enable ? 'svc data enable' : 'svc data disable';
+        if (cap.shizukuConnected) {
+            const result = await execShellShizuku(cmd);
+            if (result.success) return { success: true, method: 'shizuku' };
+        }
+        if (cap.isRoot || cap.isShell) {
+            const result = await execShell(cmd);
+            if (result.success) return { success: true, method: 'svc' };
+        }
+        if (cap.hasSU) {
+            const result = await execShell('su -c "' + cmd + '"');
+            if (result.success) return { success: true, method: 'svc_su' };
+        }
+        const result = setMobileDataEnabled(enable);
+        return { success: result.success, method: 'bridge', panelOpened: false };
+    }
+    async function getMobileDataState() {
+        const cap = await detectCapabilities();
+        if (cap.shizukuConnected || cap.isRoot || cap.isShell || cap.hasSU) {
+            const method = autoSelectMethod(cap);
+            const cmd = 'settings get global mobile_data';
+            try {
+                let res;
+                if (method === 'shizuku') {
+                    res = await execShellShizuku(cmd);
+                } else if (method === 'svc' || method === 'svc_su') {
+                    res = await execShell(method === 'svc_su' ? 'su -c "' + cmd + '"' : cmd);
+                }
+                if (res && res.success) {
+                    const val = res.stdout.trim();
+                    if (val === '1' || val === '0') {
+                        return { enabled: val === '1', success: true };
+                    }
+                }
+            } catch(e) {}
+        }
+        const fallback = getMobileDataEnabled();
+        return fallback;
+    }
+
     const getBrightness = () => bridgeCall('getBrightness');
     const setBrightness = (val) => bridgeCall('setBrightness', val);
     const getVolume = () => bridgeCall('getVolume');
@@ -286,11 +329,17 @@ import { execShell, execShellShizuku, detectCapabilities, autoSelectMethod, devi
             }
         }
     });
-    document.getElementById('dataCard').addEventListener('click', () => {
-        const state = getMobileDataEnabled();
-        if (state?.success) {
-            setMobileDataEnabled(!state.enabled);
-            setActive('dataCard', !state.enabled);
+    document.getElementById('dataCard').addEventListener('click', async () => {
+        const state = await getMobileDataState();
+        if (!state?.success) return;
+        const result = await toggleMobileData(!state.enabled);
+        if (result.success) {
+            if (result.panelOpened) {
+                setActive('dataCard', true);
+                setTimeout(() => setActive('dataCard', state.enabled), 400);
+            } else {
+                setActive('dataCard', !state.enabled);
+            }
         }
     });
     document.getElementById('btnAirplane').addEventListener('click', async () => {
@@ -348,8 +397,10 @@ import { execShell, execShellShizuku, detectCapabilities, autoSelectMethod, devi
         if (wifi?.success) setActive('wifiCard', wifi.enabled);
         updateWifiLabel();
         
-        const data = getMobileDataEnabled();
-        if (data?.success) setActive('dataCard', data.enabled);
+        try {
+            const dataRes = await getMobileDataState();
+            if (dataRes?.success) setActive('dataCard', dataRes.enabled);
+        } catch(e) {}
         
         const flash = getFlashlightState();
         if (flash?.success) {

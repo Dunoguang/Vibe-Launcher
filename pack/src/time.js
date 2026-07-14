@@ -98,6 +98,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
             };
             // ========== 进入/退出时间视图 ==========
             export let enterTimeView = (animate, onComplete) => {
+                const _t0 = performance.now();
                 if (state.isInTimeView || !state.timeSprite) return;
                 state.isInTimeView = true;
                 state.cancelZoomAnimation();
@@ -114,6 +115,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                         state.zoomLevel = targetZoom;
                         state.applyZoom();
                         if (onComplete) onComplete();
+                        console.log('[TIME] enterTimeView (animate) completed - ' + (performance.now() - _t0).toFixed(1) + 'ms');
                         // 显示原生时间页面覆盖层（最高分辨率）
                         let tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
@@ -122,12 +124,14 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     state.zoomLevel = targetZoom;
                     state.applyZoom();
                     if (onComplete) onComplete();
+                    console.log('[TIME] enterTimeView (instant) completed - ' + (performance.now() - _t0).toFixed(1) + 'ms');
                     let tp = document.getElementById('time-page');
                     if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
                 }
             }
             export let exitTimeView = (animate, callback) => {
-                if (!state.isInTimeView) { return; }
+                const _t0 = performance.now();
+                if (!state.isInTimeView) { console.log('[TIME] exitTimeView skipped (not in time view)'); return; }
                 state.isInTimeView = false;
                 let tp = document.getElementById('time-page');
                 if (tp) { tp.style.visibility = 'hidden'; tp.style.zIndex = '-1'; tp.style.pointerEvents = 'none'; }
@@ -153,6 +157,7 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                         state.inertiaQ.copy(new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015));
                         state.wakeUp();
                         if (callback) callback();
+                        console.log('[TIME] exitTimeView (animate) completed - ' + (performance.now() - _t0).toFixed(1) + 'ms');
                     });
                 } else {
                     state.zoomLevel = targetZoom;
@@ -163,11 +168,13 @@ let cx = s / 2, cy = s / 2, r = s * 0.44;
                     state.inertiaQ.copy(new THREE.Quaternion().setFromAxisAngle(spinAxis, -0.015));
                     state.wakeUp();
                     if (callback) callback();
+                    console.log('[TIME] exitTimeView (instant) completed - ' + (performance.now() - _t0).toFixed(1) + 'ms');
                 }
             }
             // 点击时间图标返回时间视图
             export let returnToTimeView = () => {
-                if (state.isInTimeView || !state.timeSprite) { return; }
+                const _t0 = performance.now();
+                if (state.isInTimeView || !state.timeSprite) { console.log('[TIME] returnToTimeView skipped'); return; }
                 state.isInTimeView = true;
                 state._timeEnteredAt = performance.now();
                 // 取消当前所有动画
@@ -189,6 +196,7 @@ let zoomComplete = false, rotationComplete = false;
                 state.timeViewZoom = targetZoom;
                 let checkBothComplete = () => {
                     if (zoomComplete && rotationComplete) {
+                        console.log('[TIME] returnToTimeView completed - ' + (performance.now() - _t0).toFixed(1) + 'ms');
                         let tp = document.getElementById('time-page');
                         if (tp) { tp.style.visibility = 'visible'; tp.style.zIndex = '100'; tp.style.pointerEvents = 'none'; }
                         else { }
