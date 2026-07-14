@@ -1,3 +1,5 @@
+window.__T = { _start: performance.now() };
+function __T(l){const n=performance.now();if(!window.__T[l])window.__T[l]=n;console.log('[time] '+l+' +'+(n-window.__T._start).toFixed(0)+'ms')}
 import * as THREE from 'three/webgpu';
 import { state } from './state.js';
 import { sphereCoulomb } from './sphere-coulomb.js';
@@ -320,6 +322,7 @@ state.updateSphereMinHint();
             export let tryLoadApps = () => {
                 if (typeof NativeBridge !== 'undefined' && NativeBridge.generateAtlas) {
                     state.nativeBridgeReady = true;
+                    __T("T0 generateAtlas called");
                     NativeBridge.generateAtlas();
                 } else {
                     setTimeout(async function() {
@@ -627,7 +630,7 @@ state.updateSphereMinHint();
                 } catch(e) {}
             };
             window._onAppsLoaded = function(json) {
-                console.log('[time] T0 _onAppsLoaded');
+                __T('T0 _onAppsLoaded');
                 try {
                     let data = typeof json === 'string' ? JSON.parse(json) : json;
                     if (data.success && data.apps && data.apps.length > 0) {
@@ -653,7 +656,7 @@ state.updateSphereMinHint();
                 }
             };
             window._onIconsLoaded = function(json) {
-                console.log('[time] T2 _onIconsLoaded');
+                __T('T2 _onIconsLoaded');
                 try {
                     const pkgs = typeof json === 'string' ? JSON.parse(json) : json;
                     if (Array.isArray(pkgs)) {
@@ -666,11 +669,11 @@ state.updateSphereMinHint();
                 console.error('[icons] error:', msg);
             };
             window._onAtlasReady = function(url) {
-                console.log('[time] T3 _onAtlasReady');
+                __T('T3 _onAtlasReady');
                 if (!url || typeof url !== 'string') return;
                 const img = new Image();
                 img.onload = function() {
-                    console.log('[time] T4 atlas image decoded');
+                    __T('T4 atlas decoded');
                     const tex = new THREE.Texture(img);
                     tex.minFilter = THREE.LinearFilter;
                     tex.magFilter = THREE.LinearFilter;
@@ -678,7 +681,7 @@ state.updateSphereMinHint();
                     tex.needsUpdate = true;
                     state.atlasTex = tex;
                     applyAtlasToAllSprites();
-                    console.log('[time] T5 applyAtlasToAllSprites done');
+                    __T('T5 atlas applied');
                 };
                 img.onerror = function() {
                     console.error('[atlas] load failed:', url);
