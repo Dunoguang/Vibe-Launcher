@@ -22,6 +22,7 @@ import android.window.OnBackAnimationCallback
 import android.window.OnBackInvokedDispatcher
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import java.io.File
 import rikka.shizuku.Shizuku
@@ -36,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var timeBgPickerLauncher: androidx.activity.result.ActivityResultLauncher<String>
     private var webView: WebView? = null
     private var jsBridge: JsBridge? = null
+    private var backAnimationCallback: OnBackAnimationCallback? = null
     private var errorDialogShown = false
     private var currentLogFileName: String? = null
     private lateinit var permissions: Permissions
@@ -215,22 +217,24 @@ class MainActivity : AppCompatActivity() {
 
             // Predictive back gesture (Android 14+)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val callback = object : OnBackAnimationCallback {
+                    override fun onBackStarted(backEvent: BackEvent) {
+                        wv.evaluateJavascript("if(window._onBackStarted)window._onBackStarted();", null)
+                    }
+                    override fun onBackProgressed(backEvent: BackEvent) {
+                        wv.evaluateJavascript("if(window._onBackProgress)window._onBackProgress(${backEvent.progress});", null)
+                    }
+                    override fun onBackInvoked() {
+                        wv.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
+                    }
+                    override fun onBackCancelled() {
+                        wv.evaluateJavascript("if(window._onBackCancelled)window._onBackCancelled();", null)
+                    }
+                }
+                backAnimationCallback = callback
                 onBackInvokedDispatcher.registerOnBackInvokedCallback(
                     OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-                    object : OnBackAnimationCallback {
-                        override fun onBackStarted(backEvent: BackEvent) {
-                            wv.evaluateJavascript("if(window._onBackStarted)window._onBackStarted();", null)
-                        }
-                        override fun onBackProgressed(backEvent: BackEvent) {
-                            wv.evaluateJavascript("if(window._onBackProgress)window._onBackProgress(${backEvent.progress});", null)
-                        }
-                        override fun onBackInvoked() {
-                            wv.evaluateJavascript("if(window._onBackPressed)window._onBackPressed();", null)
-                        }
-                        override fun onBackCancelled() {
-                            wv.evaluateJavascript("if(window._onBackCancelled)window._onBackCancelled();", null)
-                        }
-                    }
+                    callback
                 )
             } else {
                 onBackPressedDispatcher.addCallback {
@@ -334,6 +338,14 @@ class MainActivity : AppCompatActivity() {
 
     @Suppress("deprecation")
     override fun onDestroy() {
+        // 注销 back 手势回调，防止在已销毁的 WebView 上调用 evaluateJavascript
+        backAnimationCallback?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it)
+            }
+        }
+        backAnimationCallback = null
+        jsBridge = null
         webView?.destroy()
         webView = null
         super.onDestroy()
