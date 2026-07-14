@@ -63,6 +63,38 @@ class AppModule(private val bridge: JsBridge) {
                 val ctx = bridge.contextRef.get() ?: return@execute
                 val pm = ctx.packageManager
 
+                // Fast path: 合图已存在且图标缓存完整 → 直接返回
+                val atlasFile = File(ctx.cacheDir, "icon_atlas.png")
+                if (atlasFile.exists()) {
+                    val cachedPngs = iconCacheDir.listFiles()?.filter { it.name.endsWith("_192.png") } ?: emptyList()
+                    val apps = appListCache ?: pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                        .filter { pm.getLaunchIntentForPackage(it.packageName) != null && it.packageName != "com.dng.launcher" }
+                        .map {
+                            AppInfo(
+                                it.packageName,
+                                pm.getApplicationLabel(it).toString(),
+                                (it.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                            )
+                        }
+                        .sortedWith(compareBy(collator) { it.appName })
+                        .also { appListCache = it }
+                    bridge.callback("_onAppsLoaded", gson.toJson(AppsResult(true, apps)))
+                    val atlasOrder = cachedPngs.map { it.name.removeSuffix("_192.png") }.sorted()
+                    bridge.webViewRef.get()?.post {
+                        bridge.webViewRef.get()?.evaluateJavascript(
+                            "typeof window._onIconsLoaded==='function'&&window._onIconsLoaded(${gson.toJson(atlasOrder)})",
+                            null
+                        )
+                    }
+                    bridge.webViewRef.get()?.post {
+                        bridge.webViewRef.get()?.evaluateJavascript(
+                            "typeof window._onAtlasReady==='function'&&window._onAtlasReady(\"file://${atlasFile.absolutePath}\")",
+                            null
+                        )
+                    }
+                    return@execute
+                }
+
                 // 1. Get all installed apps
                 val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
                     .filter { pm.getLaunchIntentForPackage(it.packageName) != null && it.packageName != "com.dng.launcher" }
