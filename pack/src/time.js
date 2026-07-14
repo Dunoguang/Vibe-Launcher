@@ -19,7 +19,14 @@ export let timeTextureUpdateInterval = null;
             };
             // 状态机：DOM可见 → bg-only，DOM隐藏 → full
             export let syncTimeSpriteTexture = function() {
-                updateTimeSpriteBgOnly();
+                // 应用缓存的纹理到精灵，不重建
+                if (!state.timeSprite || !state.timeSprite.material) return;
+                if (state.timeTexture) {
+                    let oldMap = state.timeSprite.material.map;
+                    state.timeSprite.material.map = state.timeTexture;
+                    state.timeSprite.material.needsUpdate = true;
+                    if (oldMap && oldMap !== state.timeTexture) oldMap.dispose();
+                }
             };
             let drawCircleBackground = function(ctx, cx, cy, r, s) {
                 let bg = _wallpaperImg;
