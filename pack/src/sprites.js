@@ -318,16 +318,14 @@ state.updateSphereMinHint();
             }
             // ========== NativeBridge ==========
             export let tryLoadApps = () => {
-                console.log('[DEBUG] NativeBridge detected:', typeof NativeBridge !== 'undefined', 'requestInstalledApps exists:', typeof NativeBridge !== 'undefined' && typeof NativeBridge.requestInstalledApps === 'function');
-                if (typeof NativeBridge !== 'undefined' && NativeBridge.requestInstalledApps) {
+                if (typeof NativeBridge !== 'undefined' && NativeBridge.generateAtlas) {
                     state.nativeBridgeReady = true;
-                    console.log('[DEBUG] Calling NativeBridge.requestInstalledApps()');
-                    NativeBridge.requestInstalledApps();
+                    NativeBridge.generateAtlas();
                 } else {
                     setTimeout(async function() {
-                        if (typeof NativeBridge !== 'undefined' && NativeBridge.requestInstalledApps) {
+                        if (typeof NativeBridge !== 'undefined' && NativeBridge.generateAtlas) {
                             state.nativeBridgeReady = true;
-                            NativeBridge.requestInstalledApps();
+                            NativeBridge.generateAtlas();
                         } else {
                             state.loadingEl.textContent = 'NativeBridge 不可用，使用演示数据';
                             createDemoApps();
@@ -629,7 +627,7 @@ state.updateSphereMinHint();
                 } catch(e) {}
             };
             window._onAppsLoaded = function(json) {
-                console.log('[DEBUG] _onAppsLoaded received:', typeof json === 'string' ? json.substring(0, 200) : JSON.stringify(json).substring(0, 200));
+                console.log('[time] T0 _onAppsLoaded');
                 try {
                     let data = typeof json === 'string' ? JSON.parse(json) : json;
                     if (data.success && data.apps && data.apps.length > 0) {
@@ -646,7 +644,6 @@ state.updateSphereMinHint();
                         state.loadingEl.textContent = '正在加载图标…';
                         createSprites(state.apps, null);
                         window._allPkgs = newPkgs;
-                        if (state.nativeBridgeReady) NativeBridge.generateAtlas();
                     } else {
                         state.loadingEl.textContent = '没有找到应用';
                         createSprites([], null);
@@ -656,21 +653,24 @@ state.updateSphereMinHint();
                 }
             };
             window._onIconsLoaded = function(json) {
+                console.log('[time] T2 _onIconsLoaded');
                 try {
                     const pkgs = typeof json === 'string' ? JSON.parse(json) : json;
                     if (Array.isArray(pkgs)) {
                         state.atlasSorterPkgs = pkgs;
                     }
-                } catch (e) { console.error('[DEBUG] _onIconsLoaded error:', e); }
+                } catch (e) { console.error('[icons] parse error:', e); }
             };
 
             window._onIconsError = function(msg) {
-                console.error('[DEBUG] _onIconsError:', msg);
+                console.error('[icons] error:', msg);
             };
             window._onAtlasReady = function(url) {
+                console.log('[time] T3 _onAtlasReady');
                 if (!url || typeof url !== 'string') return;
                 const img = new Image();
                 img.onload = function() {
+                    console.log('[time] T4 atlas image decoded');
                     const tex = new THREE.Texture(img);
                     tex.minFilter = THREE.LinearFilter;
                     tex.magFilter = THREE.LinearFilter;
@@ -678,9 +678,10 @@ state.updateSphereMinHint();
                     tex.needsUpdate = true;
                     state.atlasTex = tex;
                     applyAtlasToAllSprites();
+                    console.log('[time] T5 applyAtlasToAllSprites done');
                 };
                 img.onerror = function() {
-                    console.error('[DEBUG] Atlas load failed:', url);
+                    console.error('[atlas] load failed:', url);
                 };
                 img.src = url;
             };
