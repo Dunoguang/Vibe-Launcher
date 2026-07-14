@@ -54,6 +54,9 @@ class JsBridge(context: Context, webView: WebView) {
     fun clearIconCache() = appModule.clearIconCache()
 
     @JavascriptInterface
+    fun getAtlasUrl() = appModule.getAtlasUrl()
+
+    @JavascriptInterface
     fun launchApp(packageName: String) = appModule.launchApp(packageName)
 
     @JavascriptInterface

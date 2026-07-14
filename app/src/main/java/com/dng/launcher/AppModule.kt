@@ -146,6 +146,14 @@ class AppModule(private val bridge: JsBridge) {
         } catch (_: Exception) {}
     }
 
+    @JavascriptInterface
+    fun getAtlasUrl(): String {
+        return try {
+            val ctx = bridge.contextRef.get() ?: return ""
+            val atlasFile = File(ctx.cacheDir, "icon_atlas.png")
+            if (atlasFile.exists()) "file://${atlasFile.absolutePath}" else ""
+        } catch (_: Exception) { "" }
+    }
 
     private fun generateIconAtlas() {
         try {
@@ -189,8 +197,10 @@ class AppModule(private val bridge: JsBridge) {
             FileOutputStream(outFile).use { atlas.compress(Bitmap.CompressFormat.PNG, 90, it) }
             atlas.recycle()
             Log.i("Vibe-Launcher", "icon_atlas generated: ${outFile.absolutePath} (${atlasW}x${atlasH}, ${files.size} icons)")
+            bridge.callback("_onAtlasReady", "\"file://${outFile.absolutePath}\"")
         } catch (e: Exception) {
             Log.w("Vibe-Launcher", "icon_atlas generation failed: ${e.message}")
+            bridge.callback("_onAtlasError", "\"" + (e.message?.replace("\"", "\\\"") ?: "unknown") + "\"")
         }
     }
 }
